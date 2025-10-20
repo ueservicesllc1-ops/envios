@@ -470,7 +470,7 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Categoría *
+                    Categoría * (Actualizado)
                   </label>
                   <select
                     required
