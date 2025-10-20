@@ -20,6 +20,7 @@ const Products: React.FC = () => {
     name: '',
     description: '',
     category: '',
+    variant: '',
     sku: '',
     cost: 0,
     salePrice1: 0,
@@ -137,6 +138,7 @@ const Products: React.FC = () => {
         name: '',
         description: '',
         category: '',
+        variant: '',
         sku: '',
         cost: 0,
         salePrice1: 0,
@@ -329,6 +331,11 @@ const Products: React.FC = () => {
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {product.category}
                     </span>
+                    {product.variant && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        {product.variant}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-medium text-gray-900">
@@ -414,6 +421,7 @@ const Products: React.FC = () => {
                     name: '',
                     description: '',
                     category: '',
+                    variant: '',
                     sku: '',
                     cost: 0,
                     salePrice1: 0,
@@ -488,6 +496,19 @@ const Products: React.FC = () => {
                     <option value="VITAMINAS">VITAMINAS</option>
                     <option value="Otros">Otros</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Variante (Talla, Color, etc.)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.variant}
+                    onChange={(e) => setFormData({...formData, variant: e.target.value})}
+                    className="input-field"
+                    placeholder="Ej: Talla M, Color Azul, Talla 42, etc."
+                  />
                 </div>
 
                 <div>
@@ -642,6 +663,7 @@ const Products: React.FC = () => {
                       name: '',
                       description: '',
                       category: '',
+                      variant: '',
                       sku: '',
                       cost: 0,
                       salePrice1: 0,
