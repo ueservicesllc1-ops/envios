@@ -20,7 +20,8 @@ const Products: React.FC = () => {
     name: '',
     description: '',
     category: '',
-    variant: '',
+    size: '',
+    color: '',
     sku: '',
     cost: 0,
     salePrice1: 0,
@@ -138,7 +139,8 @@ const Products: React.FC = () => {
         name: '',
         description: '',
         category: '',
-        variant: '',
+        size: '',
+        color: '',
         sku: '',
         cost: 0,
         salePrice1: 0,
@@ -157,7 +159,8 @@ const Products: React.FC = () => {
       name: product.name,
       description: product.description,
       category: product.category,
-      variant: product.variant || '',
+      size: product.size || '',
+      color: product.color || '',
       sku: product.sku,
       cost: product.cost,
       salePrice1: product.salePrice1,
@@ -332,9 +335,10 @@ const Products: React.FC = () => {
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {product.category}
                     </span>
-                    {product.variant && (
+                    {(product.size || product.color) && (
                       <div className="mt-1 text-xs text-gray-500">
-                        {product.variant}
+                        {product.size && <span className="mr-2">Talla: {product.size}</span>}
+                        {product.color && <span>Color: {product.color}</span>}
                       </div>
                     )}
                   </td>
@@ -422,7 +426,8 @@ const Products: React.FC = () => {
                     name: '',
                     description: '',
                     category: '',
-                    variant: '',
+                    size: '',
+                    color: '',
                     sku: '',
                     cost: 0,
                     salePrice1: 0,
@@ -499,43 +504,59 @@ const Products: React.FC = () => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Variante
-                  </label>
-                  <select
-                    value={formData.variant}
-                    onChange={(e) => setFormData({...formData, variant: e.target.value})}
-                    className="input-field"
-                  >
-                    <option value="">Seleccionar variante</option>
-                    <option value="Talla S">Talla S</option>
-                    <option value="Talla M">Talla M</option>
-                    <option value="Talla L">Talla L</option>
-                    <option value="Talla XL">Talla XL</option>
-                    <option value="Talla XXL">Talla XXL</option>
-                    <option value="Talla 36">Talla 36</option>
-                    <option value="Talla 37">Talla 37</option>
-                    <option value="Talla 38">Talla 38</option>
-                    <option value="Talla 39">Talla 39</option>
-                    <option value="Talla 40">Talla 40</option>
-                    <option value="Talla 41">Talla 41</option>
-                    <option value="Talla 42">Talla 42</option>
-                    <option value="Talla 43">Talla 43</option>
-                    <option value="Talla 44">Talla 44</option>
-                    <option value="Talla 45">Talla 45</option>
-                    <option value="Color Azul">Color Azul</option>
-                    <option value="Color Rojo">Color Rojo</option>
-                    <option value="Color Verde">Color Verde</option>
-                    <option value="Color Negro">Color Negro</option>
-                    <option value="Color Blanco">Color Blanco</option>
-                    <option value="Color Gris">Color Gris</option>
-                    <option value="Color Amarillo">Color Amarillo</option>
-                    <option value="Color Rosa">Color Rosa</option>
-                    <option value="Color Morado">Color Morado</option>
-                    <option value="Color Naranja">Color Naranja</option>
-                    <option value="Sin variante">Sin variante</option>
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Talla
+                    </label>
+                    <select
+                      value={formData.size}
+                      onChange={(e) => setFormData({...formData, size: e.target.value})}
+                      className="input-field"
+                    >
+                      <option value="">Seleccionar talla</option>
+                      <option value="S">S</option>
+                      <option value="M">M</option>
+                      <option value="L">L</option>
+                      <option value="XL">XL</option>
+                      <option value="XXL">XXL</option>
+                      <option value="36">36</option>
+                      <option value="37">37</option>
+                      <option value="38">38</option>
+                      <option value="39">39</option>
+                      <option value="40">40</option>
+                      <option value="41">41</option>
+                      <option value="42">42</option>
+                      <option value="43">43</option>
+                      <option value="44">44</option>
+                      <option value="45">45</option>
+                      <option value="Sin talla">Sin talla</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Color
+                    </label>
+                    <select
+                      value={formData.color}
+                      onChange={(e) => setFormData({...formData, color: e.target.value})}
+                      className="input-field"
+                    >
+                      <option value="">Seleccionar color</option>
+                      <option value="Azul">Azul</option>
+                      <option value="Rojo">Rojo</option>
+                      <option value="Verde">Verde</option>
+                      <option value="Negro">Negro</option>
+                      <option value="Blanco">Blanco</option>
+                      <option value="Gris">Gris</option>
+                      <option value="Amarillo">Amarillo</option>
+                      <option value="Rosa">Rosa</option>
+                      <option value="Morado">Morado</option>
+                      <option value="Naranja">Naranja</option>
+                      <option value="Sin color">Sin color</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -690,7 +711,8 @@ const Products: React.FC = () => {
                       name: '',
                       description: '',
                       category: '',
-                      variant: '',
+                      size: '',
+                      color: '',
                       sku: '',
                       cost: 0,
                       salePrice1: 0,

@@ -4,7 +4,8 @@ export interface Product {
   name: string;
   description: string;
   category: string;
-  variant?: string;
+  size?: string; // Optional size field
+  color?: string; // Optional color field
   sku: string;
   cost: number;
   salePrice1: number;
