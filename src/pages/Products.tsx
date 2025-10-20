@@ -484,6 +484,8 @@ const Products: React.FC = () => {
                     <option value="Hogar">Hogar</option>
                     <option value="Deportes">Deportes</option>
                     <option value="Libros">Libros</option>
+                    <option value="ZAPATOS">ZAPATOS</option>
+                    <option value="VITAMINAS">VITAMINAS</option>
                     <option value="Otros">Otros</option>
                   </select>
                 </div>

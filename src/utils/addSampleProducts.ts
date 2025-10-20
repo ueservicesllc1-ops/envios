@@ -51,6 +51,46 @@ export const addSampleProducts = async () => {
       salePrice1: 90.00,
       salePrice2: 75.00,
       barcode: '1234567890127'
+    },
+    {
+      name: 'Zapatos Deportivos Nike Air Max',
+      description: 'Zapatos deportivos Nike Air Max para running y entrenamiento',
+      category: 'ZAPATOS',
+      sku: 'NIKE-AIR-001',
+      cost: 80.00,
+      salePrice1: 120.00,
+      salePrice2: 100.00,
+      barcode: '1234567890128'
+    },
+    {
+      name: 'Zapatos Casual Adidas Stan Smith',
+      description: 'Zapatos casuales Adidas Stan Smith clásicos blancos',
+      category: 'ZAPATOS',
+      sku: 'ADIDAS-STAN-001',
+      cost: 60.00,
+      salePrice1: 90.00,
+      salePrice2: 75.00,
+      barcode: '1234567890129'
+    },
+    {
+      name: 'Vitamina C 1000mg',
+      description: 'Vitamina C 1000mg con zinc, 60 cápsulas',
+      category: 'VITAMINAS',
+      sku: 'VIT-C-1000-001',
+      cost: 15.00,
+      salePrice1: 25.00,
+      salePrice2: 20.00,
+      barcode: '1234567890130'
+    },
+    {
+      name: 'Multivitamínico Completo',
+      description: 'Multivitamínico con 12 vitaminas y minerales esenciales',
+      category: 'VITAMINAS',
+      sku: 'MULTI-VIT-001',
+      cost: 20.00,
+      salePrice1: 35.00,
+      salePrice2: 30.00,
+      barcode: '1234567890131'
     }
   ];
 
