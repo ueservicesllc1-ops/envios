@@ -157,6 +157,7 @@ const Products: React.FC = () => {
       name: product.name,
       description: product.description,
       category: product.category,
+      variant: product.variant || '',
       sku: product.sku,
       cost: product.cost,
       salePrice1: product.salePrice1,
@@ -500,15 +501,41 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Variante (Talla, Color, etc.)
+                    Variante
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.variant}
                     onChange={(e) => setFormData({...formData, variant: e.target.value})}
                     className="input-field"
-                    placeholder="Ej: Talla M, Color Azul, Talla 42, etc."
-                  />
+                  >
+                    <option value="">Seleccionar variante</option>
+                    <option value="Talla S">Talla S</option>
+                    <option value="Talla M">Talla M</option>
+                    <option value="Talla L">Talla L</option>
+                    <option value="Talla XL">Talla XL</option>
+                    <option value="Talla XXL">Talla XXL</option>
+                    <option value="Talla 36">Talla 36</option>
+                    <option value="Talla 37">Talla 37</option>
+                    <option value="Talla 38">Talla 38</option>
+                    <option value="Talla 39">Talla 39</option>
+                    <option value="Talla 40">Talla 40</option>
+                    <option value="Talla 41">Talla 41</option>
+                    <option value="Talla 42">Talla 42</option>
+                    <option value="Talla 43">Talla 43</option>
+                    <option value="Talla 44">Talla 44</option>
+                    <option value="Talla 45">Talla 45</option>
+                    <option value="Color Azul">Color Azul</option>
+                    <option value="Color Rojo">Color Rojo</option>
+                    <option value="Color Verde">Color Verde</option>
+                    <option value="Color Negro">Color Negro</option>
+                    <option value="Color Blanco">Color Blanco</option>
+                    <option value="Color Gris">Color Gris</option>
+                    <option value="Color Amarillo">Color Amarillo</option>
+                    <option value="Color Rosa">Color Rosa</option>
+                    <option value="Color Morado">Color Morado</option>
+                    <option value="Color Naranja">Color Naranja</option>
+                    <option value="Sin variante">Sin variante</option>
+                  </select>
                 </div>
 
                 <div>
