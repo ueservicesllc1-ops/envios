@@ -250,6 +250,9 @@ const EntryNotes: React.FC = () => {
         };
       });
 
+      // Obtener los items originales para comparar
+      const originalItems = editingNote.items;
+      
       // Actualizar la nota de entrada
       await entryNoteService.update(editingNote.id, {
         supplier: editFormData.supplier,
@@ -258,7 +261,26 @@ const EntryNotes: React.FC = () => {
         totalCost: totalCost
       });
 
-      toast.success('Nota de entrada actualizada correctamente');
+      // PRIMERO: Revertir todo el stock de la nota original
+      for (const originalItem of originalItems) {
+        await inventoryService.removeStock(
+          originalItem.productId, 
+          originalItem.quantity
+        );
+      }
+
+      // SEGUNDO: Aplicar el nuevo stock de la nota editada
+      for (const newItem of entryNoteItems) {
+        await inventoryService.addStock(
+          newItem.productId, 
+          newItem.quantity, 
+          newItem.cost, 
+          newItem.unitPrice, 
+          editFormData.location
+        );
+      }
+
+      toast.success('Nota de entrada y inventario actualizados correctamente');
       setShowEditModal(false);
       setEditingNote(null);
       setEditFormData({ supplier: '', location: '' });

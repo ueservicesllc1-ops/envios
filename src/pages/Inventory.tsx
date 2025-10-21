@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, AlertTriangle, Package, Search, Filter, Plus, Edit, Eye } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Package, Search, Filter, Plus, Edit, Eye, X } from 'lucide-react';
 import { InventoryItem, Product } from '../types';
 import { inventoryService } from '../services/inventoryService';
 import { productService } from '../services/productService';
@@ -12,6 +12,17 @@ const Inventory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [filterBy, setFilterBy] = useState('all');
+  
+  // Estados para edición
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    quantity: 0,
+    cost: 0,
+    unitPrice: 0,
+    location: '',
+    status: 'stock' as 'stock' | 'in-transit' | 'delivered'
+  });
 
   useEffect(() => {
     loadData();
@@ -41,6 +52,65 @@ const Inventory: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (item: InventoryItem) => {
+    setEditingItem(item);
+    setEditFormData({
+      quantity: item.quantity,
+      cost: item.cost,
+      unitPrice: item.unitPrice,
+      location: item.location,
+      status: item.status
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+
+    try {
+      // Calcular nuevos totales
+      const newTotalCost = editFormData.cost * editFormData.quantity;
+      const newTotalPrice = editFormData.unitPrice * editFormData.quantity;
+      const newTotalValue = newTotalCost;
+
+      await inventoryService.update(editingItem.id, {
+        quantity: editFormData.quantity,
+        cost: editFormData.cost,
+        unitPrice: editFormData.unitPrice,
+        totalCost: newTotalCost,
+        totalPrice: newTotalPrice,
+        totalValue: newTotalValue,
+        location: editFormData.location,
+        status: editFormData.status
+      });
+
+      // Actualizar el estado local
+      setInventory(prev => prev.map(item => 
+        item.id === editingItem.id 
+          ? { ...item, ...editFormData, totalCost: newTotalCost, totalPrice: newTotalPrice, totalValue: newTotalValue }
+          : item
+      ));
+
+      toast.success('Inventario actualizado correctamente');
+      setShowEditModal(false);
+      setEditingItem(null);
+    } catch (error) {
+      toast.error('Error al actualizar inventario');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingItem(null);
+    setEditFormData({
+      quantity: 0,
+      cost: 0,
+      unitPrice: 0,
+      location: '',
+      status: 'stock'
+    });
   };
 
   const getStockStatus = (quantity: number) => {
@@ -210,8 +280,9 @@ const Inventory: React.FC = () => {
                 <th className="table-header">Cantidad</th>
                 <th className="table-header">Ubicación</th>
                 <th className="table-header">Costo Unit.</th>
+                <th className="table-header">Costo Total</th>
                 <th className="table-header">Precio Unit.</th>
-                <th className="table-header">Valor Total</th>
+                <th className="table-header">Precio Total</th>
                 <th className="table-header">Estado</th>
                 <th className="table-header">Acciones</th>
               </tr>
@@ -264,12 +335,17 @@ const Inventory: React.FC = () => {
                     </td>
                     <td className="table-cell">
                       <span className="text-sm text-gray-900">
-                        ${item.unitPrice.toLocaleString()}
+                        ${(item.cost * item.quantity).toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="table-cell">
+                      <span className="text-sm text-gray-900">
+                        ${item.product.salePrice1.toLocaleString()}
                       </span>
                     </td>
                     <td className="table-cell">
                       <span className="text-sm font-medium text-gray-900">
-                        ${item.totalValue.toLocaleString()}
+                        ${(item.product.salePrice1 * item.quantity).toLocaleString()}
                       </span>
                     </td>
                     <td className="table-cell">
@@ -286,6 +362,7 @@ const Inventory: React.FC = () => {
                           <Eye className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => handleEdit(item)}
                           className="p-1 text-gray-400 hover:text-green-600"
                           title="Editar"
                         >
@@ -309,6 +386,140 @@ const Inventory: React.FC = () => {
           <p className="mt-1 text-sm text-gray-500">
             {searchTerm ? 'No se encontraron productos con ese criterio.' : 'No hay productos en el inventario.'}
           </p>
+        </div>
+      )}
+
+      {/* Modal de Edición */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Editar Inventario
+                </h3>
+                <button
+                  onClick={handleCancelEdit}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Información del producto */}
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h4 className="font-medium text-gray-900">{editingItem.product.name}</h4>
+                  <p className="text-sm text-gray-600">SKU: {editingItem.product.sku}</p>
+                </div>
+
+                {/* Formulario de edición */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cantidad
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editFormData.quantity}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ubicación
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.location}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, location: e.target.value }))}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Costo Unitario
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editFormData.cost}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, cost: Number(e.target.value) }))}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Precio Unitario
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editFormData.unitPrice}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, unitPrice: Number(e.target.value) }))}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Estado
+                    </label>
+                    <select
+                      value={editFormData.status}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as 'stock' | 'in-transit' | 'delivered' }))}
+                      className="input-field"
+                    >
+                      <option value="stock">En Stock</option>
+                      <option value="in-transit">En Tránsito</option>
+                      <option value="delivered">Entregado</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Totales calculados */}
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Costo Total:</span>
+                      <p className="font-medium">${(editFormData.cost * editFormData.quantity).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Precio Total:</span>
+                      <p className="font-medium">${(editFormData.unitPrice * editFormData.quantity).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Valor Total:</span>
+                      <p className="font-medium">${(editFormData.cost * editFormData.quantity).toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={handleCancelEdit}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="btn-primary"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

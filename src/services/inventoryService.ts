@@ -46,8 +46,19 @@ export const inventoryService = {
   async update(id: string, item: Partial<InventoryItem>): Promise<void> {
     try {
       const docRef = doc(db, 'inventory', id);
+      
+      // Filtrar campos undefined para evitar errores de Firebase
+      const cleanItem = Object.fromEntries(
+        Object.entries(item).filter(([_, value]) => value !== undefined)
+      );
+      
+      // Asegurar que status tenga un valor por defecto si no está definido
+      if (!cleanItem.status) {
+        cleanItem.status = 'stock';
+      }
+      
       await updateDoc(docRef, {
-        ...item,
+        ...cleanItem,
         lastUpdated: convertToTimestamp(new Date())
       });
       
@@ -103,13 +114,18 @@ export const inventoryService = {
   // Actualizar stock después de entrada
   async updateStockAfterEntry(productId: string, quantity: number, cost: number, unitPrice: number): Promise<void> {
     try {
+      // Obtener el producto para usar su salePrice1
+      const { productService } = await import('./productService');
+      const product = await productService.getById(productId);
+      const actualUnitPrice = product?.salePrice1 || unitPrice; // Usar salePrice1 del producto
+      
       const existingItem = await this.getByProductId(productId);
       
       if (existingItem) {
         // Actualizar stock existente
         const newQuantity = existingItem.quantity + quantity;
         const newTotalCost = existingItem.totalCost + (cost * quantity);
-        const newTotalPrice = existingItem.totalPrice + (unitPrice * quantity);
+        const newTotalPrice = existingItem.totalPrice + (actualUnitPrice * quantity);
         const newTotalValue = newTotalCost; // Valor total basado en costo
         
         await this.update(existingItem.id, {
@@ -118,18 +134,18 @@ export const inventoryService = {
           totalPrice: newTotalPrice,
           totalValue: newTotalValue,
           cost: newTotalCost / newQuantity, // Costo promedio
-          unitPrice: newTotalPrice / newQuantity // Precio promedio
+          unitPrice: actualUnitPrice // Usar siempre salePrice1
         });
       } else {
         // Crear nuevo item de inventario
         await this.create({
           productId,
-          product: {} as Product, // Se llenará cuando se obtenga el inventario
+          product: product || {} as Product,
           quantity,
           cost,
-          unitPrice,
+          unitPrice: actualUnitPrice, // Usar salePrice1 del producto
           totalCost: cost * quantity,
-          totalPrice: unitPrice * quantity,
+          totalPrice: actualUnitPrice * quantity,
           totalValue: cost * quantity,
           location: 'Bodega Principal',
           status: 'stock' // Estado inicial
@@ -190,7 +206,7 @@ export const inventoryService = {
         
         await updateDoc(doc(db, 'inventory', inventoryDoc.id), {
           status: 'delivered',
-          lastUpdated: Timestamp.now()
+          lastUpdated: convertToTimestamp(new Date())
         });
       }
     } catch (error) {
@@ -202,5 +218,34 @@ export const inventoryService = {
   // Agregar stock (alias para updateStockAfterEntry)
   async addStock(productId: string, quantity: number, cost: number, unitPrice: number, location: string): Promise<void> {
     return this.updateStockAfterEntry(productId, quantity, cost, unitPrice);
+  },
+
+  // Remover stock del inventario
+  async removeStock(productId: string, quantity: number): Promise<void> {
+    try {
+      const existingItem = await this.getByProductId(productId);
+      
+      if (existingItem && existingItem.quantity >= quantity) {
+        const newQuantity = existingItem.quantity - quantity;
+        const newTotalCost = (existingItem.totalCost / existingItem.quantity) * newQuantity;
+        const newTotalPrice = (existingItem.totalPrice / existingItem.quantity) * newQuantity;
+        const newTotalValue = newTotalCost;
+        
+        await this.update(existingItem.id, {
+          quantity: newQuantity,
+          totalCost: newTotalCost,
+          totalPrice: newTotalPrice,
+          totalValue: newTotalValue
+        });
+        
+        toast.success('Stock removido exitosamente');
+      } else {
+        throw new Error('Stock insuficiente para remover');
+      }
+    } catch (error) {
+      console.error('Error removing stock:', error);
+      toast.error('Error al remover stock');
+      throw error;
+    }
   }
 };
