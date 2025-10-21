@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, CheckCircle, XCircle, FileText, X, Trash2, Scan } from 'lucide-react';
+import { Plus, Search, Eye, CheckCircle, XCircle, FileText, X, Trash2, Scan, Edit } from 'lucide-react';
 import { EntryNote, Product } from '../types';
 import { entryNoteService } from '../services/entryNoteService';
 import { productService } from '../services/productService';
@@ -15,11 +15,25 @@ const EntryNotes: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [viewingNote, setViewingNote] = useState<EntryNote | null>(null);
+  const [editingNote, setEditingNote] = useState<EntryNote | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({
     supplier: '',
     location: ''
   });
   const [items, setItems] = useState<Array<{
+    productId: string;
+    quantity: number;
+    cost: number;
+    unitPrice: number;
+  }>>([]);
+  
+  // Estados para edición
+  const [editFormData, setEditFormData] = useState({
+    supplier: '',
+    location: ''
+  });
+  const [editItems, setEditItems] = useState<Array<{
     productId: string;
     quantity: number;
     cost: number;
@@ -199,6 +213,70 @@ const EntryNotes: React.FC = () => {
     setShowModal(true);
   };
 
+  const handleEdit = (note: EntryNote) => {
+    setEditingNote(note);
+    setEditFormData({
+      supplier: note.supplier,
+      location: note.location || ''
+    });
+    setEditItems(note.items.map(item => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      cost: item.cost,
+      unitPrice: item.unitPrice
+    })));
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingNote || editItems.length === 0) return;
+
+    try {
+      // Calcular totales
+      const totalCost = editItems.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
+      
+      // Mapear editItems a EntryNoteItem[]
+      const entryNoteItems = editItems.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        return {
+          id: `${Date.now()}-${Math.random()}`, // ID temporal
+          productId: item.productId,
+          product: product || {} as Product,
+          quantity: item.quantity,
+          cost: item.cost,
+          unitPrice: item.unitPrice,
+          totalCost: item.cost * item.quantity,
+          totalPrice: item.unitPrice * item.quantity
+        };
+      });
+
+      // Actualizar la nota de entrada
+      await entryNoteService.update(editingNote.id, {
+        supplier: editFormData.supplier,
+        location: editFormData.location,
+        items: entryNoteItems,
+        totalCost: totalCost
+      });
+
+      toast.success('Nota de entrada actualizada correctamente');
+      setShowEditModal(false);
+      setEditingNote(null);
+      setEditFormData({ supplier: '', location: '' });
+      setEditItems([]);
+      loadNotes();
+    } catch (error) {
+      console.error('Error updating entry note:', error);
+      toast.error('Error al actualizar la nota de entrada');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingNote(null);
+    setEditFormData({ supplier: '', location: '' });
+    setEditItems([]);
+  };
+
   const filteredNotes = notes.filter(note =>
     note.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
     note.supplier.toLowerCase().includes(searchTerm.toLowerCase())
@@ -311,6 +389,13 @@ const EntryNotes: React.FC = () => {
                         title="Ver detalles"
                       >
                         <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(note)}
+                        className="p-1 text-gray-400 hover:text-green-600"
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -662,6 +747,219 @@ const EntryNotes: React.FC = () => {
                     ${viewingNote.totalCost.toLocaleString()}
                   </span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición */}
+      {showEditModal && editingNote && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Editar Nota de Entrada #{editingNote.number}
+                </h3>
+                <button
+                  onClick={handleCancelEdit}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Información general */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Proveedor
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.supplier}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, supplier: e.target.value }))}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ubicación
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.location}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, location: e.target.value }))}
+                      className="input-field"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Productos */}
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 mb-3">Productos</h4>
+                  <div className="space-y-4">
+                    {editItems.map((item, index) => {
+                      const product = products.find(p => p.id === item.productId);
+                      return (
+                        <div key={index} className="flex items-end gap-2 p-4 border rounded-lg">
+                          <div className="w-12">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">#</label>
+                            <input
+                              type="text"
+                              value={index + 1}
+                              className="input-field bg-gray-100 w-full text-center"
+                              disabled
+                            />
+                          </div>
+                          
+                          <div className="flex-1">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Producto</label>
+                            <select
+                              value={item.productId}
+                              onChange={(e) => {
+                                const newItems = [...editItems];
+                                newItems[index].productId = e.target.value;
+                                const selectedProduct = products.find(p => p.id === e.target.value);
+                                if (selectedProduct) {
+                                  newItems[index].cost = selectedProduct.cost;
+                                  newItems[index].unitPrice = selectedProduct.salePrice1;
+                                }
+                                setEditItems(newItems);
+                              }}
+                              className="input-field w-full"
+                              required
+                            >
+                              <option value="">Seleccionar producto</option>
+                              {products.map(product => (
+                                <option key={product.id} value={product.id}>
+                                  {product.name} - {product.sku} {product.size ? `(Talla: ${product.size})` : ''} {product.color ? `- ${product.color}` : ''} {product.color2 ? `/${product.color2}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          <div className="w-20">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">SKU</label>
+                            <input
+                              type="text"
+                              value={product?.sku || ''}
+                              className="input-field bg-gray-100 w-full"
+                              disabled
+                            />
+                          </div>
+                          
+                          <div className="w-16">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Cantidad</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const newItems = [...editItems];
+                                newItems[index].quantity = parseInt(e.target.value) || 0;
+                                setEditItems(newItems);
+                              }}
+                              className="input-field w-full"
+                              required
+                            />
+                          </div>
+                          
+                          <div className="w-20">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Costo/U</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.cost}
+                              onChange={(e) => {
+                                const newItems = [...editItems];
+                                newItems[index].cost = parseFloat(e.target.value) || 0;
+                                setEditItems(newItems);
+                              }}
+                              className="input-field w-full"
+                              required
+                            />
+                          </div>
+                          
+                          <div className="w-24">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
+                            <input
+                              type="text"
+                              value={`$${(item.cost * item.quantity).toFixed(2)}`}
+                              className="input-field bg-gray-100 w-full"
+                              disabled
+                            />
+                          </div>
+                          
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = editItems.filter((_, i) => i !== index);
+                                setEditItems(newItems);
+                              }}
+                              className="p-2 text-gray-400 hover:text-red-600"
+                              title="Eliminar producto"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditItems([...editItems, {
+                          productId: '',
+                          quantity: 1,
+                          cost: 0,
+                          unitPrice: 0
+                        }]);
+                      }}
+                      className="btn-secondary flex items-center"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Producto
+                    </button>
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-medium text-gray-900">Total:</span>
+                    <span className="text-xl font-bold text-primary-600">
+                      ${editItems.reduce((sum, item) => sum + (item.cost * item.quantity), 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={handleCancelEdit}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="btn-primary"
+                  disabled={editItems.length === 0}
+                >
+                  Guardar Cambios
+                </button>
               </div>
             </div>
           </div>
