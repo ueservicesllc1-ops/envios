@@ -131,7 +131,8 @@ export const inventoryService = {
           totalCost: cost * quantity,
           totalPrice: unitPrice * quantity,
           totalValue: cost * quantity,
-          location: 'Bodega Principal'
+          location: 'Bodega Principal',
+          status: 'stock' // Estado inicial
         });
       }
       
@@ -143,8 +144,8 @@ export const inventoryService = {
     }
   },
 
-  // Actualizar stock después de salida
-  async updateStockAfterExit(productId: string, quantity: number): Promise<void> {
+  // Actualizar stock después de salida (pasa a estado in-transit)
+  async updateStockAfterExit(productId: string, quantity: number, exitNoteId?: string, sellerId?: string): Promise<void> {
     try {
       const existingItem = await this.getByProductId(productId);
       
@@ -158,7 +159,10 @@ export const inventoryService = {
           quantity: newQuantity,
           totalCost: newTotalCost,
           totalPrice: newTotalPrice,
-          totalValue: newTotalValue
+          totalValue: newTotalValue,
+          status: 'in-transit',
+          sellerId: sellerId,
+          exitNoteId: exitNoteId
         });
         
         toast.success('Stock actualizado exitosamente');
@@ -168,6 +172,29 @@ export const inventoryService = {
     } catch (error) {
       console.error('Error updating stock after exit:', error);
       toast.error('Error al actualizar el stock');
+      throw error;
+    }
+  },
+
+  // Actualizar estado a entregado cuando se marca el envío como delivered
+  async updateStatusToDelivered(exitNoteId: string): Promise<void> {
+    try {
+      const inventoryQuery = query(
+        collection(db, 'inventory'),
+        where('exitNoteId', '==', exitNoteId)
+      );
+      const inventorySnapshot = await getDocs(inventoryQuery);
+      
+      if (!inventorySnapshot.empty) {
+        const inventoryDoc = inventorySnapshot.docs[0];
+        
+        await updateDoc(doc(db, 'inventory', inventoryDoc.id), {
+          status: 'delivered',
+          lastUpdated: Timestamp.now()
+        });
+      }
+    } catch (error) {
+      console.error('Error updating inventory status to delivered:', error);
       throw error;
     }
   },

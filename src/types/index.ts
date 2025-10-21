@@ -6,6 +6,7 @@ export interface Product {
   category: string;
   size?: string; // Optional size field
   color?: string; // Optional color field
+  color2?: string; // Optional second color field
   sku: string;
   cost: number;
   salePrice1: number;
@@ -28,6 +29,9 @@ export interface InventoryItem {
   totalPrice: number;
   totalValue: number;
   location: string;
+  status: 'stock' | 'in-transit' | 'delivered'; // Estado del inventario
+  sellerId?: string; // ID del vendedor (si está asignado)
+  exitNoteId?: string; // ID de la nota de salida asociada
   lastUpdated: Date;
 }
 
@@ -70,6 +74,7 @@ export interface ExitNote {
   status: 'pending' | 'delivered' | 'received' | 'cancelled';
   notes?: string;
   receivedAt?: Date;
+  shippingId?: string; // ID del envío asociado
   createdAt: Date;
   createdBy: string;
 }
@@ -79,6 +84,7 @@ export interface ExitNoteItem {
   productId: string;
   product: Product;
   quantity: number;
+  size?: string; // Talla del producto
   unitPrice: number;
   totalPrice: number;
 }
@@ -160,8 +166,21 @@ export interface SoldProduct {
   notes?: string;
   createdAt: Date;
   paymentType: 'credit' | 'cash';
-  paymentStatus: 'pending' | 'paid';
+  status: 'pending' | 'paid' | 'rejected';
   paymentNoteId?: string;
+}
+
+// Tipos para Inventario del Vendedor
+export interface SellerInventoryItem {
+  id: string;
+  sellerId: string;
+  productId: string;
+  product: Product;
+  quantity: number;
+  unitPrice: number;
+  totalValue: number;
+  status: 'stock' | 'in-transit' | 'delivered';
+  lastDeliveryDate: Date;
 }
 
 // Tipos para Notas de Pago

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -42,13 +42,7 @@ const SellerDetails: React.FC = () => {
   const [productSummary, setProductSummary] = useState<ProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (id) {
-      loadSellerDetails();
-    }
-  }, [id]);
-
-  const loadSellerDetails = async () => {
+  const loadSellerDetails = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -73,7 +67,13 @@ const SellerDetails: React.FC = () => {
       toast.error('Error al cargar detalles del vendedor');
       setLoading(false);
     }
-  };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (id) {
+      loadSellerDetails();
+    }
+  }, [id, loadSellerDetails]);
 
   const loadSoldProducts = async (sellerId: string) => {
     try {

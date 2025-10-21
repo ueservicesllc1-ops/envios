@@ -16,12 +16,14 @@ const Products: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category: '',
     size: '',
     color: '',
+    color2: '',
     sku: '',
     cost: 0,
     salePrice1: 0,
@@ -141,6 +143,7 @@ const Products: React.FC = () => {
         category: '',
         size: '',
         color: '',
+        color2: '',
         sku: '',
         cost: 0,
         salePrice1: 0,
@@ -161,6 +164,7 @@ const Products: React.FC = () => {
       category: product.category,
       size: product.size || '',
       color: product.color || '',
+      color2: product.color2 || '',
       sku: product.sku,
       cost: product.cost,
       salePrice1: product.salePrice1,
@@ -169,6 +173,10 @@ const Products: React.FC = () => {
       imageUrl: product.imageUrl || ''
     });
     setShowModal(true);
+  };
+
+  const handleView = (product: Product) => {
+    setViewingProduct(product);
   };
 
   const filteredProducts = products.filter(product =>
@@ -335,10 +343,11 @@ const Products: React.FC = () => {
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {product.category}
                     </span>
-                    {(product.size || product.color) && (
+                    {(product.size || product.color || product.color2) && (
                       <div className="mt-1 text-xs text-gray-500">
                         {product.size && <span className="mr-2">Talla: {product.size}</span>}
-                        {product.color && <span>Color: {product.color}</span>}
+                        {product.color && <span className="mr-2">Color: {product.color}</span>}
+                        {product.color2 && <span>Color 2: {product.color2}</span>}
                       </div>
                     )}
                   </td>
@@ -367,6 +376,7 @@ const Products: React.FC = () => {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
+                        onClick={() => handleView(product)}
                         className="p-1 text-gray-400 hover:text-green-600"
                         title="Ver detalles"
                       >
@@ -428,6 +438,7 @@ const Products: React.FC = () => {
                     category: '',
                     size: '',
                     color: '',
+                    color2: '',
                     sku: '',
                     cost: 0,
                     salePrice1: 0,
@@ -500,6 +511,7 @@ const Products: React.FC = () => {
                     <option value="Libros">Libros</option>
                     <option value="ZAPATOS">ZAPATOS</option>
                     <option value="VITAMINAS">VITAMINAS</option>
+                    <option value="Soy Burro">Soy Burro</option>
                     <option value="Otros">Otros</option>
                   </select>
                 </div>
@@ -530,13 +542,30 @@ const Products: React.FC = () => {
                       <option value="43">43</option>
                       <option value="44">44</option>
                       <option value="45">45</option>
+                      <option value="4">4</option>
+                      <option value="4.5">4.5</option>
+                      <option value="5">5</option>
+                      <option value="5.5">5.5</option>
+                      <option value="6">6</option>
+                      <option value="6.5">6.5</option>
+                      <option value="7">7</option>
+                      <option value="7.5">7.5</option>
+                      <option value="8">8</option>
+                      <option value="8.5">8.5</option>
+                      <option value="9">9</option>
+                      <option value="9.5">9.5</option>
+                      <option value="10">10</option>
+                      <option value="10.5">10.5</option>
+                      <option value="11">11</option>
+                      <option value="11.5">11.5</option>
+                      <option value="12">12</option>
                       <option value="Sin talla">Sin talla</option>
                     </select>
                   </div>
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Color
+                      Color 1
                     </label>
                     <select
                       value={formData.color}
@@ -554,6 +583,40 @@ const Products: React.FC = () => {
                       <option value="Rosa">Rosa</option>
                       <option value="Morado">Morado</option>
                       <option value="Naranja">Naranja</option>
+                      <option value="Vino">Vino</option>
+                      <option value="Turqueza">Turqueza</option>
+                      <option value="Celeste">Celeste</option>
+                      <option value="Verde Fluorescente">Verde Fluorescente</option>
+                      <option value="Beige">Beige</option>
+                      <option value="Sin color">Sin color</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Color 2
+                    </label>
+                    <select
+                      value={formData.color2}
+                      onChange={(e) => setFormData({...formData, color2: e.target.value})}
+                      className="input-field"
+                    >
+                      <option value="">Seleccionar color</option>
+                      <option value="Azul">Azul</option>
+                      <option value="Rojo">Rojo</option>
+                      <option value="Verde">Verde</option>
+                      <option value="Negro">Negro</option>
+                      <option value="Blanco">Blanco</option>
+                      <option value="Gris">Gris</option>
+                      <option value="Amarillo">Amarillo</option>
+                      <option value="Rosa">Rosa</option>
+                      <option value="Morado">Morado</option>
+                      <option value="Naranja">Naranja</option>
+                      <option value="Vino">Vino</option>
+                      <option value="Turqueza">Turqueza</option>
+                      <option value="Celeste">Celeste</option>
+                      <option value="Verde Fluorescente">Verde Fluorescente</option>
+                      <option value="Beige">Beige</option>
                       <option value="Sin color">Sin color</option>
                     </select>
                   </div>
@@ -713,6 +776,7 @@ const Products: React.FC = () => {
                       category: '',
                       size: '',
                       color: '',
+                      color2: '',
                       sku: '',
                       cost: 0,
                       salePrice1: 0,
@@ -733,6 +797,183 @@ const Products: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para ver detalles del producto */}
+      {viewingProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Detalles del Producto
+              </h3>
+              <button
+                onClick={() => setViewingProduct(null)}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Imagen del producto */}
+              {viewingProduct.imageUrl && (
+                <div className="text-center">
+                  <img
+                    src={viewingProduct.imageUrl}
+                    alt={viewingProduct.name}
+                    className="w-64 h-64 object-cover rounded-lg border border-gray-200 mx-auto"
+                  />
+                </div>
+              )}
+
+              {/* Información básica */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre del Producto
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.name}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    SKU
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.sku}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Categoría
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.category}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Talla
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.size || 'Sin talla'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Color 1
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.color || 'Sin color'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Color 2
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.color2 || 'Sin color'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Código de Barras
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.barcode || 'Sin código'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Descripción */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descripción
+                </label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded min-h-[60px]">
+                  {viewingProduct.description || 'Sin descripción'}
+                </p>
+              </div>
+
+              {/* Precios */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Costo
+                  </label>
+                  <p className="text-lg font-semibold text-gray-900 bg-gray-50 p-2 rounded">
+                    ${viewingProduct.cost.toLocaleString()}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Precio Venta 1
+                  </label>
+                  <p className="text-lg font-semibold text-green-600 bg-gray-50 p-2 rounded">
+                    ${viewingProduct.salePrice1.toLocaleString()}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Precio Venta 2
+                  </label>
+                  <p className="text-lg font-semibold text-blue-600 bg-gray-50 p-2 rounded">
+                    ${viewingProduct.salePrice2.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Fechas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de Creación
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.createdAt.toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Última Actualización
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.updatedAt.toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-6 mt-6 border-t">
+              <button
+                onClick={() => setViewingProduct(null)}
+                className="btn-secondary"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  setViewingProduct(null);
+                  handleEdit(viewingProduct);
+                }}
+                className="btn-primary"
+              >
+                Editar Producto
+              </button>
+            </div>
           </div>
         </div>
       )}

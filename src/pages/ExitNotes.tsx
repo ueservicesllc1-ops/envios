@@ -4,6 +4,7 @@ import { ExitNote, Product, Seller } from '../types';
 import { exitNoteService } from '../services/exitNoteService';
 import { productService } from '../services/productService';
 import { sellerService } from '../services/sellerService';
+import { inventoryService } from '../services/inventoryService';
 import SimpleBarcodeScanner from '../components/SimpleBarcodeScanner';
 import toast from 'react-hot-toast';
 
@@ -11,10 +12,12 @@ const ExitNotes: React.FC = () => {
   const [notes, setNotes] = useState<ExitNote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [viewingNote, setViewingNote] = useState<ExitNote | null>(null);
   const [formData, setFormData] = useState({
     sellerId: '',
     notes: ''
@@ -22,6 +25,7 @@ const ExitNotes: React.FC = () => {
   const [items, setItems] = useState<Array<{
     productId: string;
     quantity: number;
+    size: string;
     unitPrice: number;
   }>>([]);
 
@@ -32,14 +36,16 @@ const ExitNotes: React.FC = () => {
   const loadNotes = async () => {
     try {
       setLoading(true);
-      const [notesData, productsData, sellersData] = await Promise.all([
+      const [notesData, productsData, sellersData, inventoryData] = await Promise.all([
         exitNoteService.getAll(),
         productService.getAll(),
-        sellerService.getAll()
+        sellerService.getAll(),
+        inventoryService.getAll()
       ]);
       setNotes(notesData);
       setProducts(productsData);
       setSellers(sellersData);
+      setInventory(inventoryData);
     } catch (error) {
       toast.error('Error al cargar datos');
     } finally {
@@ -77,8 +83,13 @@ const ExitNotes: React.FC = () => {
     }
   };
 
+  const getAvailableStock = (productId: string): number => {
+    const inventoryItem = inventory.find(item => item.productId === productId);
+    return inventoryItem ? inventoryItem.quantity : 0;
+  };
+
   const addItem = () => {
-    setItems([...items, { productId: '', quantity: 1, unitPrice: 0 }]);
+    setItems([...items, { productId: '', quantity: 1, size: '', unitPrice: 0 }]);
   };
 
   const removeItem = (index: number) => {
@@ -112,6 +123,7 @@ const ExitNotes: React.FC = () => {
     const newItem = {
       productId: product.id,
       quantity: 1,
+      size: product.size || '',
       unitPrice: unitPrice
     };
     
@@ -124,7 +136,7 @@ const ExitNotes: React.FC = () => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     
-    // Si cambió el producto, actualizar el precio según el vendedor
+    // Si cambió el producto, actualizar el precio y talla según el vendedor
     if (field === 'productId') {
       const product = products.find(p => p.id === value);
       const selectedSeller = sellers.find(s => s.id === formData.sellerId);
@@ -132,6 +144,7 @@ const ExitNotes: React.FC = () => {
         // Usar el precio según el tipo de precio del vendedor
         const price = selectedSeller.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
         newItems[index].unitPrice = price;
+        newItems[index].size = product.size || '';
       }
     }
     
@@ -169,6 +182,21 @@ const ExitNotes: React.FC = () => {
         return;
       }
 
+      // Validar stock disponible
+      for (const item of items) {
+        const availableStock = getAvailableStock(item.productId);
+        if (availableStock < item.quantity) {
+          const product = products.find(p => p.id === item.productId);
+          toast.error(`Stock insuficiente para ${product?.name}. Disponible: ${availableStock}, Solicitado: ${item.quantity}`);
+          return;
+        }
+        if (availableStock === 0) {
+          const product = products.find(p => p.id === item.productId);
+          toast.error(`${product?.name} no tiene stock disponible. Debe crear una nota de entrada primero.`);
+          return;
+        }
+      }
+
       // Crear items con información completa del producto
       const exitNoteItems = items.map(item => {
         const product = products.find(p => p.id === item.productId);
@@ -179,6 +207,7 @@ const ExitNotes: React.FC = () => {
           productId: item.productId,
           product: product,
           quantity: item.quantity,
+          size: item.size,
           unitPrice: item.unitPrice,
           totalPrice: item.quantity * item.unitPrice
         };
@@ -201,6 +230,12 @@ const ExitNotes: React.FC = () => {
       };
 
       await exitNoteService.create(exitNoteData);
+      
+      // Actualizar stock después de crear la nota
+      for (const item of items) {
+        await inventoryService.updateStockAfterExit(item.productId, item.quantity);
+      }
+      
       toast.success('Nota de salida creada correctamente');
       setShowModal(false);
       setFormData({ sellerId: '', notes: '' });
@@ -396,7 +431,7 @@ const ExitNotes: React.FC = () => {
                   <td className="table-cell">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => {/* TODO: Implementar modal de detalles */}}
+                        onClick={() => setViewingNote(note)}
                         className="p-1 text-gray-400 hover:text-blue-600"
                         title="Ver detalles"
                       >
@@ -539,6 +574,13 @@ const ExitNotes: React.FC = () => {
                     <Package className="mx-auto h-8 w-8 text-gray-400" />
                     <p className="mt-2 text-sm text-gray-500">No hay productos agregados</p>
                     <p className="text-xs text-gray-400">Haz clic en "Agregar Producto" para comenzar</p>
+                    {inventory.length === 0 && (
+                      <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ No hay inventario disponible. Debe crear notas de entrada primero.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -552,23 +594,47 @@ const ExitNotes: React.FC = () => {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                           >
                             <option value="">Seleccionar producto</option>
-                            {products.map(product => (
-                              <option key={product.id} value={product.id}>
-                                {product.name} - {product.sku}
-                              </option>
-                            ))}
+                            {products.map(product => {
+                              const availableStock = getAvailableStock(product.id);
+                              return (
+                                <option 
+                                  key={product.id} 
+                                  value={product.id}
+                                  disabled={availableStock === 0}
+                                >
+                                  {product.name} - {product.sku} {product.size ? `(Talla: ${product.size})` : ''} - Stock: {availableStock}
+                                </option>
+                              );
+                            })}
                           </select>
+                        </div>
+                        <div className="w-20">
+                          <input
+                            type="text"
+                            value={item.size}
+                            onChange={(e) => updateItem(index, 'size', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            placeholder="Talla"
+                            title="Talla del producto"
+                          />
                         </div>
                         <div className="w-24">
                           <input
                             type="number"
                             min="1"
+                            max={item.productId ? getAvailableStock(item.productId) : undefined}
                             required
                             value={item.quantity}
                             onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                             placeholder="Cant."
+                            title={item.productId ? `Stock disponible: ${getAvailableStock(item.productId)}` : ''}
                           />
+                          {item.productId && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Stock: {getAvailableStock(item.productId)}
+                            </div>
+                          )}
                         </div>
                         <div className="w-32">
                           <input
@@ -645,6 +711,191 @@ const ExitNotes: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para ver detalles de la nota de salida */}
+      {viewingNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Detalles de la Nota de Salida
+              </h3>
+              <button
+                onClick={() => setViewingNote(null)}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Información básica */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Número de Nota
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingNote.number}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {new Date(viewingNote.date).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Estado
+                  </label>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingNote.status)}`}>
+                    {getStatusText(viewingNote.status)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Vendedor
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingNote.seller}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cliente
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingNote.customer}
+                  </p>
+                </div>
+              </div>
+
+              {/* Productos */}
+              <div>
+                <h4 className="text-md font-medium text-gray-900 mb-4">Productos</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Producto
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Talla
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Cantidad
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Precio Unit.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {viewingNote.items.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.product.name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                SKU: {item.product.sku}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-900">
+                              {item.size || 'Sin talla'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm font-medium text-gray-900">
+                              {item.quantity}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-900">
+                              ${item.unitPrice.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm font-medium text-gray-900">
+                              ${item.totalPrice.toLocaleString()}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-medium text-gray-900">Total de la Nota:</span>
+                  <span className="text-xl font-bold text-gray-900">
+                    ${viewingNote.totalPrice.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Notas */}
+              {viewingNote.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notas
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingNote.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Fechas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de Creación
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {new Date(viewingNote.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                {viewingNote.receivedAt && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha de Recepción
+                    </label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                      {new Date(viewingNote.receivedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-6 mt-6 border-t">
+              <button
+                onClick={() => setViewingNote(null)}
+                className="btn-secondary"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}

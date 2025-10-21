@@ -11,11 +11,14 @@ import {
 } from 'lucide-react';
 import { DashboardStats } from '../types';
 import { sellerService } from '../services/sellerService';
-// import { syncService } from '../services/syncService';
+import { productService } from '../services/productService';
+import { inventoryService } from '../services/inventoryService';
+import { entryNoteService } from '../services/entryNoteService';
+import { exitNoteService } from '../services/exitNoteService';
 import { exitNoteAccountingService } from '../services/exitNoteAccountingService';
 
 const Dashboard: React.FC = () => {
-  const [stats] = useState<DashboardStats>({
+  const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0,
     totalInventory: 0,
     totalValue: 0,
@@ -29,6 +32,8 @@ const Dashboard: React.FC = () => {
   const [sellers, setSellers] = useState<any[]>([]);
   const [totalDebt, setTotalDebt] = useState(0);
   const [pendingSales, setPendingSales] = useState(0); // Added state for pending sales
+  const [totalEntryNotes, setTotalEntryNotes] = useState(0);
+  const [totalExitNotes, setTotalExitNotes] = useState(0);
 
   useEffect(() => {
     loadDashboardData();
@@ -37,17 +42,94 @@ const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const sellersData = await sellerService.getAll();
+      
+      // Cargar datos en paralelo
+      const [sellersData, productsData, inventoryData, entryNotesData, exitNotesData, salesData] = await Promise.all([
+        sellerService.getAll(),
+        productService.getAll(),
+        inventoryService.getAll(),
+        entryNoteService.getAll(),
+        exitNoteService.getAll(),
+        exitNoteAccountingService.getAll()
+      ]);
+      
       setSellers(sellersData);
+      
+      // Calcular total de productos
+      const totalProducts = productsData.length;
+      
+      // Calcular inventario total (cantidad de productos en stock)
+      const totalInventory = inventoryData.reduce((sum, item) => sum + item.quantity, 0);
+      
+      // Calcular valor total del inventario usando precio de venta 1
+      const totalValue = inventoryData.reduce((sum, item) => {
+        // Buscar el producto para obtener el precio de venta 1
+        const product = productsData.find(p => p.id === item.productId);
+        const salePrice = product?.salePrice1 || item.unitPrice;
+        return sum + (item.quantity * salePrice);
+      }, 0);
+      
+      // Calcular notas pendientes (solo notas de salida pueden estar pendientes)
+      const pendingEntries = 0; // Las notas de entrada no pueden estar pendientes
+      const pendingExits = exitNotesData.filter(note => note.status === 'pending').length;
+      
+      // Calcular ingresos mensuales (todas las notas de entrada del mes)
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      // Filtrar solo notas reales (no de prueba)
+      const realEntryNotes = entryNotesData.filter(note => 
+        !note.supplier?.toLowerCase().includes('prueba') &&
+        !note.supplier?.toLowerCase().includes('test') &&
+        !note.supplier?.toLowerCase().includes('demo')
+      );
+      
+      const monthlyRevenue = realEntryNotes
+        .filter(note => {
+          const noteDate = new Date(note.date);
+          return noteDate.getMonth() === currentMonth && 
+                 noteDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, note) => sum + note.totalCost, 0);
+      
+      // Calcular gastos mensuales (notas de salida)
+      // Filtrar solo notas reales (no de prueba)
+      const realExitNotes = exitNotesData.filter(note => 
+        !note.customer?.toLowerCase().includes('prueba') &&
+        !note.customer?.toLowerCase().includes('test') &&
+        !note.customer?.toLowerCase().includes('demo')
+      );
+      
+      const monthlyExpenses = realExitNotes
+        .filter(note => {
+          const noteDate = new Date(note.date);
+          return noteDate.getMonth() === currentMonth && 
+                 noteDate.getFullYear() === currentYear;
+        })
+        .reduce((sum, note) => sum + note.totalPrice, 0);
       
       // Calcular deuda total de vendedores
       const debt = sellersData.reduce((sum, seller) => sum + (seller.totalDebt || 0), 0);
       setTotalDebt(debt);
       
-      // Cargar ventas pendientes (notas de salida)
-      const salesData = await exitNoteAccountingService.getAll();
+      // Cargar ventas pendientes
       const pendingSalesTotal = salesData.reduce((sum, sale) => sum + sale.totalValue, 0);
       setPendingSales(pendingSalesTotal);
+      
+      // Calcular total de notas
+      setTotalEntryNotes(entryNotesData.length);
+      setTotalExitNotes(exitNotesData.length);
+      
+      // Actualizar estadísticas
+      setStats({
+        totalProducts,
+        totalInventory,
+        totalValue,
+        pendingEntries,
+        pendingExits,
+        monthlyRevenue,
+        monthlyExpenses
+      });
       
       setLoading(false);
     } catch (error) {
@@ -103,12 +185,30 @@ const Dashboard: React.FC = () => {
       changeType: 'positive' as const
     },
     {
+      title: 'Notas de Entrada',
+      value: totalEntryNotes,
+      icon: FileText,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+      change: 'Creadas',
+      changeType: 'positive' as const
+    },
+    {
+      title: 'Notas de Salida',
+      value: totalExitNotes,
+      icon: FileText,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      change: 'Creadas',
+      changeType: 'positive' as const
+    },
+    {
       title: 'Notas Pendientes',
-      value: stats.pendingEntries + stats.pendingExits,
+      value: stats.pendingExits,
       icon: FileText,
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
-      change: '-3',
+      change: 'Solo salidas',
       changeType: 'negative' as const
     }
   ];

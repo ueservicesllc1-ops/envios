@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { 
   Package, 
@@ -78,11 +78,7 @@ const AdminSellerMode: React.FC = () => {
     { name: 'Devoluciones', href: 'returns', icon: RotateCcw },
   ];
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -109,7 +105,11 @@ const AdminSellerMode: React.FC = () => {
       toast.error('Error al cargar los datos');
       setLoading(false);
     }
-  };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const loadSoldProducts = async (sellerId: string) => {
     try {
@@ -205,7 +205,7 @@ const AdminSellerMode: React.FC = () => {
         notes: formData.notes,
         createdAt: new Date(),
         paymentType: formData.paymentType,
-        paymentStatus: 'pending' as const
+        status: 'pending' as const
       };
 
       const soldProductId = await soldProductService.create(soldProductData);
@@ -464,11 +464,11 @@ const AdminSellerMode: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        sale.paymentStatus === 'paid' 
+                        sale.status === 'paid' 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {sale.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
+                        {sale.status === 'paid' ? 'Pagado' : 'Pendiente'}
                       </span>
                     </td>
                   </tr>

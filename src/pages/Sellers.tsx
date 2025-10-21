@@ -34,7 +34,42 @@ const Sellers: React.FC = () => {
     try {
       setLoading(true);
       const sellersData = await sellerService.getAll();
-      setSellers(sellersData);
+      
+      // Verificar si Luisuf ya existe
+      const luisufExists = sellersData.some(seller => seller.email === 'luisuf@gmail.com');
+      console.log('🔍 Verificando si Luisuf existe:', luisufExists);
+      console.log('📧 Vendedores encontrados:', sellersData.map(s => s.email));
+      
+      if (!luisufExists) {
+        // Crear a Luisuf automáticamente
+        try {
+          const luisufData = {
+            name: 'Luisuf',
+            email: 'luisuf@gmail.com',
+            phone: '+1234567890',
+            city: 'Ciudad',
+            address: 'Dirección por definir',
+            commission: 10,
+            priceType: 'price1' as 'price1' | 'price2',
+            isActive: true
+          };
+          
+          console.log('🚀 Creando vendedor Luisuf con datos:', luisufData);
+          const luisufId = await sellerService.create(luisufData);
+          console.log('✅ Vendedor Luisuf creado automáticamente con ID:', luisufId);
+          
+          // Recargar la lista de vendedores
+          const updatedSellersData = await sellerService.getAll();
+          setSellers(updatedSellersData);
+        } catch (createError) {
+          console.error('Error creando vendedor Luisuf:', createError);
+          // Continuar con la lista original si hay error
+          setSellers(sellersData);
+        }
+      } else {
+        setSellers(sellersData);
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Error loading sellers:', error);

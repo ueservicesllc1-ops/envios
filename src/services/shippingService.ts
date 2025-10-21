@@ -8,10 +8,12 @@ import {
   getDocs, 
   query, 
   orderBy,
+  where,
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { shippingAccountingService } from './shippingAccountingService';
+import { inventoryService } from './inventoryService';
 import toast from 'react-hot-toast';
 
 // Utilidades para conversión de fechas
@@ -92,11 +94,44 @@ export const shippingService = {
       }
       await updateDoc(docRef, updateData);
       
+      // Si se marca como entregado, actualizar la nota de salida correspondiente
+      if (pkg.status === 'delivered') {
+        await this.updateExitNoteStatus(id);
+      }
+      
       toast.success('Envío actualizado exitosamente');
     } catch (error) {
       console.error('Error updating shipping package:', error);
       toast.error('Error al actualizar el envío');
       throw error;
+    }
+  },
+
+  // Actualizar el estado de la nota de salida cuando el paquete se entrega
+  async updateExitNoteStatus(shippingId: string): Promise<void> {
+    try {
+      // Buscar la nota de salida que corresponde a este envío
+      const exitNotesQuery = query(
+        collection(db, 'exitNotes'),
+        where('shippingId', '==', shippingId)
+      );
+      const exitNotesSnapshot = await getDocs(exitNotesQuery);
+      
+      if (!exitNotesSnapshot.empty) {
+        const exitNoteDoc = exitNotesSnapshot.docs[0];
+        const exitNoteRef = doc(db, 'exitNotes', exitNoteDoc.id);
+        
+        // Actualizar el estado de la nota de salida a 'delivered'
+        await updateDoc(exitNoteRef, {
+          status: 'delivered',
+          deliveredAt: Timestamp.now()
+        });
+        
+        console.log('Nota de salida actualizada a entregada:', exitNoteDoc.id);
+      }
+    } catch (error) {
+      console.error('Error updating exit note status:', error);
+      // No lanzar error para no interrumpir la actualización del envío
     }
   },
 

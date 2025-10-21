@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Calculator, TrendingUp, TrendingDown, DollarSign, Search, Filter, Plus, Eye, Edit, Truck } from 'lucide-react';
 import { AccountingEntry } from '../types';
 import { shippingAccountingService, ShippingExpense } from '../services/shippingAccountingService';
+import { shippingService, ShippingPackage } from '../services/shippingService';
 import { exitNoteAccountingService, ExitNoteSale } from '../services/exitNoteAccountingService';
 import { entryNoteAccountingService, EntryNoteExpense } from '../services/entryNoteAccountingService';
+import { entryNoteService } from '../services/entryNoteService';
+import { exitNoteService } from '../services/exitNoteService';
 import toast from 'react-hot-toast';
 
 const Accounting: React.FC = () => {
@@ -29,32 +32,79 @@ const Accounting: React.FC = () => {
   const loadEntries = async () => {
     try {
       setLoading(true);
+      
       // Cargar datos reales desde Firebase
-      setEntries([]);
+      let shippingData: ShippingExpense[] = [];
+      let shippingPackages: ShippingPackage[] = [];
       
-      // Cargar gastos de paquetería
-      const shippingData = await shippingAccountingService.getAll();
+      try {
+        // Intentar cargar desde contabilidad primero
+        shippingData = await shippingAccountingService.getAll();
+        console.log('Paquetería desde contabilidad:', shippingData.length, 'paquetes');
+        
+        // Si no hay datos en contabilidad, cargar directamente desde paquetería
+        if (shippingData.length === 0) {
+          shippingPackages = await shippingService.getAll();
+          console.log('Paquetería desde sección:', shippingPackages.length, 'paquetes');
+          
+          // Convertir paquetes a gastos para la contabilidad
+          shippingData = shippingPackages.map(pkg => ({
+            id: pkg.id,
+            packageNumber: 0, // Se asignará automáticamente
+            trackingNumber: pkg.trackingNumber,
+            recipient: pkg.recipient,
+            cost: pkg.cost,
+            date: pkg.shippingDate,
+            status: pkg.status,
+            notes: pkg.notes,
+            createdAt: pkg.shippingDate
+          }));
+        }
+      } catch (error) {
+        console.error('Error cargando paquetería:', error);
+        toast.error('Error al cargar datos de paquetería');
+      }
+      
+      const [salesData, expensesData, entryNotesData, exitNotesData] = await Promise.all([
+        exitNoteAccountingService.getAll(),
+        entryNoteAccountingService.getAll(),
+        entryNoteService.getAll(),
+        exitNoteService.getAll()
+      ]);
+      
       setShippingExpenses(shippingData);
-      
-      // Cargar ventas de notas de salida
-      const salesData = await exitNoteAccountingService.getAll();
       setExitNoteSales(salesData);
-      
-      // Cargar gastos de notas de entrada
-      const expensesData = await entryNoteAccountingService.getAll();
       setEntryNoteExpenses(expensesData);
       
-      // Calcular totales
+      // Calcular gastos de compras = suma de todas las notas de entrada
+      const totalPurchaseExpenses = entryNotesData.reduce((sum, note) => sum + note.totalCost, 0);
+      
+      // Calcular ventas a vendedores = suma de todas las notas de salida
+      const totalSalesToSellers = exitNotesData.reduce((sum, note) => sum + note.totalPrice, 0);
+      
+      // Calcular gastos de paquetería
+      console.log('Datos de paquetería cargados:', shippingData.length);
+      console.log('Datos de paquetería:', shippingData);
       const shippingTotal = shippingData.reduce((sum, expense) => sum + expense.cost, 0);
+      console.log('Total gastos de paquetería:', shippingTotal);
+      
+      // Calcular totales
       const salesTotal = salesData.reduce((sum, sale) => sum + sale.totalValue, 0);
       const expensesTotal = expensesData.reduce((sum, expense) => sum + expense.totalCost, 0);
       
       setTotalShippingCost(shippingTotal);
-      setTotalSales(salesTotal);
-      setTotalExpenses(expensesTotal);
+      setTotalSales(totalSalesToSellers); // Usar datos reales de notas de salida
+      setTotalExpenses(totalPurchaseExpenses); // Usar datos reales de notas de entrada
+      
+      // Debug: Mostrar valores calculados
+      console.log('Ventas a Vendedores:', totalSalesToSellers);
+      console.log('Gastos de Compras:', totalPurchaseExpenses);
+      console.log('Gastos de Paquetería:', shippingTotal);
+      console.log('Balance calculado:', totalSalesToSellers - totalPurchaseExpenses - shippingTotal);
       
       setLoading(false);
     } catch (error) {
+      console.error('Error loading accounting data:', error);
       toast.error('Error al cargar contabilidad');
       setLoading(false);
     }
@@ -165,8 +215,8 @@ const Accounting: React.FC = () => {
             </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Balance</p>
-                  <p className={`text-2xl font-bold ${(totalSales - totalExpenses - totalShippingCost) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${Math.abs(totalSales - totalExpenses - totalShippingCost).toLocaleString()}
+                  <p className={`text-2xl font-bold ${(totalSales - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${(totalSales - totalExpenses).toLocaleString()}
                   </p>
                 </div>
           </div>

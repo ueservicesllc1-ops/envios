@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import Login from './Login';
-import SellerBasicPanel from '../../pages/SellerBasicPanel';
+import SellerDashboard from '../../pages/SellerDashboard';
 import AdminSellerMode from '../../pages/AdminSellerMode';
 import { LogOut, User as UserIcon, Shield, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -53,9 +53,9 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     return <Login />;
   }
 
-  // Si es vendedor real, mostrar panel básico
+  // Si es vendedor real, mostrar panel del vendedor
   if (isSeller) {
-    return <SellerBasicPanel />;
+    return <SellerDashboard />;
   }
 
   // Si es administrador, permitir cambio de modo

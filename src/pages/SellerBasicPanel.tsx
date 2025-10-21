@@ -114,7 +114,7 @@ const SellerBasicPanel: React.FC = () => {
         notes: formData.notes,
         createdAt: new Date(),
         paymentType: 'credit' as const,
-        paymentStatus: 'pending' as const
+        status: 'pending' as const
       };
 
       const soldProductId = await soldProductService.create(soldProductData);

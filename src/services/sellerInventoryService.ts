@@ -1,95 +1,153 @@
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  orderBy,
+  Timestamp 
+} from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { ExitNote, ExitNoteItem, Product } from '../types';
-import { productService } from './productService';
+import { SellerInventoryItem } from '../types';
 
-export interface SellerInventoryItem {
-  productId: string;
-  product: Product;
-  quantity: number;
-  unitPrice: number; // Precio que se le dio al vendedor
-  totalValue: number;
-  lastDeliveryDate: Date;
-}
+class SellerInventoryService {
+  private collectionName = 'sellerInventory';
 
-export const sellerInventoryService = {
-  // Obtener inventario del vendedor basado en notas de salida
-  async getSellerInventory(sellerId: string): Promise<SellerInventoryItem[]> {
+  async getAll(): Promise<SellerInventoryItem[]> {
     try {
-      // Obtener todas las notas de salida del vendedor
-      const q = query(
-        collection(db, 'exitNotes'),
-        where('sellerId', '==', sellerId),
-        orderBy('date', 'desc')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const exitNotes = querySnapshot.docs.map(doc => ({
+      const snapshot = await getDocs(collection(db, this.collectionName));
+      return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        date: doc.data().date?.toDate() || new Date(),
-        createdAt: doc.data().createdAt?.toDate() || new Date()
-      })) as ExitNote[];
-
-      // Obtener todos los productos para tener la información completa
-      const allProducts = await productService.getAll();
-      
-      // Agrupar productos por ID y calcular totales
-      const inventoryMap = new Map<string, SellerInventoryItem>();
-
-      exitNotes.forEach(note => {
-        note.items.forEach(item => {
-          const product = allProducts.find(p => p.id === item.productId);
-          if (!product) return;
-
-          const key = item.productId;
-          if (inventoryMap.has(key)) {
-            const existing = inventoryMap.get(key)!;
-            existing.quantity += item.quantity;
-            existing.totalValue += item.totalPrice;
-            // Actualizar fecha de última entrega si es más reciente
-            if (note.date > existing.lastDeliveryDate) {
-              existing.lastDeliveryDate = note.date;
-            }
-          } else {
-            inventoryMap.set(key, {
-              productId: item.productId,
-              product: product,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalValue: item.totalPrice,
-              lastDeliveryDate: note.date
-            });
-          }
-        });
-      });
-
-      return Array.from(inventoryMap.values()).sort((a, b) => b.totalValue - a.totalValue);
+        lastDeliveryDate: doc.data().lastDeliveryDate?.toDate() || new Date()
+      })) as SellerInventoryItem[];
     } catch (error) {
       console.error('Error getting seller inventory:', error);
       throw error;
     }
-  },
+  }
 
-  // Calcular valor total del inventario del vendedor
-  async getTotalInventoryValue(sellerId: string): Promise<number> {
+  async getBySeller(sellerId: string): Promise<SellerInventoryItem[]> {
     try {
-      const inventory = await this.getSellerInventory(sellerId);
-      return inventory.reduce((total, item) => total + item.totalValue, 0);
+      const q = query(
+        collection(db, this.collectionName),
+        where('sellerId', '==', sellerId)
+      );
+      const snapshot = await getDocs(q);
+      const items = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        lastDeliveryDate: doc.data().lastDeliveryDate?.toDate() || new Date()
+      })) as SellerInventoryItem[];
+      
+      // Ordenar por fecha de entrega en el cliente
+      return items.sort((a, b) => b.lastDeliveryDate.getTime() - a.lastDeliveryDate.getTime());
     } catch (error) {
-      console.error('Error calculating total inventory value:', error);
-      return 0;
-    }
-  },
-
-  // Obtener cantidad total de productos en inventario
-  async getTotalInventoryQuantity(sellerId: string): Promise<number> {
-    try {
-      const inventory = await this.getSellerInventory(sellerId);
-      return inventory.reduce((total, item) => total + item.quantity, 0);
-    } catch (error) {
-      console.error('Error calculating total inventory quantity:', error);
-      return 0;
+      console.error('Error getting seller inventory by seller:', error);
+      throw error;
     }
   }
-};
+
+  // Alias para compatibilidad
+  async getSellerInventory(sellerId: string): Promise<SellerInventoryItem[]> {
+    return this.getBySeller(sellerId);
+  }
+
+  async create(data: Omit<SellerInventoryItem, 'id' | 'lastDeliveryDate'>): Promise<string> {
+    try {
+      const docRef = await addDoc(collection(db, this.collectionName), {
+        ...data,
+        lastDeliveryDate: Timestamp.now()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating seller inventory item:', error);
+      throw error;
+    }
+  }
+
+  async update(id: string, data: Partial<Omit<SellerInventoryItem, 'id' | 'lastDeliveryDate'>>): Promise<void> {
+    try {
+      await updateDoc(doc(db, this.collectionName, id), data);
+    } catch (error) {
+      console.error('Error updating seller inventory item:', error);
+      throw error;
+    }
+  }
+
+  async updateQuantity(id: string, newQuantity: number): Promise<void> {
+    try {
+      await updateDoc(doc(db, this.collectionName, id), {
+        quantity: newQuantity
+      });
+    } catch (error) {
+      console.error('Error updating seller inventory quantity:', error);
+      throw error;
+    }
+  }
+
+  async updateStatus(id: string, status: 'stock' | 'in-transit' | 'delivered'): Promise<void> {
+    try {
+      await updateDoc(doc(db, this.collectionName, id), {
+        status: status
+      });
+    } catch (error) {
+      console.error('Error updating seller inventory status:', error);
+      throw error;
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    try {
+      await deleteDoc(doc(db, this.collectionName, id));
+    } catch (error) {
+      console.error('Error deleting seller inventory item:', error);
+      throw error;
+    }
+  }
+
+  // Método para agregar productos al inventario del vendedor cuando se entrega
+  async addToSellerInventory(
+    sellerId: string, 
+    productId: string, 
+    product: any, 
+    quantity: number
+  ): Promise<void> {
+    try {
+      // Verificar si ya existe el producto en el inventario del vendedor
+      const existingItems = await this.getBySeller(sellerId);
+      const existingItem = existingItems.find(item => item.productId === productId);
+
+      if (existingItem) {
+        // Actualizar cantidad existente
+        const newQuantity = existingItem.quantity + quantity;
+        const newTotalValue = existingItem.unitPrice * newQuantity;
+        await this.update(existingItem.id, {
+          quantity: newQuantity,
+          totalValue: newTotalValue
+        });
+      } else {
+        // Crear nuevo item en el inventario del vendedor
+        const unitPrice = product.salePrice1; // Usar precio de venta 1 por defecto
+        await this.create({
+          sellerId,
+          productId,
+          product,
+          quantity,
+          unitPrice,
+          totalValue: unitPrice * quantity,
+          status: 'delivered'
+        });
+      }
+    } catch (error) {
+      console.error('Error adding to seller inventory:', error);
+      throw error;
+    }
+  }
+}
+
+export const sellerInventoryService = new SellerInventoryService();
+export type { SellerInventoryItem };

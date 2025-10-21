@@ -43,7 +43,7 @@ export interface SoldProduct {
   notes?: string;
   createdAt: Date;
   paymentType: 'credit' | 'cash';
-  paymentStatus: 'pending' | 'paid';
+  status: 'pending' | 'paid' | 'rejected';
   paymentNoteId?: string;
 }
 

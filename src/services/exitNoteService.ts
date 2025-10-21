@@ -14,6 +14,8 @@ import {
 import { db } from '../firebase/config';
 import { ExitNote } from '../types';
 import { exitNoteAccountingService } from './exitNoteAccountingService';
+import { sellerInventoryService } from './sellerInventoryService';
+import { productService } from './productService';
 import toast from 'react-hot-toast';
 
 // Utilidades para conversión de fechas
@@ -76,6 +78,33 @@ export const exitNoteService = {
         updateData.receivedAt = convertToTimestamp(note.receivedAt);
       }
       await updateDoc(docRef, updateData);
+      
+      // Si se marca como entregada, actualizar inventario del vendedor
+      if (note.status === 'delivered') {
+        try {
+          // Obtener la nota de salida completa
+          const noteDoc = await getDoc(docRef);
+          if (noteDoc.exists()) {
+            const noteData = noteDoc.data();
+            
+            // Agregar productos al inventario del vendedor
+            for (const item of noteData.items) {
+              const product = await productService.getById(item.productId);
+              if (product) {
+                await sellerInventoryService.addToSellerInventory(
+                  noteData.sellerId,
+                  item.productId,
+                  product,
+                  item.quantity
+                );
+              }
+            }
+          }
+        } catch (inventoryError) {
+          console.error('Error updating seller inventory:', inventoryError);
+          // No lanzar error aquí para no interrumpir la actualización de la nota
+        }
+      }
       
       toast.success('Nota de salida actualizada exitosamente');
     } catch (error) {

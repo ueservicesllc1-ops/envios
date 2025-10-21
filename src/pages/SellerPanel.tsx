@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -40,13 +40,7 @@ const SellerPanel: React.FC = () => {
     notes: ''
   });
 
-  useEffect(() => {
-    if (id) {
-      loadData();
-    }
-  }, [id]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -73,7 +67,13 @@ const SellerPanel: React.FC = () => {
       toast.error('Error al cargar los datos');
       setLoading(false);
     }
-  };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (id) {
+      loadData();
+    }
+  }, [id, loadData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,7 +95,7 @@ const SellerPanel: React.FC = () => {
         notes: formData.notes,
         createdAt: new Date(),
         paymentType: 'credit' as const,
-        paymentStatus: 'pending' as const
+        status: 'pending' as const
       };
 
       const soldProductId = await soldProductService.create(soldProductData);

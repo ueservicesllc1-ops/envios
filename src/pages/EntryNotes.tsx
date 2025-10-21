@@ -14,6 +14,7 @@ const EntryNotes: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [viewingNote, setViewingNote] = useState<EntryNote | null>(null);
   const [formData, setFormData] = useState({
     supplier: '',
     location: ''
@@ -80,7 +81,7 @@ const EntryNotes: React.FC = () => {
   const addItem = () => {
     setItems([...items, {
       productId: '',
-      quantity: 0,
+      quantity: 1,
       cost: 0,
       unitPrice: 0
     }]);
@@ -119,9 +120,28 @@ const EntryNotes: React.FC = () => {
   };
 
   const updateItem = (index: number, field: string, value: any) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setItems(newItems);
+    setItems(prevItems => {
+      const newItems = [...prevItems];
+      
+      // Si cambió el producto, cargar el costo por defecto ANTES de actualizar
+      if (field === 'productId') {
+        const product = products.find(p => p.id === value);
+        if (product) {
+          newItems[index] = { 
+            ...newItems[index], 
+            [field]: value,
+            cost: product.cost,
+            unitPrice: product.cost
+          };
+        } else {
+          newItems[index] = { ...newItems[index], [field]: value };
+        }
+      } else {
+        newItems[index] = { ...newItems[index], [field]: value };
+      }
+      
+      return newItems;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -286,6 +306,7 @@ const EntryNotes: React.FC = () => {
                   <td className="table-cell">
                     <div className="flex items-center space-x-2">
                       <button
+                        onClick={() => setViewingNote(note)}
                         className="p-1 text-gray-400 hover:text-blue-600"
                         title="Ver detalles"
                       >
@@ -395,52 +416,54 @@ const EntryNotes: React.FC = () => {
 
                 {items.map((item, index) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h5 className="text-sm font-medium text-gray-700">Producto {index + 1}</h5>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="p-1 text-red-400 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                        <div className="flex items-end gap-2">
+                          <div className="w-12">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              #
+                            </label>
+                            <input
+                              type="text"
+                              value={index + 1}
+                              className="input-field bg-gray-100 w-full text-center"
+                              disabled
+                              placeholder={`${index + 1}`}
+                            />
+                          </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <div className="w-1/2">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Producto
                             </label>
                             <select
                               required
                               value={item.productId}
                               onChange={(e) => updateItem(index, 'productId', e.target.value)}
-                              className="input-field"
+                              className="input-field w-full"
                             >
                               <option value="">Seleccionar producto</option>
                               {products.map(product => (
                                 <option key={product.id} value={product.id}>
-                                  {product.name}
+                                  {product.name} - {product.sku} {product.size ? `(Talla: ${product.size})` : ''} {product.color ? `- ${product.color}` : ''} {product.color2 ? `/${product.color2}` : ''}
                                 </option>
                               ))}
                             </select>
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <div className="w-44">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               SKU
                             </label>
                             <input
                               type="text"
                               value={products.find(p => p.id === item.productId)?.sku || ''}
-                              className="input-field bg-gray-100"
+                              className="input-field bg-gray-100 w-full"
                               disabled
-                              placeholder="Selecciona un producto"
+                              placeholder="SKU"
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <div className="w-16">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Cantidad
                             </label>
                             <input
@@ -449,14 +472,14 @@ const EntryNotes: React.FC = () => {
                               required
                               value={item.quantity}
                               onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                              className="input-field"
+                              className="input-field w-full"
                               placeholder="0"
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Costo Unitario
+                          <div className="w-20">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Costo/U
                             </label>
                             <input
                               type="number"
@@ -465,29 +488,37 @@ const EntryNotes: React.FC = () => {
                               required
                               value={item.cost}
                               onChange={(e) => updateItem(index, 'cost', parseFloat(e.target.value) || 0)}
-                              className="input-field"
+                              className="input-field w-full"
                               placeholder="0.00"
                             />
                           </div>
 
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <div className="w-24">
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
                               Total
                             </label>
                             <input
                               type="text"
                               value={`$${(item.cost * item.quantity).toFixed(2)}`}
-                              className="input-field bg-gray-100"
+                              className="input-field bg-gray-100 w-full"
                               disabled
                             />
                           </div>
-                        </div>
 
-                        <div className="mt-3 text-sm text-gray-600">
-                          <div className="flex justify-center">
-                            <span className="font-medium">Total: ${(item.cost * item.quantity).toFixed(2)}</span>
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              onClick={() => removeItem(index)}
+                              className="p-2 text-gray-400 hover:text-red-600"
+                              title="Eliminar producto"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
+
                   </div>
                 ))}
 
@@ -540,6 +571,102 @@ const EntryNotes: React.FC = () => {
         onScan={handleBarcodeScan}
         title="Escanear Código de Barras del Producto"
       />
+
+      {/* Modal para ver detalles de la nota */}
+      {viewingNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-5xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Detalles de la Nota de Entrada #{viewingNote.number}
+              </h3>
+              <button
+                onClick={() => setViewingNote(null)}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Información general */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Proveedor</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{viewingNote.supplier}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Ubicación</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{viewingNote.location || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Fecha</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {new Date(viewingNote.date).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Estado */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Estado</label>
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(viewingNote.status)}`}>
+                  {getStatusText(viewingNote.status)}
+                </span>
+              </div>
+
+              {/* Productos */}
+              <div>
+                <h4 className="text-md font-medium text-gray-900 mb-3">Productos</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Unit.</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {viewingNote.items.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.product?.name || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.product?.sku || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.quantity}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${item.cost.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${item.totalCost.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-medium text-gray-900">Total de la Nota:</span>
+                  <span className="text-xl font-bold text-gray-900">
+                    ${viewingNote.totalCost.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
