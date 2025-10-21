@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, Eye, Filter, Package, X, Database, Upload, Image, Scan } from 'lucide-react';
 import { Product } from '../types';
 import { productService } from '../services/productService';
@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -17,6 +18,12 @@ const Products: React.FC = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+  
+  // Estados para filtros
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000 });
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'category'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -47,6 +54,68 @@ const Products: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const applyFilters = useCallback(() => {
+    let filtered = [...products];
+
+    // Filtro por término de búsqueda (nombre, SKU, descripción)
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchLower) ||
+        product.sku.toLowerCase().includes(searchLower) ||
+        (product.description && product.description.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // Filtro por categoría
+    if (selectedCategory) {
+      filtered = filtered.filter(product => product.category === selectedCategory);
+    }
+
+    // Filtro por rango de precio
+    filtered = filtered.filter(product => {
+      const price = product.salePrice1 || 0;
+      return price >= priceRange.min && price <= priceRange.max;
+    });
+
+    // Ordenamiento
+    filtered.sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'price':
+          aValue = a.salePrice1 || 0;
+          bValue = b.salePrice1 || 0;
+          break;
+        case 'category':
+          aValue = a.category.toLowerCase();
+          bValue = b.category.toLowerCase();
+          break;
+        default:
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    setFilteredProducts(filtered);
+  }, [products, searchTerm, selectedCategory, priceRange, sortBy, sortOrder]);
+
+  // Efecto para aplicar filtros cuando cambien los criterios
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Estás seguro de eliminar este producto?')) {
@@ -179,12 +248,6 @@ const Products: React.FC = () => {
     setViewingProduct(product);
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -282,13 +345,74 @@ const Products: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <button className="btn-secondary flex items-center">
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
-            </button>
+            {/* Filtro por categoría */}
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="input-field"
+            >
+              <option value="">Todas las categorías</option>
+              <option value="ZAPATOS">ZAPATOS</option>
+              <option value="VITAMINAS">VITAMINAS</option>
+              <option value="Soy Burro">Soy Burro</option>
+              <option value="Otros">Otros</option>
+            </select>
+
+            {/* Filtro por precio */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="number"
+                placeholder="Min"
+                value={priceRange.min}
+                onChange={(e) => setPriceRange(prev => ({ ...prev, min: Number(e.target.value) }))}
+                className="input-field w-20"
+              />
+              <span className="text-gray-500">-</span>
+              <input
+                type="number"
+                placeholder="Max"
+                value={priceRange.max}
+                onChange={(e) => setPriceRange(prev => ({ ...prev, max: Number(e.target.value) }))}
+                className="input-field w-20"
+              />
+            </div>
+
+            {/* Ordenamiento */}
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [field, order] = e.target.value.split('-');
+                setSortBy(field as 'name' | 'price' | 'category');
+                setSortOrder(order as 'asc' | 'desc');
+              }}
+              className="input-field"
+            >
+              <option value="name-asc">Nombre A-Z</option>
+              <option value="name-desc">Nombre Z-A</option>
+              <option value="price-asc">Precio Menor</option>
+              <option value="price-desc">Precio Mayor</option>
+              <option value="category-asc">Categoría A-Z</option>
+              <option value="category-desc">Categoría Z-A</option>
+            </select>
+
             <span className="text-sm text-gray-500">
               {filteredProducts.length} productos encontrados
             </span>
+
+            {/* Botón para limpiar filtros */}
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('');
+                setPriceRange({ min: 0, max: 1000 });
+                setSortBy('name');
+                setSortOrder('asc');
+              }}
+              className="btn-secondary flex items-center"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Limpiar
+            </button>
           </div>
         </div>
       </div>
@@ -395,6 +519,31 @@ const Products: React.FC = () => {
               ))}
             </tbody>
           </table>
+          
+          {/* Mensaje cuando no hay resultados */}
+          {filteredProducts.length === 0 && products.length > 0 && (
+            <div className="text-center py-12">
+              <Package className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No se encontraron productos</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Intenta ajustar los filtros de búsqueda
+              </p>
+              <div className="mt-6">
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedCategory('');
+                    setPriceRange({ min: 0, max: 1000 });
+                    setSortBy('name');
+                    setSortOrder('asc');
+                  }}
+                  className="btn-primary"
+                >
+                  Limpiar filtros
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
