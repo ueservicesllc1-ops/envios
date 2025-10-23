@@ -4,6 +4,9 @@ import {
   getDocs, 
   query, 
   orderBy,
+  where,
+  deleteDoc,
+  doc,
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -94,6 +97,27 @@ export const shippingAccountingService = {
     } catch (error) {
       console.error('Error getting total expenses:', error);
       return 0;
+    }
+  },
+
+  // Eliminar gasto de paquetería por ID de envío
+  async deleteByShippingId(shippingId: string): Promise<void> {
+    try {
+      // Buscar la entrada de contabilidad por trackingNumber o ID
+      const q = query(
+        collection(db, 'shippingExpenses'),
+        where('trackingNumber', '==', shippingId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      // Eliminar todas las entradas encontradas
+      for (const docSnapshot of querySnapshot.docs) {
+        await deleteDoc(doc(db, 'shippingExpenses', docSnapshot.id));
+        console.log('Gasto de paquetería eliminado:', docSnapshot.id);
+      }
+    } catch (error) {
+      console.error('Error deleting shipping expense by shipping ID:', error);
+      throw error;
     }
   }
 };

@@ -4,6 +4,9 @@ import {
   getDocs, 
   query, 
   orderBy,
+  where,
+  deleteDoc,
+  doc,
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -15,7 +18,7 @@ export interface ExitNoteSale {
   sellerName: string;
   totalValue: number;
   date: Date;
-  status: 'pending' | 'delivered' | 'received' | 'cancelled';
+  status: 'pending' | 'in-transit' | 'delivered' | 'received' | 'cancelled';
   notes?: string;
   createdAt: Date;
 }
@@ -75,6 +78,27 @@ export const exitNoteAccountingService = {
     } catch (error) {
       console.error('Error getting total sales:', error);
       return 0;
+    }
+  },
+
+  // Eliminar venta por ID de nota de salida
+  async deleteByExitNoteId(exitNoteId: string): Promise<void> {
+    try {
+      // Buscar la entrada de contabilidad por noteNumber (que debería coincidir con el ID de la nota)
+      const q = query(
+        collection(db, 'exitNoteSales'),
+        where('noteNumber', '==', exitNoteId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      // Eliminar todas las entradas encontradas
+      for (const docSnapshot of querySnapshot.docs) {
+        await deleteDoc(doc(db, 'exitNoteSales', docSnapshot.id));
+        console.log('Entrada de contabilidad eliminada:', docSnapshot.id);
+      }
+    } catch (error) {
+      console.error('Error deleting accounting entry by exit note ID:', error);
+      throw error;
     }
   }
 };

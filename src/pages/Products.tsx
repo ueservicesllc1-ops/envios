@@ -31,6 +31,7 @@ const Products: React.FC = () => {
     size: '',
     color: '',
     color2: '',
+    weight: 0,
     sku: '',
     cost: 0,
     salePrice1: 0,
@@ -213,6 +214,7 @@ const Products: React.FC = () => {
         size: '',
         color: '',
         color2: '',
+        weight: 0,
         sku: '',
         cost: 0,
         salePrice1: 0,
@@ -234,6 +236,7 @@ const Products: React.FC = () => {
       size: product.size || '',
       color: product.color || '',
       color2: product.color2 || '',
+      weight: product.weight || 0,
       sku: product.sku,
       cost: product.cost,
       salePrice1: product.salePrice1,
@@ -426,6 +429,7 @@ const Products: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peso</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio 1</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio 2</th>
@@ -474,6 +478,11 @@ const Products: React.FC = () => {
                         {product.color2 && <span>Color 2: {product.color2}</span>}
                       </div>
                     )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-gray-900">
+                      {product.weight ? `${product.weight}g` : 'Sin peso'}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-medium text-gray-900">
@@ -588,6 +597,7 @@ const Products: React.FC = () => {
                     size: '',
                     color: '',
                     color2: '',
+                    weight: 0,
                     sku: '',
                     cost: 0,
                     salePrice1: 0,
@@ -773,6 +783,21 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Peso (gramos)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.weight}
+                    onChange={(e) => setFormData({...formData, weight: parseInt(e.target.value) || 0})}
+                    className="input-field"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Código de Barras
                   </label>
                   <input
@@ -926,6 +951,7 @@ const Products: React.FC = () => {
                       size: '',
                       color: '',
                       color2: '',
+                      weight: 0,
                       sku: '',
                       cost: 0,
                       salePrice1: 0,
@@ -1031,6 +1057,15 @@ const Products: React.FC = () => {
                   </label>
                   <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
                     {viewingProduct.color2 || 'Sin color'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Peso
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {viewingProduct.weight ? `${viewingProduct.weight}g` : 'Sin peso'}
                   </p>
                 </div>
 

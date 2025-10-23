@@ -38,39 +38,51 @@ const Accounting: React.FC = () => {
       let shippingPackages: ShippingPackage[] = [];
       
       try {
-        // Intentar cargar desde contabilidad primero
-        shippingData = await shippingAccountingService.getAll();
-        console.log('Paquetería desde contabilidad:', shippingData.length, 'paquetes');
+        // Cargar directamente desde paquetería para obtener solo paquetes activos
+        shippingPackages = await shippingService.getAll();
+        console.log('Paquetería desde sección:', shippingPackages.length, 'paquetes');
         
-        // Si no hay datos en contabilidad, cargar directamente desde paquetería
-        if (shippingData.length === 0) {
-          shippingPackages = await shippingService.getAll();
-          console.log('Paquetería desde sección:', shippingPackages.length, 'paquetes');
-          
-          // Convertir paquetes a gastos para la contabilidad
-          shippingData = shippingPackages.map(pkg => ({
-            id: pkg.id,
-            packageNumber: 0, // Se asignará automáticamente
-            trackingNumber: pkg.trackingNumber,
-            recipient: pkg.recipient,
-            cost: pkg.cost,
-            date: pkg.shippingDate,
-            status: pkg.status,
-            notes: pkg.notes,
-            createdAt: pkg.shippingDate
-          }));
-        }
+        // Filtrar solo paquetes con estados válidos
+        const activePackages = shippingPackages.filter(pkg => 
+          ['pending', 'in-transit', 'delivered', 'returned'].includes(pkg.status)
+        );
+        console.log('Paquetes activos:', activePackages.length, 'paquetes');
+        
+        // Convertir paquetes activos a gastos para la contabilidad
+        shippingData = activePackages.map(pkg => ({
+          id: pkg.id,
+          packageNumber: 0, // Se asignará automáticamente
+          trackingNumber: pkg.trackingNumber,
+          recipient: pkg.recipient,
+          cost: pkg.cost,
+          date: pkg.shippingDate,
+          status: pkg.status,
+          notes: pkg.notes,
+          createdAt: pkg.shippingDate
+        }));
+        
       } catch (error) {
         console.error('Error cargando paquetería:', error);
         toast.error('Error al cargar datos de paquetería');
       }
       
-      const [salesData, expensesData, entryNotesData, exitNotesData] = await Promise.all([
-        exitNoteAccountingService.getAll(),
+      const [expensesData, entryNotesData, exitNotesData] = await Promise.all([
         entryNoteAccountingService.getAll(),
         entryNoteService.getAll(),
         exitNoteService.getAll()
       ]);
+      
+      // Calcular ventas basándose solo en las notas de salida reales (no eliminadas)
+      const salesData = exitNotesData.map(note => ({
+        id: note.id,
+        noteNumber: note.number,
+        sellerName: note.seller,
+        totalValue: note.totalPrice,
+        date: note.date,
+        status: note.status,
+        createdAt: note.createdAt,
+        notes: `Venta a vendedor - ${note.seller}`
+      }));
       
       setShippingExpenses(shippingData);
       setExitNoteSales(salesData);

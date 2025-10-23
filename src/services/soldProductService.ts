@@ -27,6 +27,7 @@ const convertToTimestamp = (date: Date) => Timestamp.fromDate(date);
 export interface SoldProduct {
   id: string;
   sellerId: string;
+  sellerName?: string;
   productId: string;
   product: {
     id: string;
@@ -88,8 +89,40 @@ export const soldProductService = {
   },
 
   // Eliminar producto vendido
-  async delete(id: string): Promise<void> {
+  async delete(id: string, deletedBy?: string): Promise<void> {
     try {
+      // Primero obtener los datos de la venta antes de eliminar
+      const saleData = await this.getById(id);
+      
+      if (!saleData) {
+        throw new Error('Venta no encontrada');
+      }
+
+      // Registrar la eliminación si se proporciona información del usuario
+      if (deletedBy) {
+        const { deletedSaleService } = await import('./deletedSaleService');
+        
+        const deletedSaleRecord = {
+          originalSaleId: id,
+          sellerId: saleData.sellerId,
+          sellerName: saleData.sellerName || 'Vendedor',
+          productId: saleData.productId,
+          productName: saleData.product.name,
+          productSku: saleData.product.sku,
+          quantity: saleData.quantity,
+          unitPrice: saleData.unitPrice,
+          totalPrice: saleData.totalPrice,
+          originalSaleDate: saleData.saleDate,
+          deletedAt: new Date(),
+          deletedBy: deletedBy,
+          originalPaymentType: saleData.paymentType,
+          originalStatus: saleData.status
+        };
+
+        await deletedSaleService.create(deletedSaleRecord);
+      }
+
+      // Eliminar la venta
       const docRef = doc(db, 'soldProducts', id);
       await deleteDoc(docRef);
       

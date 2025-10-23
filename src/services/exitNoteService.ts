@@ -117,10 +117,51 @@ export const exitNoteService = {
   // Eliminar nota de salida
   async delete(id: string): Promise<void> {
     try {
+      // Primero obtener la nota de salida para devolver productos al inventario
+      const exitNote = await this.getById(id);
+      if (!exitNote) {
+        throw new Error('Nota de salida no encontrada');
+      }
+
+      // Devolver productos al inventario
+      const { inventoryService } = await import('./inventoryService');
+      for (const item of exitNote.items) {
+        // Obtener el producto para calcular el costo unitario
+        const product = await productService.getById(item.productId);
+        if (product) {
+          // Agregar stock de vuelta al inventario
+          await inventoryService.updateStockAfterEntry(
+            item.productId,
+            item.quantity,
+            product.cost,
+            product.salePrice1
+          );
+        }
+      }
+
+      // Eliminar la nota de salida
       const docRef = doc(db, 'exitNotes', id);
       await deleteDoc(docRef);
       
-      toast.success('Nota de salida eliminada exitosamente');
+      // Eliminar entrada de contabilidad asociada
+      try {
+        await exitNoteAccountingService.deleteByExitNoteId(id);
+      } catch (error) {
+        console.warn('No se pudo eliminar la entrada de contabilidad:', error);
+      }
+
+      // Eliminar el paquete de envío asociado si existe
+      if (exitNote.shippingId) {
+        try {
+          const { shippingService } = await import('./shippingService');
+          await shippingService.delete(exitNote.shippingId);
+          console.log('Paquete de envío eliminado:', exitNote.shippingId);
+        } catch (error) {
+          console.warn('No se pudo eliminar el paquete de envío:', error);
+        }
+      }
+      
+      toast.success('Nota de salida eliminada exitosamente y productos devueltos al inventario');
     } catch (error) {
       console.error('Error deleting exit note:', error);
       toast.error('Error al eliminar la nota de salida');

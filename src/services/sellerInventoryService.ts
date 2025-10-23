@@ -109,6 +109,35 @@ class SellerInventoryService {
     }
   }
 
+  // Actualizar el estado de productos específicos a "delivered" cuando el paquete se entrega
+  async updateStatusToDelivered(sellerId: string, productId: string, quantity: number): Promise<void> {
+    try {
+      // Buscar el item del vendedor que corresponde a este producto
+      const q = query(
+        collection(db, this.collectionName),
+        where('sellerId', '==', sellerId),
+        where('productId', '==', productId)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const itemDoc = querySnapshot.docs[0];
+        const itemData = itemDoc.data();
+        
+        // Verificar que la cantidad coincida (para evitar actualizar items incorrectos)
+        if (itemData.quantity >= quantity) {
+          await updateDoc(doc(db, this.collectionName, itemDoc.id), {
+            status: 'delivered'
+          });
+          console.log(`Producto ${productId} actualizado a delivered para vendedor ${sellerId}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating seller inventory status to delivered:', error);
+      throw error;
+    }
+  }
+
   // Método para agregar productos al inventario del vendedor cuando se entrega
   async addToSellerInventory(
     sellerId: string, 
@@ -139,7 +168,7 @@ class SellerInventoryService {
           quantity,
           unitPrice,
           totalValue: unitPrice * quantity,
-          status: 'delivered'
+          status: 'in-transit' // Estado inicial cuando se crea la nota de salida
         });
       }
     } catch (error) {

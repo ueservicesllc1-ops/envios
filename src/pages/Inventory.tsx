@@ -113,6 +113,22 @@ const Inventory: React.FC = () => {
     });
   };
 
+  const handleRegenerateInventory = async () => {
+    if (window.confirm('¿Estás seguro de que quieres regenerar el inventario? Esto eliminará todo el inventario actual y lo reconstruirá desde las notas de entrada.')) {
+      try {
+        setLoading(true);
+        await inventoryService.regenerateInventory();
+        await loadData(); // Recargar datos
+        toast.success('Inventario regenerado exitosamente');
+      } catch (error) {
+        console.error('Error regenerating inventory:', error);
+        toast.error('Error al regenerar el inventario');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const getStockStatus = (quantity: number) => {
     if (quantity === 0) return { color: 'text-red-600', bg: 'bg-red-100', text: 'Sin Stock', priority: 1 };
     if (quantity < 10) return { color: 'text-yellow-600', bg: 'bg-yellow-100', text: 'Bajo Stock', priority: 2 };
@@ -168,10 +184,19 @@ const Inventory: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Inventario</h1>
           <p className="text-gray-600">Control de stock y valoración de productos</p>
         </div>
-        <button className="btn-primary flex items-center">
-          <Plus className="h-4 w-4 mr-2" />
-          Ajuste de Inventario
-        </button>
+        <div className="flex space-x-3">
+          <button className="btn-primary flex items-center">
+            <Plus className="h-4 w-4 mr-2" />
+            Ajuste de Inventario
+          </button>
+          <button 
+            onClick={handleRegenerateInventory}
+            className="btn-secondary flex items-center"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Regenerar Inventario
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}

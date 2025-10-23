@@ -5,6 +5,8 @@ import { exitNoteService } from '../services/exitNoteService';
 import { productService } from '../services/productService';
 import { sellerService } from '../services/sellerService';
 import { inventoryService } from '../services/inventoryService';
+import { syncService } from '../services/syncService';
+import { shippingService } from '../services/shippingService';
 import SimpleBarcodeScanner from '../components/SimpleBarcodeScanner';
 import toast from 'react-hot-toast';
 
@@ -26,23 +28,47 @@ const ExitNotes: React.FC = () => {
     productId: string;
     quantity: number;
     size: string;
+    weight: number;
     unitPrice: number;
   }>>([]);
+  const [skuSearch, setSkuSearch] = useState('');
+  const [totalWeight, setTotalWeight] = useState(0);
 
   useEffect(() => {
     loadNotes();
   }, []);
 
+  // Calcular peso total cuando cambien los items
+  useEffect(() => {
+    const newTotalWeight = items.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
+    setTotalWeight(newTotalWeight);
+  }, [items]);
+
   const loadNotes = async () => {
     try {
       setLoading(true);
-      const [notesData, productsData, sellersData, inventoryData] = await Promise.all([
+      const [notesData, productsData, sellersData, inventoryData, packagesData] = await Promise.all([
         exitNoteService.getAll(),
         productService.getAll(),
         sellerService.getAll(),
-        inventoryService.getAll()
+        inventoryService.getAll(),
+        shippingService.getAll()
       ]);
-      setNotes(notesData);
+      
+      // Sincronizar estados de las notas con sus paquetes asociados
+      const updatedNotes = notesData.map(note => {
+        if (note.shippingId) {
+          const associatedPackage = packagesData.find(pkg => pkg.id === note.shippingId);
+          if (associatedPackage && associatedPackage.status === 'in-transit' && note.status === 'pending') {
+            // Si el paquete está en tránsito pero la nota sigue en pendiente, actualizar la nota
+            exitNoteService.update(note.id, { status: 'in-transit' });
+            return { ...note, status: 'in-transit' as const };
+          }
+        }
+        return note;
+      });
+      
+      setNotes(updatedNotes);
       setProducts(productsData);
       setSellers(sellersData);
       setInventory(inventoryData);
@@ -57,10 +83,12 @@ const ExitNotes: React.FC = () => {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'in-transit':
+        return 'bg-blue-100 text-blue-800';
       case 'delivered':
         return 'bg-green-100 text-green-800';
       case 'received':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-purple-100 text-purple-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
@@ -72,8 +100,10 @@ const ExitNotes: React.FC = () => {
     switch (status) {
       case 'pending':
         return 'Pendiente';
+      case 'in-transit':
+        return 'En Tránsito';
       case 'delivered':
-        return 'Enviado';
+        return 'Entregado';
       case 'received':
         return 'Recibido';
       case 'cancelled':
@@ -89,7 +119,55 @@ const ExitNotes: React.FC = () => {
   };
 
   const addItem = () => {
-    setItems([...items, { productId: '', quantity: 1, size: '', unitPrice: 0 }]);
+    setItems([...items, { productId: '', quantity: 1, size: '', weight: 0, unitPrice: 0 }]);
+  };
+
+  const handleSkuSearch = () => {
+    if (!skuSearch.trim()) {
+      toast.error('Por favor ingresa un SKU');
+      return;
+    }
+
+    const product = products.find(p => p.sku.toLowerCase() === skuSearch.toLowerCase().trim());
+    if (!product) {
+      toast.error(`No se encontró producto con SKU: ${skuSearch}`);
+      return;
+    }
+
+    // Verificar si el producto ya está en los items
+    const existingItem = items.find(item => item.productId === product.id);
+    if (existingItem) {
+      toast.error('Este producto ya está agregado a la nota');
+      return;
+    }
+
+    // Verificar stock disponible
+    const availableStock = getAvailableStock(product.id);
+    if (availableStock === 0) {
+      toast.error(`No hay stock disponible para ${product.name}`);
+      return;
+    }
+
+    // Obtener precio según el vendedor seleccionado
+    const selectedSeller = sellers.find(s => s.id === formData.sellerId);
+    let unitPrice = product.salePrice1; // Precio por defecto
+    
+    if (selectedSeller) {
+      unitPrice = selectedSeller.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
+    }
+
+    // Agregar producto automáticamente
+    const newItem = {
+      productId: product.id,
+      quantity: 1,
+      size: product.size || '',
+      weight: product.weight || 0,
+      unitPrice: unitPrice
+    };
+
+    setItems([...items, newItem]);
+    setSkuSearch('');
+    toast.success(`Producto agregado: ${product.name}`);
   };
 
   const removeItem = (index: number) => {
@@ -124,6 +202,7 @@ const ExitNotes: React.FC = () => {
       productId: product.id,
       quantity: 1,
       size: product.size || '',
+      weight: product.weight || 0,
       unitPrice: unitPrice
     };
     
@@ -136,7 +215,7 @@ const ExitNotes: React.FC = () => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
     
-    // Si cambió el producto, actualizar el precio y talla según el vendedor
+    // Si cambió el producto, actualizar el precio, talla y peso según el vendedor
     if (field === 'productId') {
       const product = products.find(p => p.id === value);
       const selectedSeller = sellers.find(s => s.id === formData.sellerId);
@@ -145,6 +224,10 @@ const ExitNotes: React.FC = () => {
         const price = selectedSeller.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
         newItems[index].unitPrice = price;
         newItems[index].size = product.size || '';
+        newItems[index].weight = product.weight || 0;
+        
+        // Cargar automáticamente el SKU en el campo de búsqueda
+        setSkuSearch(product.sku);
       }
     }
     
@@ -197,6 +280,16 @@ const ExitNotes: React.FC = () => {
         }
       }
 
+      // Validar peso total (máximo 8 libras ±0.5)
+      const totalWeightInGrams = items.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
+      const totalWeightInPounds = totalWeightInGrams / 453.592; // Convertir gramos a libras
+      const maxWeight = 8.5; // 8 libras + 0.5 de tolerancia
+      
+      if (totalWeightInPounds > maxWeight) {
+        toast.error(`El peso total (${totalWeightInPounds.toFixed(2)} lbs) excede el límite máximo de ${maxWeight} libras.`);
+        return;
+      }
+
       // Crear items con información completa del producto
       const exitNoteItems = items.map(item => {
         const product = products.find(p => p.id === item.productId);
@@ -208,6 +301,7 @@ const ExitNotes: React.FC = () => {
           product: product,
           quantity: item.quantity,
           size: item.size,
+          weight: item.weight,
           unitPrice: item.unitPrice,
           totalPrice: item.quantity * item.unitPrice
         };
@@ -229,14 +323,51 @@ const ExitNotes: React.FC = () => {
         createdBy: 'admin' // TODO: Obtener del usuario actual
       };
 
-      await exitNoteService.create(exitNoteData);
+      // Crear la nota de salida
+      const createdExitNote = await exitNoteService.create(exitNoteData);
+      
+      // Crear el paquete de envío automáticamente
+      const shippingPackageData = {
+        recipient: selectedSeller.name,
+        address: selectedSeller.address || 'Dirección no especificada',
+        city: selectedSeller.city || 'Ciudad no especificada',
+        phone: selectedSeller.phone || 'Teléfono no especificado',
+        weight: exitNoteItems.reduce((sum, item) => sum + (item.weight * item.quantity), 0) / 1000, // Convertir gramos a kg
+        dimensions: 'Funda',
+        status: 'pending' as const,
+        shippingDate: new Date(),
+        cost: 28, // Costo fijo de $28
+        notes: `Nota de salida: ${exitNoteData.number} - ${formData.notes || 'Sin notas adicionales'}`,
+        sellerId: selectedSeller.id
+      };
+
+      // Crear el paquete de envío
+      const { shippingService } = await import('../services/shippingService');
+      const shippingId = await shippingService.create(shippingPackageData);
+      
+      // Vincular la nota de salida con el paquete de envío
+      await exitNoteService.update(createdExitNote, { 
+        shippingId: shippingId,
+        notes: `${formData.notes || ''} - Envío: ${shippingId}`.trim()
+      });
       
       // Actualizar stock después de crear la nota
       for (const item of items) {
         await inventoryService.updateStockAfterExit(item.productId, item.quantity);
       }
+
+      // Agregar productos al inventario del vendedor
+      const { sellerInventoryService } = await import('../services/sellerInventoryService');
+      for (const item of exitNoteItems) {
+        await sellerInventoryService.addToSellerInventory(
+          selectedSeller.id,
+          item.productId,
+          item.product,
+          item.quantity
+        );
+      }
       
-      toast.success('Nota de salida creada correctamente');
+      toast.success('Nota de salida y paquete de envío creados correctamente');
       setShowModal(false);
       setFormData({ sellerId: '', notes: '' });
       setItems([]);
@@ -293,13 +424,29 @@ const ExitNotes: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Notas de Salida</h1>
           <p className="text-gray-600">Gestiona las ventas y entregas a vendedores</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Nota
-        </button>
+        <div className="flex space-x-3">
+          <button 
+            onClick={() => setShowModal(true)}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Nota
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                await syncService.updateExitNotesWithTracking();
+                await loadNotes(); // Recargar notas después de la actualización
+              } catch (error) {
+                console.error('Error updating exit notes:', error);
+              }
+            }}
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm flex items-center"
+          >
+            <Truck className="h-4 w-4 mr-2" />
+            Actualizar Estados
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -325,6 +472,20 @@ const ExitNotes: React.FC = () => {
               <p className="text-sm font-medium text-gray-600">Pendientes</p>
               <p className="text-2xl font-bold text-gray-900">
                 {notes.filter(n => n.status === 'pending').length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Truck className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">En Tránsito</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {notes.filter(n => n.status === 'in-transit').length}
               </p>
             </div>
           </div>
@@ -390,9 +551,13 @@ const ExitNotes: React.FC = () => {
               <tr>
                 <th className="table-header">#</th>
                 <th className="table-header">Fecha</th>
+                <th className="table-header">Número</th>
                 <th className="table-header">Vendedor</th>
                 <th className="table-header">Items</th>
                 <th className="table-header">Total</th>
+                <th className="table-header">Costo Total</th>
+                <th className="table-header">Costo Envío</th>
+                <th className="table-header">% Ganancia</th>
                 <th className="table-header">Estado</th>
                 <th className="table-header">Acciones</th>
               </tr>
@@ -411,6 +576,11 @@ const ExitNotes: React.FC = () => {
                     </span>
                   </td>
                   <td className="table-cell">
+                    <span className="text-sm text-gray-900">
+                      {note.number}
+                    </span>
+                  </td>
+                  <td className="table-cell">
                     <span className="text-sm text-gray-900">{note.seller}</span>
                   </td>
                   <td className="table-cell">
@@ -421,6 +591,28 @@ const ExitNotes: React.FC = () => {
                   <td className="table-cell">
                     <span className="text-sm font-medium text-gray-900">
                       ${note.totalPrice.toLocaleString()}
+                    </span>
+                  </td>
+                  <td className="table-cell">
+                    <span className="text-sm font-medium text-gray-900">
+                      ${note.items.reduce((sum, item) => sum + (item.product.cost * item.quantity), 0).toLocaleString()}
+                    </span>
+                  </td>
+                  <td className="table-cell">
+                    <span className="text-sm font-medium text-gray-900">
+                      $28
+                    </span>
+                  </td>
+                  <td className="table-cell">
+                    <span className="text-sm font-medium text-gray-900">
+                      {(() => {
+                        const costoTotal = note.items.reduce((sum, item) => sum + (item.product.cost * item.quantity), 0);
+                        const costoEnvio = 28;
+                        const costoTotalCompleto = costoTotal + costoEnvio;
+                        const ganancia = note.totalPrice - costoTotalCompleto;
+                        const porcentajeGanancia = costoTotalCompleto > 0 ? (ganancia / costoTotalCompleto) * 100 : 0;
+                        return `${porcentajeGanancia.toFixed(1)}%`;
+                      })()}
                     </span>
                   </td>
                   <td className="table-cell">
@@ -505,7 +697,7 @@ const ExitNotes: React.FC = () => {
       {/* Modal para crear nota de salida */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Nueva Nota de Salida</h3>
               <button
@@ -586,12 +778,13 @@ const ExitNotes: React.FC = () => {
                   <div className="space-y-3">
                     {items.map((item, index) => (
                       <div key={index} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg">
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <select
                             required
                             value={item.productId}
                             onChange={(e) => updateItem(index, 'productId', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            title="Seleccionar producto"
                           >
                             <option value="">Seleccionar producto</option>
                             {products.map(product => {
@@ -601,6 +794,7 @@ const ExitNotes: React.FC = () => {
                                   key={product.id} 
                                   value={product.id}
                                   disabled={availableStock === 0}
+                                  title={`${product.name} - ${product.sku} ${product.size ? `(Talla: ${product.size})` : ''} - Stock: ${availableStock}`}
                                 >
                                   {product.name} - {product.sku} {product.size ? `(Talla: ${product.size})` : ''} - Stock: {availableStock}
                                 </option>
@@ -608,17 +802,41 @@ const ExitNotes: React.FC = () => {
                             })}
                           </select>
                         </div>
-                        <div className="w-20">
+                        <div className="w-32">
+                          <input
+                            type="text"
+                            placeholder="Buscar por SKU"
+                            value={skuSearch}
+                            onChange={(e) => setSkuSearch(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                const sku = skuSearch.trim();
+                                if (sku) {
+                                  const product = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+                                  if (product) {
+                                    updateItem(index, 'productId', product.id);
+                                    setSkuSearch('');
+                                  } else {
+                                    toast.error(`No se encontró producto con SKU: ${sku}`);
+                                  }
+                                }
+                              }
+                            }}
+                            title="Escribir SKU y presionar Enter para buscar"
+                          />
+                        </div>
+                        <div className="w-16">
                           <input
                             type="text"
                             value={item.size}
-                            onChange={(e) => updateItem(index, 'size', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 text-xs"
                             placeholder="Talla"
-                            title="Talla del producto"
+                            title="Talla del producto (cargada automáticamente)"
+                            readOnly
                           />
                         </div>
-                        <div className="w-24">
+                        <div className="w-20">
                           <input
                             type="number"
                             min="1"
@@ -626,7 +844,7 @@ const ExitNotes: React.FC = () => {
                             required
                             value={item.quantity}
                             onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                             placeholder="Cant."
                             title={item.productId ? `Stock disponible: ${getAvailableStock(item.productId)}` : ''}
                           />
@@ -636,20 +854,31 @@ const ExitNotes: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        <div className="w-32">
+                        <div className="w-20">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={item.weight}
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 text-xs"
+                            placeholder="Peso (g)"
+                            title="Peso del producto en gramos (cargado automáticamente del producto)"
+                            readOnly
+                          />
+                        </div>
+                        <div className="w-28">
                           <input
                             type="number"
                             min="0"
                             step="0.01"
-                            required
                             value={item.unitPrice}
-                            onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            placeholder="Precio de venta"
-                            title="Precio de venta del vendedor (se carga automáticamente según el tipo de precio)"
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 text-xs"
+                            placeholder="Precio"
+                            title="Precio de venta del vendedor (cargado automáticamente según el tipo de precio)"
+                            readOnly
                           />
                         </div>
-                        <div className="w-24 text-right">
+                        <div className="w-20 text-right">
                           <span className="text-sm font-medium text-gray-900">
                             ${(item.quantity * item.unitPrice).toLocaleString()}
                           </span>
@@ -667,15 +896,48 @@ const ExitNotes: React.FC = () => {
                 )}
               </div>
 
-              {/* Total */}
+              {/* Total y Peso */}
               {items.length > 0 && (
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-medium text-gray-900">Total:</span>
-                    <span className="text-xl font-bold text-gray-900">
-                      ${items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toLocaleString()}
-                    </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-medium text-gray-900">Total:</span>
+                      <span className="text-xl font-bold text-gray-900">
+                        ${items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-medium text-gray-900">Peso Total:</span>
+                      <div className="text-right">
+                        <span className={`text-xl font-bold ${
+                          (totalWeight / 453.592) > 8.5 
+                            ? 'text-red-600' 
+                            : (totalWeight / 453.592) > 7.5 
+                            ? 'text-yellow-600' 
+                            : 'text-green-600'
+                        }`}>
+                          {(totalWeight / 453.592).toFixed(2)} lbs
+                        </span>
+                        <div className="text-sm text-gray-500">
+                          Límite: 8.0 ±0.5 lbs
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                  {(totalWeight / 453.592) > 8.5 && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800">
+                        ⚠️ El peso excede el límite máximo. Debe reducir la cantidad de productos.
+                      </p>
+                    </div>
+                  )}
+                  {(totalWeight / 453.592) > 7.5 && (totalWeight / 453.592) <= 8.5 && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ Se está acercando al límite de peso. Considere reducir productos si es necesario.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -718,7 +980,7 @@ const ExitNotes: React.FC = () => {
       {/* Modal para ver detalles de la nota de salida */}
       {viewingNote && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">
                 Detalles de la Nota de Salida
@@ -786,19 +1048,28 @@ const ExitNotes: React.FC = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Imagen
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Producto
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Color
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Talla
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Cantidad
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Peso (g)
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Precio Unit.
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Total
                         </th>
                       </tr>
@@ -806,7 +1077,22 @@ const ExitNotes: React.FC = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {viewingNote.items.map((item, index) => (
                         <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
+                            <div className="flex-shrink-0">
+                              {item.product.imageUrl ? (
+                                <img
+                                  src={item.product.imageUrl}
+                                  alt={item.product.name}
+                                  className="h-16 w-16 object-cover rounded-lg border border-gray-200"
+                                />
+                              ) : (
+                                <div className="h-16 w-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                                  <Package className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
                             <div>
                               <div className="text-sm font-medium text-gray-900">
                                 {item.product.name}
@@ -816,22 +1102,46 @@ const ExitNotes: React.FC = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
+                            <div className="flex items-center space-x-2">
+                              {item.product.color && (
+                                <>
+                                  <div 
+                                    className="w-4 h-4 rounded-full border border-gray-300"
+                                    style={{ backgroundColor: item.product.color }}
+                                    title={item.product.color}
+                                  ></div>
+                                  <span className="text-sm text-gray-900">
+                                    {item.product.color}
+                                  </span>
+                                </>
+                              )}
+                              {!item.product.color && (
+                                <span className="text-sm text-gray-500">Sin color</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
                             <span className="text-sm text-gray-900">
                               {item.size || 'Sin talla'}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <span className="text-sm font-medium text-gray-900">
                               {item.quantity}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
+                            <span className="text-sm text-gray-900">
+                              {item.weight ? `${item.weight}g` : 'Sin peso'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
                             <span className="text-sm text-gray-900">
                               ${item.unitPrice.toLocaleString()}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <span className="text-sm font-medium text-gray-900">
                               ${item.totalPrice.toLocaleString()}
                             </span>

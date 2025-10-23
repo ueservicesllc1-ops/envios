@@ -60,6 +60,8 @@ const AdminSellerMode: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showPaymentNotification, setShowPaymentNotification] = useState(false);
+  const [pendingPaymentCount, setPendingPaymentCount] = useState(0);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [formData, setFormData] = useState({
     productId: '',
@@ -90,6 +92,9 @@ const AdminSellerMode: React.FC = () => {
       const productsData = await productService.getAll();
       setProducts(productsData);
 
+      // Cargar pagos pendientes
+      await loadAllPendingPayments();
+
       // Si hay vendedores, seleccionar el primero por defecto
       if (sellersData.length > 0) {
         setSelectedSeller(sellersData[0]);
@@ -110,6 +115,15 @@ const AdminSellerMode: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Recargar pagos pendientes cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadAllPendingPayments();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const loadSoldProducts = async (sellerId: string) => {
     try {
@@ -138,6 +152,25 @@ const AdminSellerMode: React.FC = () => {
     } catch (error) {
       console.error('Error loading payment notes:', error);
       setPaymentNotes([]);
+    }
+  };
+
+  const loadAllPendingPayments = async () => {
+    try {
+      const allPaymentNotes = await paymentNoteService.getAll();
+      const pendingPayments = allPaymentNotes.filter(note => note.status === 'pending');
+      setPendingPaymentCount(pendingPayments.length);
+      
+      // Mostrar notificación si hay pagos pendientes
+      if (pendingPayments.length > 0) {
+        setShowPaymentNotification(true);
+        // Auto-ocultar después de 5 segundos
+        setTimeout(() => {
+          setShowPaymentNotification(false);
+        }, 5000);
+      }
+    } catch (error) {
+      console.error('Error loading pending payments:', error);
     }
   };
 
@@ -858,6 +891,50 @@ const AdminSellerMode: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Popup flotante para notificaciones de pagos pendientes */}
+      {showPaymentNotification && pendingPaymentCount > 0 && (
+        <div className="fixed top-4 right-4 z-50 animate-bounce">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 rounded-lg shadow-lg max-w-sm border-l-4 border-blue-400">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="bg-blue-400 rounded-full p-2 mr-3">
+                  <DollarSign className="h-5 w-5" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm">¡Nuevas Notas de Pago!</h4>
+                  <p className="text-xs text-blue-100">
+                    {pendingPaymentCount} {pendingPaymentCount === 1 ? 'nota pendiente' : 'notas pendientes'} de aprobación
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPaymentNotification(false)}
+                className="text-blue-200 hover:text-white ml-2"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-3 flex space-x-2">
+              <button
+                onClick={() => {
+                  setActiveSection('payment-notes');
+                  setShowPaymentNotification(false);
+                }}
+                className="bg-blue-400 hover:bg-blue-300 text-white text-xs px-3 py-1 rounded transition-colors"
+              >
+                Ver Notas
+              </button>
+              <button
+                onClick={() => setShowPaymentNotification(false)}
+                className="bg-transparent border border-blue-300 hover:bg-blue-300 text-white text-xs px-3 py-1 rounded transition-colors"
+              >
+                Después
+              </button>
+            </div>
           </div>
         </div>
       )}

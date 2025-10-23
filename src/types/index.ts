@@ -7,6 +7,7 @@ export interface Product {
   size?: string; // Optional size field
   color?: string; // Optional color field
   color2?: string; // Optional second color field
+  weight?: number; // Peso en gramos
   sku: string;
   cost: number;
   salePrice1: number;
@@ -71,7 +72,7 @@ export interface ExitNote {
   customer: string;
   items: ExitNoteItem[];
   totalPrice: number;
-  status: 'pending' | 'delivered' | 'received' | 'cancelled';
+  status: 'pending' | 'in-transit' | 'delivered' | 'received' | 'cancelled';
   notes?: string;
   receivedAt?: Date;
   shippingId?: string; // ID del envío asociado
@@ -85,6 +86,7 @@ export interface ExitNoteItem {
   product: Product;
   quantity: number;
   size?: string; // Talla del producto
+  weight?: number; // Peso en gramos
   unitPrice: number;
   totalPrice: number;
 }
@@ -181,6 +183,7 @@ export interface SellerInventoryItem {
   totalValue: number;
   status: 'stock' | 'in-transit' | 'delivered';
   lastDeliveryDate: Date;
+  exitNoteId?: string; // ID de la nota de salida que generó este inventario
 }
 
 // Tipos para Notas de Pago

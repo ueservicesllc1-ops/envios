@@ -15,9 +15,7 @@ import {
   FileText,
   Truck,
   Receipt,
-  LogOut,
-  X,
-  Trash2
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { sellerService } from '../services/sellerService';
@@ -30,80 +28,98 @@ import { paymentNoteService } from '../services/paymentNoteService';
 import { shippingService, ShippingPackage } from '../services/shippingService';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
-import { storage } from '../firebase/config';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
 
-  // Función que sincroniza inventario considerando notas de salida y ventas realizadas
-  const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[], soldProducts: any[]) => {
-    try {
-      console.log(`Sincronizando inventario para vendedor ${sellerId}`);
-      console.log(`Notas de salida: ${exitNotes.length}, Ventas realizadas: ${soldProducts.length}`);
+// Función para sincronizar el inventario del vendedor con las notas de salida existentes
+const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[]) => {
+  try {
+    console.log(`Sincronizando inventario para vendedor ${sellerId} con ${exitNotes.length} notas de salida`);
+    
+    // Obtener inventario actual una sola vez
+    const existingInventory = await sellerInventoryService.getBySeller(sellerId);
+    console.log(`Inventario actual del vendedor: ${existingInventory.length} productos`);
+    
+    for (const note of exitNotes) {
+      console.log(`Procesando nota de salida: ${note.number} - Estado: ${note.status} - Productos: ${note.items.length}`);
       
-      // PASO 1: Eliminar todo el inventario actual
-      const currentInventory = await sellerInventoryService.getBySeller(sellerId);
-      console.log(`Eliminando inventario actual: ${currentInventory.length} productos`);
-      
-      for (const item of currentInventory) {
-        await sellerInventoryService.delete(item.id);
-      }
-      
-      // PASO 2: Crear inventario desde las notas de salida
-      const inventoryMap = new Map();
-      
-      // Primero, agregar todos los productos de las notas de salida
-      for (const note of exitNotes) {
-        for (const item of note.items) {
-          if (inventoryMap.has(item.productId)) {
-            // Sumar cantidad si ya existe
-            const existing = inventoryMap.get(item.productId);
-            existing.quantity += item.quantity;
-            // Mantener el precio unitario (debería ser el mismo para el mismo producto)
-            existing.unitPrice = item.unitPrice || existing.unitPrice;
-            // Recalcular el valor total
-            existing.totalValue = existing.unitPrice * existing.quantity;
-          } else {
-            // Crear nuevo producto
-            const unitPrice = item.unitPrice || 0;
-            inventoryMap.set(item.productId, {
-              sellerId: sellerId,
-              productId: item.productId,
-              product: item.product,
-              quantity: item.quantity,
-              unitPrice: unitPrice,
-              totalValue: unitPrice * item.quantity,
-              status: note.status === 'delivered' || note.status === 'received' ? 'stock' : 'in-transit'
-            });
-          }
+      for (const item of note.items) {
+        // Verificar si el producto de esta nota de salida ya existe en el inventario del vendedor
+        const existingItem = existingInventory.find(inv => 
+          inv.productId === item.productId && 
+          inv.sellerId === sellerId && 
+          inv.exitNoteId === note.id
+        );
+        
+        if (existingItem) {
+          console.log(`Producto ${item.productId} de la nota ${note.id} ya existe en inventario del vendedor`);
+          continue;
         }
-      }
-      
-      // PASO 3: Restar las ventas realizadas
-      for (const sale of soldProducts) {
-        if (inventoryMap.has(sale.productId)) {
-          const existing = inventoryMap.get(sale.productId);
-          existing.quantity -= sale.quantity;
-          // Recalcular el valor total después de restar la venta
-          existing.totalValue = existing.unitPrice * existing.quantity;
-          console.log(`Restando venta: ${sale.product.name} - ${sale.quantity} unidades. Stock restante: ${existing.quantity}`);
+        
+        // Verificar si ya existe un producto con el mismo productId para sumar cantidades
+        const duplicateItem = existingInventory.find(inv => 
+          inv.productId === item.productId && 
+          inv.sellerId === sellerId
+        );
+        
+        if (duplicateItem) {
+          // Sumar cantidad al producto existente
+          const newQuantity = duplicateItem.quantity + item.quantity;
+          const newTotalValue = duplicateItem.unitPrice * newQuantity;
+          
+          await sellerInventoryService.update(duplicateItem.id, {
+            quantity: newQuantity,
+            totalValue: newTotalValue
+          });
+          
+          // Actualizar la lista local
+          duplicateItem.quantity = newQuantity;
+          duplicateItem.totalValue = newTotalValue;
+          
+          console.log(`Producto ${item.productId} actualizado: ${duplicateItem.quantity} + ${item.quantity} = ${newQuantity}`);
+          continue;
         }
-      }
-      
-      // PASO 4: Crear en la base de datos todos los productos (incluso con cantidad 0)
-      const inventoryItems = Array.from(inventoryMap.values());
-      for (const item of inventoryItems) {
-        // Actualizar el estado basándose en la cantidad final
-        if (item.quantity <= 0) {
-          item.status = 'delivered'; // Cambiar a 'delivered' para productos agotados
+        
+        // Determinar el estado basado en el estado de la nota de salida
+        let status: 'in-transit' | 'stock' | 'delivered' = 'in-transit';
+        if (note.status === 'delivered') {
+          status = 'stock';
         }
-        await sellerInventoryService.create(item);
+        
+        // Agregar producto al inventario del vendedor
+        await sellerInventoryService.create({
+          sellerId: sellerId,
+          productId: item.productId,
+          product: item.product,
+          quantity: item.quantity,
+          unitPrice: item.product.salePrice1 || 0,
+          totalValue: (item.product.salePrice1 || 0) * item.quantity,
+          status: status,
+          exitNoteId: note.id
+        });
+        
+        // Agregar a la lista local para evitar duplicados en la misma ejecución
+        existingInventory.push({
+          id: 'temp',
+          sellerId: sellerId,
+          productId: item.productId,
+          product: item.product,
+          quantity: item.quantity,
+          unitPrice: item.product.salePrice1 || 0,
+          totalValue: (item.product.salePrice1 || 0) * item.quantity,
+          status: status,
+          lastDeliveryDate: new Date(),
+          exitNoteId: note.id
+        });
+        
+        console.log(`Producto ${item.productId} agregado al inventario del vendedor con estado: ${status}`);
       }
-      
-      console.log(`Inventario sincronizado: ${inventoryItems.length} productos únicos`);
-    } catch (error) {
-      console.error('Error sincronizando inventario:', error);
     }
-  };
+    
+    console.log('Sincronización de inventario completada');
+  } catch (error) {
+    console.error('Error sincronizando inventario del vendedor:', error);
+  }
+};
 
 // Función para limpiar inventario duplicado del vendedor
 const cleanDuplicateInventory = async (sellerId: string) => {
@@ -172,14 +188,8 @@ const SellerDashboard: React.FC = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentType, setPaymentType] = useState<'full' | 'partial'>('full');
-  const [partialPaymentAmount, setPartialPaymentAmount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_deposit'>('cash');
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [viewingExitNote, setViewingExitNote] = useState<ExitNote | null>(null);
   const [viewingShippingPackage, setViewingShippingPackage] = useState<ShippingPackage | null>(null);
-  const [viewingPaymentNote, setViewingPaymentNote] = useState<any | null>(null);
   const [selectedSales, setSelectedSales] = useState<string[]>([]);
   const [viewingProductImage, setViewingProductImage] = useState<string | null>(null);
   const [saleForm, setSaleForm] = useState({
@@ -272,35 +282,16 @@ const SellerDashboard: React.FC = () => {
         const sellerExitNotes = exitNotesData.filter(note => note.sellerId === sellerToUse.id);
         setExitNotes(sellerExitNotes);
 
-        // Sincronizar inventario del vendedor con las notas de salida y ventas realizadas
-        // Esto reconstruirá completamente el inventario considerando notas de salida menos ventas
-        await syncSellerInventory(sellerToUse.id, sellerExitNotes, salesData);
-
-        // Recargar inventario actualizado después de la sincronización
-        const updatedInventoryData = await sellerInventoryService.getBySeller(sellerToUse.id);
-        setSellerInventory(updatedInventoryData);
+        // Limpiar inventario duplicado antes de sincronizar
+        await cleanDuplicateInventory(sellerToUse.id);
+        
+        // Sincronizar inventario del vendedor con las notas de salida existentes
+        await syncSellerInventory(sellerToUse.id, sellerExitNotes);
 
         // Cargar paquetes de envío del vendedor
         const shippingData = await shippingService.getAll();
         const sellerShippingPackages = shippingData.filter(pkg => pkg.sellerId === sellerToUse.id);
-        console.log('📦 Paquetes del vendedor encontrados:', sellerShippingPackages.length);
-        
-        // Asociar productos de las notas de salida con los paquetes
-        const packagesWithItems = sellerShippingPackages.map(pkg => {
-          // Buscar la nota de salida asociada a este paquete
-          const associatedExitNote = exitNotes.find(note => note.shippingId === pkg.id);
-          console.log(`📦 Paquete ${pkg.id}:`, {
-            hasExitNote: !!associatedExitNote,
-            itemsCount: associatedExitNote ? associatedExitNote.items.length : 0
-          });
-          return {
-            ...pkg,
-            items: associatedExitNote ? associatedExitNote.items : []
-          };
-        });
-        
-        console.log('📦 Paquetes con items:', packagesWithItems);
-        setShippingPackages(packagesWithItems);
+        setShippingPackages(sellerShippingPackages);
 
         // Cargar notas de pago del vendedor
         const paymentNotesData = await paymentNoteService.getAll();
@@ -332,54 +323,17 @@ const SellerDashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteSale = async (saleId: string, productId: string, quantity: number) => {
-    try {
-      if (!seller) return;
-
-      // Eliminar la venta (pasando el email del usuario para registro)
-      await soldProductService.delete(saleId, user?.email || 'unknown');
-
-      // Restaurar la cantidad en el inventario
-      const product = sellerInventory.find(item => item.productId === productId);
-      if (product) {
-        const newQuantity = product.quantity + quantity;
-        console.log(`Restaurando inventario: Producto ${product.product.name}, Cantidad actual: ${product.quantity}, Restaurando: ${quantity}, Nueva cantidad: ${newQuantity}`);
-        console.log(`ID del producto en inventario: ${product.id}`);
-        
-        // Usar el ID del inventario del vendedor, no el productId
-        await sellerInventoryService.updateQuantity(product.id, newQuantity);
-        console.log('Inventario restaurado exitosamente');
-      } else {
-        console.error('Producto no encontrado en inventario:', productId);
-        toast.error('Error: Producto no encontrado en inventario');
-      }
-
-      toast.success('Venta eliminada exitosamente');
-      await loadData();
-    } catch (error) {
-      console.error('Error deleting sale:', error);
-      toast.error('Error al eliminar la venta');
-    }
-  };
-
   const handleSaleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('=== INICIANDO VENTA ===');
-      console.log('Vendedor:', seller);
-      console.log('Formulario de venta:', saleForm);
-      
       if (!seller) return;
 
       const product = sellerInventory.find(item => item.id === saleForm.productId);
-      console.log('Producto encontrado:', product);
-      
       if (!product) {
         toast.error('Producto no encontrado');
         return;
       }
 
-      console.log(`Verificando stock: Disponible: ${product.quantity}, Solicitado: ${saleForm.quantity}`);
       if (product.quantity < saleForm.quantity) {
         toast.error('Cantidad insuficiente en inventario');
         return;
@@ -393,8 +347,7 @@ const SellerDashboard: React.FC = () => {
       const totalPrice = unitPrice * saleForm.quantity;
 
       // Crear la venta
-      console.log('Creando venta...');
-      const saleData = {
+      await soldProductService.create({
         sellerId: seller.id,
         productId: product.productId,
         product: product.product,
@@ -404,25 +357,16 @@ const SellerDashboard: React.FC = () => {
         saleDate: new Date(),
         createdAt: new Date(),
         paymentType: saleForm.paymentType,
-        status: 'pending' as const,
+        status: 'pending',
         notes: saleForm.notes
-      };
-      console.log('Datos de la venta:', saleData);
-      
-      await soldProductService.create(saleData);
-      console.log('Venta creada exitosamente');
+      });
 
       // Actualizar inventario del vendedor
-      const newQuantity = product.quantity - saleForm.quantity;
-      console.log(`Actualizando inventario: Producto ${product.product.name}, Cantidad actual: ${product.quantity}, Vendido: ${saleForm.quantity}, Nueva cantidad: ${newQuantity}`);
-      console.log(`ID del producto en inventario: ${product.id}`);
-      
       await sellerInventoryService.updateQuantity(
-        product.id, 
-        newQuantity
+        saleForm.productId, 
+        product.quantity - saleForm.quantity
       );
 
-      console.log('Inventario actualizado exitosamente');
       toast.success('Venta registrada exitosamente');
       setShowSaleModal(false);
       setSaleForm({
@@ -433,9 +377,7 @@ const SellerDashboard: React.FC = () => {
       });
       
       // Recargar datos
-      console.log('Recargando datos...');
       await loadData();
-      console.log('Datos recargados');
     } catch (error) {
       console.error('Error creating sale:', error);
       toast.error('Error al registrar la venta');
@@ -446,8 +388,6 @@ const SellerDashboard: React.FC = () => {
     switch (status) {
       case 'pending':
         return 'text-yellow-600 bg-yellow-100';
-      case 'paid':
-        return 'text-green-600 bg-green-100';
       case 'approved':
         return 'text-green-600 bg-green-100';
       case 'rejected':
@@ -461,8 +401,6 @@ const SellerDashboard: React.FC = () => {
     switch (status) {
       case 'pending':
         return 'Pendiente';
-      case 'paid':
-        return 'Pagado';
       case 'approved':
         return 'Aprobada';
       case 'rejected':
@@ -472,12 +410,7 @@ const SellerDashboard: React.FC = () => {
     }
   };
 
-  const getInventoryStatusColor = (status: string, quantity: number = 0) => {
-    // Si la cantidad es 0, mostrar como agotado independientemente del estado
-    if (quantity <= 0) {
-      return 'text-red-600 bg-red-100';
-    }
-    
+  const getInventoryStatusColor = (status: string) => {
     switch (status) {
       case 'stock':
         return 'text-green-600 bg-green-100';
@@ -490,12 +423,7 @@ const SellerDashboard: React.FC = () => {
     }
   };
 
-  const getInventoryStatusText = (status: string, quantity: number = 0) => {
-    // Si la cantidad es 0, mostrar como agotado independientemente del estado
-    if (quantity <= 0) {
-      return 'Agotado';
-    }
-    
+  const getInventoryStatusText = (status: string) => {
     switch (status) {
       case 'stock':
         return 'En Stock';
@@ -509,13 +437,12 @@ const SellerDashboard: React.FC = () => {
   };
 
   // Estadísticas
-  const totalInventory = sellerInventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
-  const totalSales = soldProducts.reduce((sum, sale) => sum + (sale.totalPrice || 0), 0);
+  const totalInventory = sellerInventory.reduce((sum, item) => sum + item.quantity, 0);
+  const totalSales = soldProducts.reduce((sum, sale) => sum + sale.totalPrice, 0);
   const pendingSales = soldProducts.filter(sale => sale.status === 'pending').length;
   const paidSales = soldProducts.filter(sale => sale.status === 'paid').length;
   const totalExitNotes = exitNotes.length;
   const pendingExitNotes = exitNotes.filter(note => note.status === 'pending').length;
-  const inTransitExitNotes = exitNotes.filter(note => note.status === 'in-transit').length;
   const deliveredExitNotes = exitNotes.filter(note => note.status === 'delivered').length;
   const totalPaymentNotes = paymentNotes.length;
   
@@ -524,7 +451,7 @@ const SellerDashboard: React.FC = () => {
   
   // Valor total del inventario del vendedor (todos los productos)
   const currentInventoryValue = sellerInventory.reduce((sum, item) => {
-    return sum + ((item.unitPrice || 0) * (item.quantity || 0));
+    return sum + (item.unitPrice * item.quantity);
   }, 0);
   
   // Valor del inventario del vendedor (suma de precios de productos en su inventario)
@@ -535,7 +462,7 @@ const SellerDashboard: React.FC = () => {
         ? (item.product.salePrice2 || item.product.salePrice1 || 0)
         : (item.product.salePrice1 || 0);
       
-      const subtotal = (productPrice || 0) * (item.quantity || 0);
+      const subtotal = productPrice * item.quantity;
       
       return sum + subtotal;
     }, 0);
@@ -584,7 +511,7 @@ const SellerDashboard: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Ventas Totales</p>
-              <p className="text-2xl font-bold text-gray-900">${(isNaN(totalSales) ? 0 : (totalSales || 0)).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">${totalSales.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -639,18 +566,6 @@ const SellerDashboard: React.FC = () => {
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Truck className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">En Tránsito</p>
-              <p className="text-2xl font-bold text-gray-900">{inTransitExitNotes}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
               <Truck className="h-6 w-6 text-green-600" />
             </div>
@@ -692,7 +607,7 @@ const SellerDashboard: React.FC = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Valor Inventario</p>
-              <p className="text-2xl font-bold text-gray-900">${(isNaN(availableInventoryValue) ? 0 : (availableInventoryValue || 0)).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900">${availableInventoryValue.toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -735,7 +650,7 @@ const SellerDashboard: React.FC = () => {
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(sale.status)}`}>
                       {getStatusText(sale.status)}
                     </span>
-                    <span className="text-sm font-medium text-gray-900">${(isNaN(sale.totalPrice) ? 0 : (sale.totalPrice || 0)).toLocaleString()}</span>
+                    <span className="text-sm font-medium text-gray-900">${sale.totalPrice.toLocaleString()}</span>
                   </div>
                 </div>
               ))}
@@ -747,45 +662,27 @@ const SellerDashboard: React.FC = () => {
   );
 
   const renderInventory = () => {
-    // Calcular el valor actual del inventario (productos existentes)
-    const currentInventoryValue = sellerInventory.reduce((sum, item) => {
-      if (!item || !item.product) return sum;
-      const price = seller?.priceType === 'price2' 
-        ? (item.product.salePrice2 || 0)
-        : (item.product.salePrice1 || 0);
-      return sum + (price * (item.quantity || 0));
-    }, 0);
-
-    // Calcular el valor histórico del inventario (todas las notas de salida recibidas)
-    const historicalInventoryValue = exitNotes.reduce((sum, note) => {
-      return sum + (note.totalPrice || 0);
+    // Calcular el valor total del inventario
+    const totalInventoryValue = sellerInventory.reduce((sum, item) => {
+      const price = seller?.priceType === 'price2' ? item.product.salePrice2 : item.product.salePrice1;
+      return sum + (price * item.quantity);
     }, 0);
 
     return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Mi Inventario</h2>
-      </div>
-
-      {/* Resumen de valores del inventario */}
-      {sellerInventory.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-center">
-              <p className="text-sm font-medium text-gray-600">Valor Actual del Inventario</p>
-              <p className="text-3xl font-bold text-green-600">${(isNaN(currentInventoryValue) ? 0 : (currentInventoryValue || 0)).toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">Productos en stock actual</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-center">
-              <p className="text-sm font-medium text-gray-600">Valor Histórico del Inventario</p>
-              <p className="text-3xl font-bold text-blue-600">${(isNaN(historicalInventoryValue) ? 0 : (historicalInventoryValue || 0)).toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">Total recibido en notas de salida</p>
-            </div>
-          </div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Mi Inventario</h2>
         </div>
-      )}
+
+        {/* Resumen del valor total del inventario */}
+        {sellerInventory.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-center">
+              <p className="text-sm font-medium text-gray-600">Valor Total del Inventario</p>
+              <p className="text-3xl font-bold text-green-600">${totalInventoryValue.toLocaleString()}</p>
+            </div>
+          </div>
+        )}
 
         {sellerInventory.length === 0 ? (
         <div className="text-center py-12">
@@ -846,14 +743,14 @@ const SellerDashboard: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${(isNaN(item.unitPrice) ? 0 : (item.unitPrice || 0)).toLocaleString()}
+                    ${item.unitPrice.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                     {item.quantity}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getInventoryStatusColor(item.status, item.quantity)}`}>
-                      {getInventoryStatusText(item.status, item.quantity)}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getInventoryStatusColor(item.status)}`}>
+                      {getInventoryStatusText(item.status)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -900,7 +797,6 @@ const SellerDashboard: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pago</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -939,39 +835,6 @@ const SellerDashboard: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(sale.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex space-x-2">
-                      {sale.status === 'pending' && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              await soldProductService.update(sale.id, { status: 'paid' });
-                              toast.success('Venta marcada como pagada');
-                              await loadData();
-                            } catch (error) {
-                              console.error('Error updating sale status:', error);
-                              toast.error('Error al marcar la venta como pagada');
-                            }
-                          }}
-                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Pagado
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`¿Estás seguro de que quieres eliminar esta venta de ${sale.product.name}?`)) {
-                            handleDeleteSale(sale.id, sale.productId, sale.quantity);
-                          }
-                        }}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Eliminar
-                      </button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -983,7 +846,7 @@ const SellerDashboard: React.FC = () => {
 
   const renderExitNotes = () => {
     // Calcular el total de todas las notas de salida
-    const totalExitNotesValue = exitNotes.reduce((sum, note) => sum + (note.totalPrice || 0), 0);
+    const totalExitNotesValue = exitNotes.reduce((sum, note) => sum + note.totalPrice, 0);
     
     return (
       <div className="space-y-6">
@@ -1001,12 +864,12 @@ const SellerDashboard: React.FC = () => {
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-600">Valor Total</p>
-                <p className="text-2xl font-bold text-green-600">${(totalExitNotesValue || 0).toLocaleString()}</p>
+                <p className="text-2xl font-bold text-green-600">${totalExitNotesValue.toLocaleString()}</p>
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-600">Promedio por Nota</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  ${exitNotes.length > 0 ? ((totalExitNotesValue || 0) / exitNotes.length).toLocaleString() : '0'}
+                  ${exitNotes.length > 0 ? (totalExitNotesValue / exitNotes.length).toLocaleString() : '0'}
                 </p>
               </div>
             </div>
@@ -1027,7 +890,6 @@ const SellerDashboard: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productos</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
@@ -1045,31 +907,18 @@ const SellerDashboard: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {note.customer}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{note.items.length} productos</span>
-                      <span className="text-xs text-gray-500">
-                        {note.items.reduce((sum, item) => sum + item.quantity, 0)} unidades
-                      </span>
-                    </div>
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${(note.totalPrice || 0).toLocaleString()}
+                    ${note.totalPrice.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       note.status === 'delivered' 
                         ? 'bg-green-100 text-green-800'
-                        : note.status === 'in-transit'
-                        ? 'bg-blue-100 text-blue-800'
                         : note.status === 'pending'
                         ? 'bg-yellow-100 text-yellow-800'
-                        : note.status === 'received'
-                        ? 'bg-purple-100 text-purple-800'
                         : 'bg-gray-100 text-gray-800'
                     }`}>
                       {note.status === 'delivered' ? 'Entregada' : 
-                       note.status === 'in-transit' ? 'En Tránsito' :
                        note.status === 'pending' ? 'Pendiente' : 
                        note.status === 'received' ? 'Recibida' : 'Cancelada'}
                     </span>
@@ -1090,8 +939,7 @@ const SellerDashboard: React.FC = () => {
         </div>
       )}
     </div>
-    );
-  };
+  );
 
   const renderShippingPackages = () => (
     <div className="space-y-6">
@@ -1113,7 +961,6 @@ const SellerDashboard: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destinatario</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productos</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peso</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
@@ -1136,31 +983,10 @@ const SellerDashboard: React.FC = () => {
                     <div className="text-sm text-gray-500">{pkg.city}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex space-x-1">
-                      {pkg.items && pkg.items.slice(0, 3).map((item: any, index: number) => (
-                        <div key={index} className="relative">
-                          {item.product && item.product.imageUrl && (
-                            <img
-                              src={item.product.imageUrl}
-                              alt={item.product.name}
-                              className="w-8 h-8 rounded object-cover cursor-pointer hover:opacity-75"
-                              onClick={() => setViewingProductImage(item.product.imageUrl)}
-                            />
-                          )}
-                        </div>
-                      ))}
-                      {pkg.items && pkg.items.length > 3 && (
-                        <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center text-xs font-medium text-gray-600">
-                          +{pkg.items.length - 3}
-                        </div>
-                      )}
-                    </div>
+                    <div className="text-sm text-gray-900">{pkg.weight.toFixed(2)}g</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{(pkg.weight || 0).toFixed(2)}g</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">${(pkg.cost || 0).toLocaleString()}</div>
+                    <div className="text-sm text-gray-900">${pkg.cost.toLocaleString()}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -1192,52 +1018,12 @@ const SellerDashboard: React.FC = () => {
     </div>
   );
 
-  const renderPaymentNotes = () => {
-    // Calcular la deuda total basada en el valor histórico (todas las notas de salida recibidas)
-    const historicalInventoryValue = exitNotes.reduce((sum, note) => {
-      return sum + note.totalPrice;
-    }, 0);
-
-    // Calcular los pagos realizados (notas de pago aprobadas)
-    const approvedPayments = paymentNotes
-      .filter(note => note.status === 'approved')
-      .reduce((sum, note) => {
-        return sum + note.totalAmount;
-      }, 0);
-
-    // Calcular la deuda actual (histórico - pagos realizados)
-    const currentDebt = historicalInventoryValue - approvedPayments;
-
-    return (
+  const renderPaymentNotes = () => (
     <div className="space-y-6">
-      {/* Información de Deuda */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-medium text-blue-900">Deuda Total Actual</h3>
-            <p className="text-sm text-blue-700">
-              Valor total de tu inventario pendiente de pago
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-blue-900">
-              ${currentDebt.toFixed(2)}
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Histórico: ${historicalInventoryValue.toFixed(2)} - Pagos: ${approvedPayments.toFixed(2)}
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Mis Notas de Pago</h2>
         <button
-          onClick={() => {
-            setPaymentType('full');
-            setPartialPaymentAmount(0);
-            setShowPaymentModal(true);
-          }}
+          onClick={() => setShowPaymentModal(true)}
           className="btn-primary flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -1273,7 +1059,7 @@ const SellerDashboard: React.FC = () => {
                     {new Date(note.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${(note.totalAmount || 0).toLocaleString()}
+                    ${note.totalAmount.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -1289,7 +1075,7 @@ const SellerDashboard: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => setViewingPaymentNote(note)}
+                      onClick={() => {/* Ver detalles */}}
                       className="text-primary-600 hover:text-primary-900 flex items-center"
                     >
                       <Eye className="h-4 w-4 mr-1" />
@@ -1303,8 +1089,7 @@ const SellerDashboard: React.FC = () => {
         </div>
       )}
     </div>
-    );
-  };
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 px-[200px]">
@@ -1470,7 +1255,7 @@ const SellerDashboard: React.FC = () => {
                 >
                   <option value="">Seleccionar producto</option>
                   {sellerInventory
-                    .filter(item => item.status === 'stock' && item.quantity > 0)
+                    .filter(item => item.status === 'delivered' && item.quantity > 0)
                     .map(item => (
                       <option key={item.id} value={item.id}>
                         {item.product.name} - Stock: {item.quantity}
@@ -1486,23 +1271,11 @@ const SellerDashboard: React.FC = () => {
                 <input
                   type="number"
                   min="1"
-                  max={(() => {
-                    const selectedProduct = sellerInventory.find(item => item.id === saleForm.productId);
-                    return selectedProduct ? selectedProduct.quantity : 1;
-                  })()}
                   required
                   value={saleForm.quantity}
                   onChange={(e) => setSaleForm({...saleForm, quantity: parseInt(e.target.value) || 1})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
-                {saleForm.productId && (() => {
-                  const selectedProduct = sellerInventory.find(item => item.id === saleForm.productId);
-                  return selectedProduct ? (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Stock disponible: {selectedProduct.quantity}
-                    </p>
-                  ) : null;
-                })()}
               </div>
 
               <div>
@@ -1569,342 +1342,122 @@ const SellerDashboard: React.FC = () => {
         </div>
       )}
 
-
-
       {/* Modal de Nueva Nota de Pago */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Nueva Nota de Pago</h3>
               <button
                 onClick={() => setShowPaymentModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="h-6 w-6" />
+                <span className="sr-only">Cerrar</span>
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Columna Izquierda - Información de Deuda */}
-              <div className="space-y-4">
-                {/* Información de Deuda */}
+            <div className="space-y-6">
+              {/* Selección de ventas */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Seleccionar Ventas Pagadas para Pagar a la Empresa</h4>
+                <p className="text-xs text-gray-500 mb-3">Selecciona las ventas que ya te pagaron y quieres pagar a la empresa.</p>
+                <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                  {soldProducts.filter(sale => sale.status === 'paid').length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">No tienes ventas pagadas para pagar a la empresa</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {soldProducts
+                        .filter(sale => sale.status === 'paid')
+                        .map((sale) => (
+                          <label key={sale.id} className="flex items-center p-3 bg-white rounded border hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              checked={selectedSales.includes(sale.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedSales([...selectedSales, sale.id]);
+                                } else {
+                                  setSelectedSales(selectedSales.filter(id => id !== sale.id));
+                                }
+                              }}
+                              className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium text-gray-900">{sale.product.name}</span>
+                                <span className="text-sm font-medium text-gray-900">${sale.totalPrice.toFixed(2)}</span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Cantidad: {sale.quantity} | Fecha: {new Date(sale.createdAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Resumen del pago */}
+              {selectedSales.length > 0 && (
                 <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-blue-900 mb-2">Deuda Actual</h4>
-                  <div className="text-2xl font-bold text-blue-900">
-                    ${(() => {
-                      const historicalValue = exitNotes.reduce((sum, note) => {
-                        return sum + note.totalPrice;
-                      }, 0);
-                      const approvedPayments = paymentNotes
-                        .filter(note => note.status === 'approved')
-                        .reduce((sum, note) => {
-                          return sum + note.totalAmount;
-                        }, 0);
-                      const currentDebt = historicalValue - approvedPayments;
-                      return currentDebt.toFixed(2);
-                    })()}
-                  </div>
-                  <p className="text-xs text-blue-700 mt-1">
-                    Valor total de tu inventario pendiente de pago
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Productos en inventario: {sellerInventory.length} | Tipo de precio: {seller?.priceType === 'price2' ? 'Precio 2' : 'Precio 1'}
-                  </p>
-                </div>
-
-                {/* Tipo de Pago */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Tipo de Pago</h4>
-                  <div className="space-y-2">
-                    <label className="flex items-center p-3 bg-gray-50 rounded border hover:bg-gray-100 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="paymentType"
-                        value="full"
-                        checked={paymentType === 'full'}
-                        onChange={(e) => setPaymentType(e.target.value as 'full' | 'partial')}
-                        className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-                      />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">Pago Total</div>
-                        <div className="text-xs text-gray-500">Pagar toda la deuda actual</div>
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">Resumen del Pago</h4>
+                  <div className="space-y-1">
+                    {selectedSales.map(saleId => {
+                      const sale = soldProducts.find(s => s.id === saleId);
+                      return sale ? (
+                        <div key={saleId} className="flex justify-between text-sm">
+                          <span>{sale.product.name}</span>
+                          <span>${sale.totalPrice.toFixed(2)}</span>
+                        </div>
+                      ) : null;
+                    })}
+                    <div className="border-t pt-2 mt-2">
+                      <div className="flex justify-between font-medium">
+                        <span>Total a Pagar:</span>
+                        <span>${selectedSales.reduce((total, saleId) => {
+                          const sale = soldProducts.find(s => s.id === saleId);
+                          return total + (sale ? sale.totalPrice : 0);
+                        }, 0).toFixed(2)}</span>
                       </div>
-                    </label>
-                    <label className="flex items-center p-3 bg-gray-50 rounded border hover:bg-gray-100 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="paymentType"
-                        value="partial"
-                        checked={paymentType === 'partial'}
-                        onChange={(e) => setPaymentType(e.target.value as 'full' | 'partial')}
-                        className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-                      />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">Pago Parcial</div>
-                        <div className="text-xs text-gray-500">Pagar un monto específico</div>
-                      </div>
-                    </label>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Columna Derecha - Método de Pago y Detalles */}
-              <div className="space-y-4">
-                {/* Método de Pago */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Método de Pago</h4>
-                  <div className="space-y-2">
-                    <label className="flex items-center p-3 bg-gray-50 rounded border hover:bg-gray-100 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="cash"
-                        checked={paymentMethod === 'cash'}
-                        onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'bank_deposit')}
-                        className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-                      />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">Efectivo</div>
-                        <div className="text-xs text-gray-500">Pago en efectivo</div>
-                      </div>
-                    </label>
-                    <label className="flex items-center p-3 bg-gray-50 rounded border hover:bg-gray-100 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value="bank_deposit"
-                        checked={paymentMethod === 'bank_deposit'}
-                        onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'bank_deposit')}
-                        className="mr-3 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
-                      />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">Depósito Bancario</div>
-                        <div className="text-xs text-gray-500">Transferencia o depósito bancario</div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Subir Comprobante para Depósito Bancario */}
-                {paymentMethod === 'bank_deposit' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Comprobante de Pago
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Sube una foto del comprobante de depósito o transferencia
-                    </p>
-                    {receiptFile && (
-                      <p className="text-xs text-green-600 mt-1">
-                        Archivo seleccionado: {receiptFile.name}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Monto del Pago Parcial */}
-                {paymentType === 'partial' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Monto del Pago
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max={(() => {
-                        const historicalValue = exitNotes.reduce((sum, note) => {
-                          return sum + note.totalPrice;
-                        }, 0);
-                        return historicalValue;
-                      })()}
-                      value={partialPaymentAmount}
-                      onChange={(e) => setPartialPaymentAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="0.00"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Monto máximo: ${(() => {
-                        const historicalValue = exitNotes.reduce((sum, note) => {
-                          return sum + note.totalPrice;
-                        }, 0);
-                        const approvedPayments = paymentNotes
-                          .filter(note => note.status === 'approved')
-                          .reduce((sum, note) => {
-                            return sum + note.totalAmount;
-                          }, 0);
-                        const currentDebt = historicalValue - approvedPayments;
-                        return currentDebt.toFixed(2);
-                      })()}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Resumen del Pago */}
-            <div className="bg-gray-50 rounded-lg p-4 mt-6">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">Resumen del Pago</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Deuda Actual</div>
-                  <div className="font-semibold text-red-600">${(() => {
-                    const historicalValue = exitNotes.reduce((sum, note) => {
-                      return sum + note.totalPrice;
-                    }, 0);
-                    const approvedPayments = paymentNotes
-                      .filter(note => note.status === 'approved')
-                      .reduce((sum, note) => {
-                        return sum + note.totalAmount;
-                      }, 0);
-                    const currentDebt = historicalValue - approvedPayments;
-                    return currentDebt.toFixed(2);
-                  })()}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Monto del Pago</div>
-                  <div className="font-semibold text-blue-600">${paymentType === 'full' ? (() => {
-                    const historicalValue = exitNotes.reduce((sum, note) => {
-                      return sum + note.totalPrice;
-                    }, 0);
-                    const approvedPayments = paymentNotes
-                      .filter(note => note.status === 'approved')
-                      .reduce((sum, note) => {
-                        return sum + note.totalAmount;
-                      }, 0);
-                    const currentDebt = historicalValue - approvedPayments;
-                    return currentDebt.toFixed(2);
-                  })() : partialPaymentAmount.toFixed(2)}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 mb-1">Deuda Restante</div>
-                  <div className="font-semibold text-green-600">${(() => {
-                    const historicalValue = exitNotes.reduce((sum, note) => {
-                      return sum + note.totalPrice;
-                    }, 0);
-                    const approvedPayments = paymentNotes
-                      .filter(note => note.status === 'approved')
-                      .reduce((sum, note) => {
-                        return sum + note.totalAmount;
-                      }, 0);
-                    const currentDebt = historicalValue - approvedPayments;
-                    const paymentAmount = paymentType === 'full' ? currentDebt : partialPaymentAmount;
-                    return (currentDebt - paymentAmount).toFixed(2);
-                  })()}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Botones */}
-            <div className="flex justify-end space-x-3 mt-6">
+              {/* Botones */}
+              <div className="flex justify-end space-x-3">
                 <button
-                  type="button"
                   onClick={() => setShowPaymentModal(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
                 >
                   Cancelar
                 </button>
                 <button
-                  onClick={async () => {
-                    try {
-                      if (!seller) return;
-
-                      const historicalValue = exitNotes.reduce((sum, note) => {
-                        return sum + note.totalPrice;
-                      }, 0);
-
-                      const paymentAmount = paymentType === 'full' ? historicalValue : partialPaymentAmount;
-
-                      if (paymentType === 'partial' && partialPaymentAmount <= 0) {
-                        toast.error('El monto del pago debe ser mayor a 0');
-                        return;
-                      }
-
-                      if (paymentType === 'partial' && partialPaymentAmount > historicalValue) {
-                        toast.error('El monto del pago no puede ser mayor a la deuda actual');
-                        return;
-                      }
-
-                      // Validar que si es depósito bancario, se haya subido un comprobante
-                      if (paymentMethod === 'bank_deposit' && !receiptFile) {
-                        toast.error('Por favor sube un comprobante para el depósito bancario');
-                        return;
-                      }
-
-                      let receiptImageUrl = '';
-                      
-                      // Si es depósito bancario y hay archivo, subirlo a Firebase Storage
-                      if (paymentMethod === 'bank_deposit' && receiptFile) {
-                        setUploadingReceipt(true);
-                        try {
-                          const fileName = `receipts/${seller.id}_${Date.now()}_${receiptFile.name}`;
-                          const storageRef = ref(storage, fileName);
-                          await uploadBytes(storageRef, receiptFile);
-                          receiptImageUrl = await getDownloadURL(storageRef);
-                          toast.success('Comprobante subido exitosamente');
-                        } catch (error) {
-                          console.error('Error uploading receipt:', error);
-                          toast.error('Error al subir el comprobante');
-                          setUploadingReceipt(false);
-                          return;
-                        }
-                        setUploadingReceipt(false);
-                      }
-
-                      // Crear la nota de pago
-                      const paymentNoteData = {
-                        number: `PN-${Date.now()}`, // Generar número único
-                        sellerId: seller.id,
-                        sellerName: seller.name,
-                        items: [{
-                          description: paymentType === 'full' ? 'Pago total de deuda' : `Pago parcial de deuda - $${partialPaymentAmount}`,
-                          amount: paymentAmount
-                        }],
-                        totalAmount: paymentAmount,
-                        status: 'pending' as const,
-                        notes: `Pago ${paymentType === 'full' ? 'total' : 'parcial'} de deuda del inventario - ${paymentMethod === 'cash' ? 'En efectivo' : 'Depósito bancario'}`,
-                        paymentMethod: paymentMethod,
-                        receiptImageUrl: receiptImageUrl || undefined
-                      };
-
-                      await paymentNoteService.create(paymentNoteData);
-                      toast.success('Nota de pago creada exitosamente');
-                      setShowPaymentModal(false);
-                      setPaymentType('full');
-                      setPartialPaymentAmount(0);
-                      setPaymentMethod('cash');
-                      setReceiptFile(null);
-                      await loadData();
-                    } catch (error) {
-                      console.error('Error creating payment note:', error);
-                      toast.error('Error al crear la nota de pago');
-                    }
+                  onClick={() => {
+                    // TODO: Implementar creación de nota de pago
+                    console.log('Crear nota de pago con ventas:', selectedSales);
+                    setShowPaymentModal(false);
+                    setSelectedSales([]);
                   }}
-                  className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                    uploadingReceipt 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-primary-600 hover:bg-primary-700'
-                  }`}
-                  disabled={uploadingReceipt}
+                  disabled={selectedSales.length === 0}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  {uploadingReceipt ? 'Subiendo comprobante...' : 'Crear Nota de Pago'}
+                  Crear Nota de Pago
                 </button>
               </div>
             </div>
+          </div>
         </div>
       )}
 
       {/* Modal de Detalles de Nota de Salida */}
       {viewingExitNote && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-[95vw] mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Detalles de Nota de Salida</h3>
               <button
@@ -1946,7 +1499,7 @@ const SellerDashboard: React.FC = () => {
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">Totales</h4>
                 <div className="space-y-2">
-                  <p><span className="font-medium">Total:</span> ${(viewingExitNote.totalPrice || 0).toLocaleString()}</p>
+                  <p><span className="font-medium">Total:</span> ${viewingExitNote.totalPrice.toLocaleString()}</p>
                   <p><span className="font-medium">Productos:</span> {viewingExitNote.items.length}</p>
                 </div>
               </div>
@@ -1958,7 +1511,6 @@ const SellerDashboard: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
@@ -1968,29 +1520,8 @@ const SellerDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {viewingExitNote.items.map((item, index) => {
-                      console.log('Producto en nota de salida:', item);
-                      return (
+                    {viewingExitNote.items.map((item, index) => (
                       <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center overflow-hidden">
-                            {item.product && item.product.imageUrl ? (
-                              <img
-                                src={item.product.imageUrl}
-                                alt={item.product.name}
-                                className="w-full h-full object-cover cursor-pointer hover:opacity-75"
-                                onClick={() => setViewingProductImage(item.product.imageUrl || null)}
-                                onError={(e) => {
-                                  console.log('Error loading image:', item.product.imageUrl);
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            ) : null}
-                            {(!item.product || !item.product.imageUrl) && (
-                              <span className="text-xs text-gray-500">Sin imagen</span>
-                            )}
-                          </div>
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {item.product.name}
                         </td>
@@ -2010,8 +1541,7 @@ const SellerDashboard: React.FC = () => {
                           ${item.totalPrice.toFixed(2)}
                         </td>
                       </tr>
-                      );
-                    })}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -2023,7 +1553,7 @@ const SellerDashboard: React.FC = () => {
       {/* Modal para ver imagen del producto */}
       {viewingProductImage && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl max-h-[90vh] overflow-auto">
+          <div className="bg-white rounded-lg p-6 max-w-2xl max-h-[90vh] overflow-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900">Imagen del Producto</h3>
               <button
@@ -2045,225 +1575,8 @@ const SellerDashboard: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Modal de Detalles de Nota de Pago */}
-      {viewingPaymentNote && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-5xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Detalles de Nota de Pago</h3>
-              <button
-                onClick={() => setViewingPaymentNote(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Información básica */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Información General</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-600">Número:</span>
-                    <p className="text-gray-900">{viewingPaymentNote.number}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-600">Fecha:</span>
-                    <p className="text-gray-900">{new Date(viewingPaymentNote.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-600">Total:</span>
-                    <p className="text-gray-900 font-semibold">${viewingPaymentNote.totalAmount.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-600">Estado:</span>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      viewingPaymentNote.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      viewingPaymentNote.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {viewingPaymentNote.status === 'approved' ? 'Aprobada' :
-                       viewingPaymentNote.status === 'pending' ? 'Pendiente' : 'Rechazada'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Detalles del pago */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Detalles del Pago</h4>
-                <div className="space-y-2 text-sm">
-                  {viewingPaymentNote.items.map((item: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
-                      <div>
-                        <p className="font-medium text-gray-900">{item.description || 'Pago de deuda'}</p>
-                        <p className="text-gray-600 text-xs">
-                          {item.totalPrice > 0 ? `Pago por ${item.quantity} unidades` : 'Abono de deuda'}
-                        </p>
-                      </div>
-                      <p className="font-semibold text-gray-900">${(item.totalPrice || 0).toLocaleString()}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Información adicional */}
-              {viewingPaymentNote.notes && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Notas</h4>
-                  <p className="text-sm text-gray-700">{viewingPaymentNote.notes}</p>
-                </div>
-              )}
-
-              {/* Fecha de aprobación si está aprobada */}
-              {viewingPaymentNote.status === 'approved' && viewingPaymentNote.approvedAt && (
-                <div className="bg-green-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-green-900 mb-2">Aprobación</h4>
-                  <p className="text-sm text-green-700">
-                    Aprobada el {new Date(viewingPaymentNote.approvedAt).toLocaleDateString()} 
-                    {viewingPaymentNote.approvedBy && ` por ${viewingPaymentNote.approvedBy}`}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Detalles del Paquete de Envío */}
-      {viewingShippingPackage && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-[95vw] mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Detalles del Paquete de Envío</h3>
-              <button
-                onClick={() => setViewingShippingPackage(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <span className="sr-only">Cerrar</span>
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-2">Información del Envío</h4>
-                <div className="space-y-2">
-                  <p><span className="font-medium">Tracking:</span> {viewingShippingPackage.trackingNumber || 'No asignado'}</p>
-                  <p><span className="font-medium">Destinatario:</span> {viewingShippingPackage.recipient}</p>
-                  <p><span className="font-medium">Dirección:</span> {viewingShippingPackage.address}</p>
-                  <p><span className="font-medium">Ciudad:</span> {viewingShippingPackage.city}</p>
-                  <p><span className="font-medium">Teléfono:</span> {viewingShippingPackage.phone}</p>
-                  <p><span className="font-medium">Estado:</span> 
-                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${
-                      viewingShippingPackage.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      viewingShippingPackage.status === 'in-transit' ? 'bg-blue-100 text-blue-800' :
-                      viewingShippingPackage.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {viewingShippingPackage.status === 'pending' ? 'Pendiente' :
-                       viewingShippingPackage.status === 'in-transit' ? 'En Tránsito' :
-                       viewingShippingPackage.status === 'delivered' ? 'Entregado' :
-                       'Devuelto'}
-                    </span>
-                  </p>
-                </div>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-2">Detalles del Paquete</h4>
-                <div className="space-y-2">
-                  <p><span className="font-medium">Fecha de Envío:</span> {new Date(viewingShippingPackage.shippingDate).toLocaleDateString()}</p>
-                  <p><span className="font-medium">Peso:</span> {viewingShippingPackage.weight.toFixed(2)}g</p>
-                  <p><span className="font-medium">Dimensiones:</span> {viewingShippingPackage.dimensions}</p>
-                  <p><span className="font-medium">Costo:</span> ${viewingShippingPackage.cost.toLocaleString()}</p>
-                  {viewingShippingPackage.deliveryDate && (
-                    <p><span className="font-medium">Fecha de Entrega:</span> {new Date(viewingShippingPackage.deliveryDate).toLocaleDateString()}</p>
-                  )}
-                  {viewingShippingPackage.notes && (
-                    <p><span className="font-medium">Notas:</span> {viewingShippingPackage.notes}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Lista de Productos */}
-            <div>
-              <h4 className="text-sm font-medium text-gray-500 mb-3">Productos en el Paquete</h4>
-              {viewingShippingPackage.items && viewingShippingPackage.items.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Unit.</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {viewingShippingPackage.items.map((item: any, index: number) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center overflow-hidden">
-                              {item.product && item.product.imageUrl ? (
-                                <img
-                                  src={item.product.imageUrl}
-                                  alt={item.product.name}
-                                  className="w-full h-full object-cover cursor-pointer hover:opacity-75"
-                                  onClick={() => setViewingProductImage(item.product.imageUrl || null)}
-                                  onError={(e) => {
-                                    console.log('Error loading image:', item.product.imageUrl);
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
-                              ) : null}
-                              {(!item.product || !item.product.imageUrl) && (
-                                <span className="text-xs text-gray-500">Sin imagen</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.product ? item.product.name : 'Producto no encontrado'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.product ? item.product.sku : '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.size || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.quantity}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${(item.unitPrice || 0).toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${((item.unitPrice || 0) * (item.quantity || 0)).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 bg-gray-50 rounded-lg">
-                  <p className="text-gray-500">No hay productos asociados a este paquete</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 export default SellerDashboard;
-

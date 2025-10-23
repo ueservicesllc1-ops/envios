@@ -9,6 +9,7 @@ import Warehouse from './pages/Warehouse';
 import Inventory from './pages/Inventory';
 import EntryNotes from './pages/EntryNotes';
 import ExitNotes from './pages/ExitNotes';
+import PaymentNotes from './pages/PaymentNotes';
 import Shipping from './pages/Shipping';
 import Accounting from './pages/Accounting';
 import Sellers from './pages/Sellers';
@@ -30,6 +31,7 @@ function App() {
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/entry-notes" element={<EntryNotes />} />
               <Route path="/exit-notes" element={<ExitNotes />} />
+              <Route path="/payment-notes" element={<PaymentNotes />} />
               <Route path="/shipping" element={<Shipping />} />
               <Route path="/accounting" element={<Accounting />} />
               <Route path="/sellers" element={<Sellers />} />

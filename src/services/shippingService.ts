@@ -41,6 +41,8 @@ export interface ShippingPackage {
   deliveredAt?: Date;
   notes?: string;
   cost: number;
+  sellerId?: string; // ID del vendedor asociado
+  items?: any[]; // Productos asociados al paquete
 }
 
 export const shippingService = {
@@ -127,6 +129,24 @@ export const shippingService = {
           deliveredAt: Timestamp.now()
         });
         
+        // Actualizar el inventario del vendedor: cambiar productos de "in-transit" a "stock"
+        const exitNoteData = exitNoteDoc.data();
+        if (exitNoteData.sellerId) {
+          try {
+            const { sellerInventoryService } = await import('./sellerInventoryService');
+            for (const item of exitNoteData.items) {
+              await sellerInventoryService.updateStatusToDelivered(
+                exitNoteData.sellerId,
+                item.productId,
+                item.quantity
+              );
+            }
+            console.log('Inventario del vendedor actualizado a stock:', exitNoteData.sellerId);
+          } catch (error) {
+            console.error('Error updating seller inventory:', error);
+          }
+        }
+        
         console.log('Nota de salida actualizada a entregada:', exitNoteDoc.id);
       }
     } catch (error) {
@@ -138,10 +158,17 @@ export const shippingService = {
   // Eliminar envío
   async delete(id: string): Promise<void> {
     try {
+      // Eliminar entrada de contabilidad asociada
+      try {
+        await shippingAccountingService.deleteByShippingId(id);
+      } catch (error) {
+        console.warn('No se pudo eliminar la entrada de contabilidad:', error);
+      }
+
       const docRef = doc(db, 'shipping', id);
       await deleteDoc(docRef);
       
-      toast.success('Envío eliminado exitosamente');
+      toast.success('Envío eliminado exitosamente y entrada de contabilidad actualizada');
     } catch (error) {
       console.error('Error deleting shipping package:', error);
       toast.error('Error al eliminar el envío');
@@ -188,6 +215,45 @@ export const shippingService = {
     } catch (error) {
       console.error('Error getting shipping package:', error);
       toast.error('Error al obtener el envío');
+      throw error;
+    }
+  },
+
+  // Limpiar paquetes de envío huérfanos (sin nota de salida asociada)
+  async cleanOrphanedPackages(): Promise<void> {
+    try {
+      console.log('Limpiando paquetes de envío huérfanos...');
+      
+      // Obtener todos los paquetes de envío
+      const allPackages = await this.getAll();
+      
+      // Obtener todas las notas de salida
+      const { exitNoteService } = await import('./exitNoteService');
+      const allExitNotes = await exitNoteService.getAll();
+      
+      // Crear un set de shippingIds que están asociados a notas de salida
+      const associatedShippingIds = new Set(
+        allExitNotes
+          .filter(note => note.shippingId)
+          .map(note => note.shippingId)
+      );
+      
+      // Encontrar paquetes huérfanos
+      const orphanedPackages = allPackages.filter(pkg => 
+        !associatedShippingIds.has(pkg.id)
+      );
+      
+      console.log(`Encontrados ${orphanedPackages.length} paquetes huérfanos`);
+      
+      // Eliminar paquetes huérfanos
+      for (const pkg of orphanedPackages) {
+        await this.delete(pkg.id);
+        console.log(`Eliminado paquete huérfano: ${pkg.id}`);
+      }
+      
+      console.log(`Limpieza completada: ${orphanedPackages.length} paquetes eliminados`);
+    } catch (error) {
+      console.error('Error limpiando paquetes huérfanos:', error);
       throw error;
     }
   }

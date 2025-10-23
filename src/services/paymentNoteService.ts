@@ -2,12 +2,14 @@ import { collection, addDoc, updateDoc, deleteDoc, getDocs, doc, query, orderBy,
 import { db } from '../firebase/config';
 
 export interface PaymentNoteItem {
-  productId: string;
-  productName: string;
-  sku: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
+  productId?: string;
+  productName?: string;
+  sku?: string;
+  quantity?: number;
+  unitPrice?: number;
+  totalPrice?: number;
+  description: string;
+  amount: number;
 }
 
 export interface PaymentNote {
@@ -22,6 +24,8 @@ export interface PaymentNote {
   approvedAt?: Date;
   approvedBy?: string;
   notes?: string;
+  paymentMethod: 'cash' | 'bank_deposit';
+  receiptImageUrl?: string;
 }
 
 const convertTimestamp = (timestamp: any): Date => {
@@ -158,6 +162,24 @@ export const paymentNoteService = {
       });
     } catch (error) {
       console.error('Error rejecting payment note:', error);
+      throw error;
+    }
+  },
+
+  async updateStatus(id: string, status: 'pending' | 'approved' | 'rejected', approvedBy?: string): Promise<void> {
+    try {
+      const updateData: any = { status };
+      
+      if (status === 'approved') {
+        updateData.approvedAt = new Date();
+        if (approvedBy) {
+          updateData.approvedBy = approvedBy;
+        }
+      }
+      
+      await updateDoc(doc(db, 'paymentNotes', id), updateData);
+    } catch (error) {
+      console.error('Error updating payment note status:', error);
       throw error;
     }
   },

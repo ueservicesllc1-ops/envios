@@ -16,6 +16,8 @@ import { inventoryService } from '../services/inventoryService';
 import { entryNoteService } from '../services/entryNoteService';
 import { exitNoteService } from '../services/exitNoteService';
 import { exitNoteAccountingService } from '../services/exitNoteAccountingService';
+import { paymentNoteService } from '../services/paymentNoteService';
+import toast from 'react-hot-toast';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
@@ -34,24 +36,82 @@ const Dashboard: React.FC = () => {
   const [pendingSales, setPendingSales] = useState(0); // Added state for pending sales
   const [totalEntryNotes, setTotalEntryNotes] = useState(0);
   const [totalExitNotes, setTotalExitNotes] = useState(0);
+  const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  const recalculateDebts = async () => {
+    try {
+      setRecalculating(true);
+      console.log('🔄 Iniciando recálculo manual de deudas...');
+      
+      // Cargar datos actualizados
+      const [sellersData, exitNotesData, paymentNotesData] = await Promise.all([
+        sellerService.getAll(),
+        exitNoteService.getAll(),
+        paymentNoteService.getAll()
+      ]);
+      
+      let actualTotalDebt = 0;
+      
+      for (const seller of sellersData) {
+        // Obtener todas las notas de salida del vendedor
+        const sellerExitNotes = exitNotesData.filter(note => note.sellerId === seller.id);
+        
+        // Obtener todas las notas de pago del vendedor (aprobadas)
+        const sellerPaymentNotes = paymentNotesData.filter(note => 
+          note.sellerId === seller.id && note.status === 'approved'
+        );
+        
+        // Calcular deuda real: Notas de salida - Notas de pago aprobadas
+        const totalExitNotesValue = sellerExitNotes.reduce((sum, note) => sum + note.totalPrice, 0);
+        const totalPaymentNotesValue = sellerPaymentNotes.reduce((sum, note) => sum + note.totalAmount, 0);
+        const sellerDebt = totalExitNotesValue - totalPaymentNotesValue;
+        
+        actualTotalDebt += sellerDebt;
+        
+        // Forzar actualización de la deuda del vendedor
+        await sellerService.update(seller.id, { totalDebt: sellerDebt });
+        console.log(`✅ Recalculada deuda del vendedor ${seller.name}:`);
+        console.log(`  - Notas de salida: $${totalExitNotesValue}`);
+        console.log(`  - Notas de pago: $${totalPaymentNotesValue}`);
+        console.log(`  - Deuda final: $${sellerDebt}`);
+      }
+      
+      setTotalDebt(actualTotalDebt);
+      toast.success(`Deudas recalculadas. Total: $${actualTotalDebt.toLocaleString()}`);
+      console.log(`💰 Recalculación completada. Nueva deuda total: $${actualTotalDebt}`);
+      
+    } catch (error) {
+      console.error('Error recalculando deudas:', error);
+      toast.error('Error al recalcular deudas');
+    } finally {
+      setRecalculating(false);
+    }
+  };
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
       
       // Cargar datos en paralelo
-      const [sellersData, productsData, inventoryData, entryNotesData, exitNotesData, salesData] = await Promise.all([
+      const [sellersData, productsData, inventoryData, entryNotesData, exitNotesData, salesData, paymentNotesData] = await Promise.all([
         sellerService.getAll(),
         productService.getAll(),
         inventoryService.getAll(),
         entryNoteService.getAll(),
         exitNoteService.getAll(),
-        exitNoteAccountingService.getAll()
+        exitNoteAccountingService.getAll(),
+        paymentNoteService.getAll()
       ]);
+      
+      console.log('🔍 Datos cargados:');
+      console.log('- Vendedores:', sellersData.length);
+      console.log('- Notas de salida:', exitNotesData.length);
+      console.log('- Notas de pago:', paymentNotesData.length);
+      console.log('- Vendedores con deuda previa:', sellersData.map(s => ({ name: s.name, debt: s.totalDebt })));
       
       setSellers(sellersData);
       
@@ -108,9 +168,55 @@ const Dashboard: React.FC = () => {
         })
         .reduce((sum, note) => sum + note.totalPrice, 0);
       
-      // Calcular deuda total de vendedores
-      const debt = sellersData.reduce((sum, seller) => sum + (seller.totalDebt || 0), 0);
-      setTotalDebt(debt);
+      // Calcular deuda total de vendedores basándose en las notas de salida reales
+      let actualTotalDebt = 0;
+      console.log('💰 Calculando deudas de vendedores...');
+      
+      for (const seller of sellersData) {
+        // Obtener todas las notas de salida del vendedor
+        const sellerExitNotes = exitNotesData.filter(note => note.sellerId === seller.id);
+        console.log(`📋 Vendedor ${seller.name} (ID: ${seller.id}):`);
+        console.log(`  - Notas de salida encontradas: ${sellerExitNotes.length}`);
+        
+        // Mostrar detalles de cada nota
+        sellerExitNotes.forEach(note => {
+          console.log(`    * Nota ${note.number}: $${note.totalPrice} - Estado: ${note.status}`);
+        });
+        
+        // Obtener todas las notas de pago del vendedor (aprobadas)
+        const sellerPaymentNotes = paymentNotesData.filter(note => 
+          note.sellerId === seller.id && note.status === 'approved'
+        );
+        
+        // Calcular deuda real: Notas de salida - Notas de pago aprobadas
+        const totalExitNotesValue = sellerExitNotes.reduce((sum, note) => sum + note.totalPrice, 0);
+        const totalPaymentNotesValue = sellerPaymentNotes.reduce((sum, note) => sum + note.totalAmount, 0);
+        const sellerDebt = totalExitNotesValue - totalPaymentNotesValue;
+        
+        console.log(`  - Total notas de salida: ${sellerExitNotes.length}`);
+        console.log(`  - Total notas de pago aprobadas: ${sellerPaymentNotes.length}`);
+        console.log(`  - Valor notas de salida: $${totalExitNotesValue}`);
+        console.log(`  - Valor notas de pago: $${totalPaymentNotesValue}`);
+        console.log(`  - Deuda calculada: $${sellerDebt}`);
+        console.log(`  - Deuda anterior: $${seller.totalDebt || 0}`);
+        
+        actualTotalDebt += sellerDebt;
+        
+        // Actualizar la deuda del vendedor en la base de datos si es diferente
+        if ((seller.totalDebt || 0) !== sellerDebt) {
+          try {
+            await sellerService.update(seller.id, { totalDebt: sellerDebt });
+            console.log(`✅ Actualizada deuda del vendedor ${seller.name}: $${seller.totalDebt || 0} -> $${sellerDebt}`);
+          } catch (error) {
+            console.error(`❌ Error actualizando deuda del vendedor ${seller.name}:`, error);
+          }
+        } else {
+          console.log(`✅ Deuda del vendedor ${seller.name} ya está correcta: $${sellerDebt}`);
+        }
+      }
+      
+      console.log(`💰 Deuda total calculada: $${actualTotalDebt}`);
+      setTotalDebt(actualTotalDebt);
       
       // Cargar ventas pendientes
       const pendingSalesTotal = salesData.reduce((sum, sale) => sum + sale.totalValue, 0);
@@ -168,12 +274,17 @@ const Dashboard: React.FC = () => {
     },
     {
       title: 'Deuda Total Vendedores',
-      value: `$${pendingSales.toLocaleString()}`,
+      value: `$${totalDebt.toLocaleString()}`,
       icon: CreditCard,
       color: 'text-red-600',
       bgColor: 'bg-red-100',
       change: 'Ventas pendientes',
-      changeType: 'negative' as const
+      changeType: 'negative' as const,
+      action: {
+        label: 'Recalcular',
+        onClick: recalculateDebts,
+        loading: recalculating
+      }
     },
     {
       title: 'Total Vendedores',
@@ -248,12 +359,21 @@ const Dashboard: React.FC = () => {
         {statCards.map((stat, index) => (
           <div key={index} className="card">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                 <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                 <div className="flex items-center mt-2">
                   <span className="text-sm text-gray-500">Sin datos previos</span>
                 </div>
+                {stat.action && (
+                  <button
+                    onClick={stat.action.onClick}
+                    disabled={stat.action.loading}
+                    className="mt-3 px-3 py-1 text-xs font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {stat.action.loading ? 'Recalculando...' : stat.action.label}
+                  </button>
+                )}
               </div>
               <div className={`p-3 rounded-lg ${stat.bgColor}`}>
                 <stat.icon className={`h-6 w-6 ${stat.color}`} />

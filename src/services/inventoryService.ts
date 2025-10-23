@@ -3,6 +3,7 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  deleteDoc,
   getDocs, 
   query, 
   where,
@@ -245,6 +246,71 @@ export const inventoryService = {
     } catch (error) {
       console.error('Error removing stock:', error);
       toast.error('Error al remover stock');
+      throw error;
+    }
+  },
+
+  // Eliminar item de inventario
+  async delete(id: string): Promise<void> {
+    try {
+      const docRef = doc(db, 'inventory', id);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting inventory item:', error);
+      throw error;
+    }
+  },
+
+  // Regenerar inventario completo desde notas de entrada
+  async regenerateInventory(): Promise<void> {
+    try {
+      console.log('Iniciando regeneración del inventario...');
+      
+      // Limpiar inventario actual
+      const currentInventory = await this.getAll();
+      console.log(`Eliminando ${currentInventory.length} items del inventario actual`);
+      
+      // Eliminar todos los items del inventario actual
+      for (const item of currentInventory) {
+        await this.delete(item.id);
+      }
+      
+      // Obtener todas las notas de entrada
+      const { entryNoteService } = await import('./entryNoteService');
+      const entryNotes = await entryNoteService.getAll();
+      console.log(`Procesando ${entryNotes.length} notas de entrada`);
+      
+      // Procesar cada nota de entrada
+      for (const note of entryNotes) {
+        console.log(`Procesando nota de entrada: ${note.number}`);
+        for (const item of note.items) {
+          await this.updateStockAfterEntry(
+            item.productId,
+            item.quantity,
+            item.cost,
+            item.unitPrice
+          );
+        }
+      }
+      
+      // Obtener todas las notas de salida válidas (no eliminadas)
+      const { exitNoteService } = await import('./exitNoteService');
+      const exitNotes = await exitNoteService.getAll();
+      console.log(`Procesando ${exitNotes.length} notas de salida`);
+      
+      // Restar stock de las notas de salida
+      for (const note of exitNotes) {
+        console.log(`Procesando nota de salida: ${note.number}`);
+        for (const item of note.items) {
+          await this.removeStock(item.productId, item.quantity);
+        }
+      }
+      
+      console.log('Inventario regenerado exitosamente');
+      toast.success('Inventario regenerado exitosamente desde las notas de entrada');
+    } catch (error) {
+      console.error('Error regenerating inventory:', error);
+      toast.error('Error al regenerar el inventario');
       throw error;
     }
   }
