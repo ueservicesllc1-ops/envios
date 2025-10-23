@@ -20,6 +20,7 @@ const ExitNotes: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [viewingNote, setViewingNote] = useState<ExitNote | null>(null);
+  const [showProductGrid, setShowProductGrid] = useState(false);
   const [formData, setFormData] = useState({
     sellerId: '',
     notes: ''
@@ -210,6 +211,7 @@ const ExitNotes: React.FC = () => {
     toast.success(`Producto agregado: ${product.name}`);
     setShowScanner(false);
   };
+
 
   const updateItem = (index: number, field: string, value: any) => {
     const newItems = [...items];
@@ -735,30 +737,9 @@ const ExitNotes: React.FC = () => {
 
               {/* Productos */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h4 className="text-md font-medium text-gray-900">Productos</h4>
-                    <p className="text-sm text-gray-500">Solo productos disponibles en inventario</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      type="button"
-                      onClick={addItem}
-                      className="btn-secondary flex items-center"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar Producto
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowScanner(true)}
-                      className="btn-primary flex items-center"
-                      title="Escanear código de barras"
-                    >
-                      <Scan className="h-4 w-4 mr-2" />
-                      Escanear
-                    </button>
-                  </div>
+                <div className="mb-4">
+                  <h4 className="text-md font-medium text-gray-900">Productos</h4>
+                  <p className="text-sm text-gray-500">Solo productos disponibles en inventario</p>
                 </div>
 
                 {items.length === 0 ? (
@@ -941,6 +922,27 @@ const ExitNotes: React.FC = () => {
                 </div>
               )}
 
+              {/* Botones de productos */}
+              <div className="flex justify-center space-x-3 py-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowProductGrid(true)}
+                  className="btn-secondary flex items-center"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Producto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  className="btn-primary flex items-center"
+                  title="Escanear código de barras"
+                >
+                  <Scan className="h-4 w-4 mr-2" />
+                  Escanear
+                </button>
+              </div>
+
               {/* Notas */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -955,7 +957,8 @@ const ExitNotes: React.FC = () => {
                 />
               </div>
 
-              {/* Botones */}
+
+              {/* Botones principales */}
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
@@ -1217,6 +1220,90 @@ const ExitNotes: React.FC = () => {
         onScan={handleBarcodeScan}
         title="Escanear Código de Barras del Producto"
       />
+
+      {/* Modal de cuadrícula de productos */}
+      {showProductGrid && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full mx-4 max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Seleccionar Producto</h3>
+              <button
+                onClick={() => setShowProductGrid(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                {products.map((product) => (
+                  <div
+                    key={product.id}
+                    className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => {
+                      const existingItem = items.find(item => item.productId === product.id);
+                      if (existingItem) {
+                        setItems(items.map(item => 
+                          item.productId === product.id 
+                            ? { ...item, quantity: item.quantity + 1 }
+                            : item
+                        ));
+                      } else {
+                        setItems([...items, {
+                          productId: product.id,
+                          quantity: 1,
+                          size: product.size || '',
+                          weight: product.weight || 0,
+                          unitPrice: product.salePrice1 || 0
+                        }]);
+                      }
+                      setShowProductGrid(false);
+                    }}
+                  >
+                    <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <Package className="h-8 w-8" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <h4 className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
+                        {product.name}
+                      </h4>
+                      <p className="text-xs text-gray-500 mb-1">SKU: {product.sku}</p>
+                      {product.color && (
+                        <p className="text-xs text-gray-500 mb-1">Color: {product.color}</p>
+                      )}
+                      {product.size && (
+                        <p className="text-xs text-gray-500 mb-1">Talla: {product.size}</p>
+                      )}
+                      <p className="text-xs font-semibold text-green-600">
+                        ${product.salePrice1?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {products.length === 0 && (
+                <div className="text-center py-8">
+                  <Package className="mx-auto h-12 w-12 text-gray-400" />
+                  <p className="mt-2 text-sm text-gray-500">No hay productos disponibles</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
