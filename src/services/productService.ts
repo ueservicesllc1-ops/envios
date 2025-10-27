@@ -8,6 +8,7 @@ import {
   getDocs, 
   query, 
   orderBy,
+  where,
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -111,6 +112,32 @@ export const productService = {
     } catch (error) {
       console.error('Error getting products:', error);
       toast.error('Error al cargar los productos');
+      throw error;
+    }
+  },
+
+  // Buscar producto por SKU en la base de datos
+  async getBySku(sku: string): Promise<Product | null> {
+    try {
+      const q = query(
+        collection(db, 'products'), 
+        where('sku', '==', sku)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: convertTimestamp(data.createdAt),
+          updatedAt: convertTimestamp(data.updatedAt)
+        } as Product;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error searching product by SKU:', error);
       throw error;
     }
   }

@@ -7,6 +7,7 @@ import { exitNoteAccountingService, ExitNoteSale } from '../services/exitNoteAcc
 import { entryNoteAccountingService, EntryNoteExpense } from '../services/entryNoteAccountingService';
 import { entryNoteService } from '../services/entryNoteService';
 import { exitNoteService } from '../services/exitNoteService';
+import { productService } from '../services/productService';
 import toast from 'react-hot-toast';
 
 const Accounting: React.FC = () => {
@@ -21,6 +22,10 @@ const Accounting: React.FC = () => {
   const [totalShippingCost, setTotalShippingCost] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
+  const [totalHistoricalCost, setTotalHistoricalCost] = useState(0);
+  const [totalHistoricalProfit, setTotalHistoricalProfit] = useState(0);
+  const [totalSalePrice1, setTotalSalePrice1] = useState(0);
+  const [products, setProducts] = useState<any[]>([]);
 
   // Array vacío para datos reales
   // const sampleEntries: AccountingEntry[] = [];
@@ -66,11 +71,14 @@ const Accounting: React.FC = () => {
         toast.error('Error al cargar datos de paquetería');
       }
       
-      const [expensesData, entryNotesData, exitNotesData] = await Promise.all([
+      const [expensesData, entryNotesData, exitNotesData, productsData] = await Promise.all([
         entryNoteAccountingService.getAll(),
         entryNoteService.getAll(),
-        exitNoteService.getAll()
+        exitNoteService.getAll(),
+        productService.getAll()
       ]);
+      
+      setProducts(productsData);
       
       // Calcular ventas basándose solo en las notas de salida reales (no eliminadas)
       const salesData = exitNotesData.map(note => ({
@@ -94,10 +102,33 @@ const Accounting: React.FC = () => {
       // Calcular ventas a vendedores = suma de todas las notas de salida
       const totalSalesToSellers = exitNotesData.reduce((sum, note) => sum + note.totalPrice, 0);
       
+      // Calcular costo histórico total (suma de todos los costos de productos en notas de entrada)
+      let totalHistoricalCostValue = 0;
+      entryNotesData.forEach(note => {
+        note.items.forEach(item => {
+          totalHistoricalCostValue += item.cost * item.quantity;
+        });
+      });
+      
+      // Calcular ganancia histórica (diferencia entre total precios 1 y costos históricos)
+      let totalSalePrice1Value = 0;
+      entryNotesData.forEach(note => {
+        note.items.forEach(item => {
+          // Buscar el producto para obtener su precio 1
+          const product = products.find(p => p.id === item.productId);
+          if (product) {
+            totalSalePrice1Value += (product.salePrice1 || 0) * item.quantity;
+          }
+        });
+      });
+      
       // Calcular gastos de paquetería
       console.log('Datos de paquetería cargados:', shippingData.length);
       console.log('Datos de paquetería:', shippingData);
       const shippingTotal = shippingData.reduce((sum, expense) => sum + expense.cost, 0);
+      
+      // Ganancia histórica = Total Precios 1 - Costos Históricos - Gastos de Paquetería
+      const totalHistoricalProfitValue = totalSalePrice1Value - totalHistoricalCostValue - shippingTotal;
       console.log('Total gastos de paquetería:', shippingTotal);
       
       // Calcular totales
@@ -107,6 +138,9 @@ const Accounting: React.FC = () => {
       setTotalShippingCost(shippingTotal);
       setTotalSales(totalSalesToSellers); // Usar datos reales de notas de salida
       setTotalExpenses(totalPurchaseExpenses); // Usar datos reales de notas de entrada
+      setTotalHistoricalCost(totalHistoricalCostValue);
+      setTotalHistoricalProfit(totalHistoricalProfitValue);
+      setTotalSalePrice1(totalSalePrice1Value);
       
       // Debug: Mostrar valores calculados
       console.log('Ventas a Vendedores:', totalSalesToSellers);
@@ -255,6 +289,47 @@ const Accounting: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Asientos</p>
               <p className="text-2xl font-bold text-gray-900">{entries.length}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-indigo-100 rounded-lg">
+              <TrendingDown className="h-6 w-6 text-indigo-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Costo Histórico Total</p>
+              <p className="text-2xl font-bold text-gray-900">${totalHistoricalCost.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">Inversión total en productos</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-emerald-100 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-emerald-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Ganancia Histórica</p>
+              <p className={`text-2xl font-bold ${totalHistoricalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ${totalHistoricalProfit.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500">Beneficio acumulado</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-cyan-100 rounded-lg">
+              <DollarSign className="h-6 w-6 text-cyan-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Total Precios 1</p>
+              <p className="text-2xl font-bold text-gray-900">${totalSalePrice1.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">Valor de venta potencial</p>
             </div>
           </div>
         </div>

@@ -261,6 +261,111 @@ export const inventoryService = {
     }
   },
 
+  // Eliminar productos sin datos válidos (sin peso, costo ni precio)
+  async cleanInvalidInventoryItems(): Promise<void> {
+    try {
+      console.log('Iniciando limpieza de productos sin datos válidos...');
+      
+      const allInventory = await this.getAll();
+      console.log(`Total items en inventario: ${allInventory.length}`);
+      
+      let invalidItemsRemoved = 0;
+      
+      // Identificar items sin datos válidos
+      for (const item of allInventory) {
+        const product = item.product || {};
+        const hasNoWeight = !product.weight || product.weight === 0;
+        const hasNoCost = !item.cost || item.cost === 0;
+        const hasNoPrice = !item.unitPrice || item.unitPrice === 0;
+        const hasNoTotalCost = !item.totalCost || item.totalCost === 0;
+        const hasNoTotalPrice = !item.totalPrice || item.totalPrice === 0;
+        const hasNoQuantity = !item.quantity || item.quantity === 0;
+        
+        // Si no tiene peso Y no tiene costos/precios válidos, es un item inválido
+        if (hasNoWeight && hasNoCost && hasNoPrice && hasNoTotalCost && hasNoTotalPrice) {
+          console.log(`Eliminando item inválido: ${product.name || 'Sin nombre'} (ID: ${item.id})`);
+          console.log(`  - Peso: ${product.weight || 'N/A'}`);
+          console.log(`  - Costo: ${item.cost || 'N/A'}`);
+          console.log(`  - Precio: ${item.unitPrice || 'N/A'}`);
+          console.log(`  - Cantidad: ${item.quantity || 'N/A'}`);
+          
+          await this.delete(item.id);
+          invalidItemsRemoved++;
+        }
+      }
+      
+      console.log(`Limpieza completada. ${invalidItemsRemoved} items inválidos eliminados`);
+      if (invalidItemsRemoved > 0) {
+        toast.success(`Limpieza completada. ${invalidItemsRemoved} items sin datos válidos eliminados`);
+      }
+    } catch (error) {
+      console.error('Error cleaning invalid inventory items:', error);
+      toast.error('Error al limpiar items inválidos');
+      throw error;
+    }
+  },
+
+  // Limpiar productos duplicados en inventario
+  async cleanDuplicateInventory(): Promise<void> {
+    try {
+      console.log('Iniciando limpieza de inventario duplicado...');
+      
+      const allInventory = await this.getAll();
+      console.log(`Total items en inventario: ${allInventory.length}`);
+      
+      // Agrupar por productId
+      const groupedByProduct = allInventory.reduce((acc, item) => {
+        if (!acc[item.productId]) {
+          acc[item.productId] = [];
+        }
+        acc[item.productId].push(item);
+        return acc;
+      }, {} as Record<string, InventoryItem[]>);
+      
+      let duplicatesRemoved = 0;
+      
+      // Procesar cada grupo de productos
+      for (const [productId, items] of Object.entries(groupedByProduct)) {
+        if (items.length > 1) {
+          console.log(`Producto ${productId} tiene ${items.length} entradas duplicadas`);
+          
+          // Calcular totales combinados
+          const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+          const totalCost = items.reduce((sum, item) => sum + item.totalCost, 0);
+          const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
+          const averageCost = totalCost / totalQuantity;
+          const averageUnitPrice = totalPrice / totalQuantity;
+          
+          // Mantener el primer item y actualizar sus valores
+          const firstItem = items[0];
+          await this.update(firstItem.id, {
+            quantity: totalQuantity,
+            totalCost: totalCost,
+            totalPrice: totalPrice,
+            cost: averageCost,
+            unitPrice: averageUnitPrice,
+            totalValue: totalCost
+          });
+          
+          // Eliminar los items duplicados
+          for (let i = 1; i < items.length; i++) {
+            await this.delete(items[i].id);
+            duplicatesRemoved++;
+          }
+          
+          console.log(`Consolidado producto ${productId}: ${totalQuantity} unidades`);
+        }
+      }
+      
+      console.log(`Limpieza completada. ${duplicatesRemoved} items duplicados eliminados`);
+      toast.success(`Limpieza completada. ${duplicatesRemoved} items duplicados eliminados`);
+    } catch (error) {
+      console.error('Error cleaning duplicate inventory:', error);
+      toast.error('Error al limpiar inventario duplicado');
+      throw error;
+    }
+  },
+
   // Regenerar inventario completo desde notas de entrada
   async regenerateInventory(): Promise<void> {
     try {

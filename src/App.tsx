@@ -15,6 +15,7 @@ import Accounting from './pages/Accounting';
 import Sellers from './pages/Sellers';
 import SellerDetails from './pages/SellerDetails';
 import SellerPanel from './pages/SellerPanel';
+import Orders from './pages/Orders';
 import Settings from './pages/Settings';
 import MobileScanner from './pages/MobileScanner';
 
@@ -37,6 +38,7 @@ function App() {
               <Route path="/sellers" element={<Sellers />} />
               <Route path="/sellers/:id" element={<SellerDetails />} />
               <Route path="/seller-panel/:id" element={<SellerPanel />} />
+              <Route path="/orders" element={<Orders />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/mobile-scanner" element={<MobileScanner />} />
             </Routes>

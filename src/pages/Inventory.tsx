@@ -23,9 +23,42 @@ const Inventory: React.FC = () => {
     location: '',
     status: 'stock' as 'stock' | 'in-transit' | 'delivered'
   });
+  
+  // Estados para modal de imagen
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>('');
 
   useEffect(() => {
     loadData();
+    
+    // Exponer función de limpieza en el objeto window para uso manual
+    (window as any).cleanInvalidItems = async () => {
+      try {
+        console.log('Ejecutando limpieza manual...');
+        const allInventory = await inventoryService.getAll();
+        console.log(`Total items: ${allInventory.length}`);
+        
+        let removed = 0;
+        for (const item of allInventory) {
+          const product = item.product || {};
+          const hasNoWeight = !product.weight || product.weight === 0;
+          const hasNoCost = !item.cost || item.cost === 0;
+          const hasNoPrice = !item.unitPrice || item.unitPrice === 0;
+          
+          if (hasNoWeight && hasNoCost && hasNoPrice) {
+            console.log(`Eliminando: ${product.name || 'Sin nombre'} - Peso: ${product.weight}, Costo: ${item.cost}, Precio: ${item.unitPrice}`);
+            await inventoryService.delete(item.id);
+            removed++;
+          }
+        }
+        
+        console.log(`✅ Eliminados ${removed} items inválidos`);
+        await loadData();
+        alert(`Se eliminaron ${removed} productos sin datos válidos`);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
   }, []);
 
   const loadData = async () => {
@@ -113,6 +146,11 @@ const Inventory: React.FC = () => {
     });
   };
 
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setShowImageModal(true);
+  };
+
   const handleRegenerateInventory = async () => {
     if (window.confirm('¿Estás seguro de que quieres regenerar el inventario? Esto eliminará todo el inventario actual y lo reconstruirá desde las notas de entrada.')) {
       try {
@@ -188,6 +226,44 @@ const Inventory: React.FC = () => {
           <button className="btn-primary flex items-center">
             <Plus className="h-4 w-4 mr-2" />
             Ajuste de Inventario
+          </button>
+          <button 
+            onClick={async () => {
+              if (window.confirm('¿Estás seguro de que quieres eliminar los productos sin datos válidos (sin peso, costo ni precio)?')) {
+                try {
+                  setLoading(true);
+                  await inventoryService.cleanInvalidInventoryItems();
+                  await loadData();
+                } catch (error) {
+                  console.error('Error cleaning invalid items:', error);
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors flex items-center"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Limpiar Sin Datos
+          </button>
+          <button 
+            onClick={async () => {
+              if (window.confirm('¿Estás seguro de que quieres limpiar los productos duplicados? Esta acción consolidará los productos duplicados en uno solo.')) {
+                try {
+                  setLoading(true);
+                  await inventoryService.cleanDuplicateInventory();
+                  await loadData();
+                } catch (error) {
+                  console.error('Error cleaning duplicates:', error);
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+            className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors flex items-center"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Limpiar Duplicados
           </button>
           <button 
             onClick={handleRegenerateInventory}
@@ -322,9 +398,11 @@ const Inventory: React.FC = () => {
                         <div className="h-10 w-10 flex-shrink-0">
                           {item.product.imageUrl ? (
                             <img
-                              className="h-10 w-10 rounded-lg object-cover"
+                              className="h-10 w-10 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
                               src={item.product.imageUrl}
                               alt={item.product.name}
+                              onClick={() => handleImageClick(item.product.imageUrl!)}
+                              title="Hacer clic para ver imagen grande"
                             />
                           ) : (
                             <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
@@ -544,6 +622,25 @@ const Inventory: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Imagen */}
+      {showImageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="relative max-w-2xl max-h-[70vh] w-full mx-4 flex items-center justify-center">
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition-all"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <img
+              src={selectedImage}
+              alt="Imagen del producto"
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
           </div>
         </div>
       )}

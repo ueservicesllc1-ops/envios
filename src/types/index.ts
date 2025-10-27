@@ -14,6 +14,9 @@ export interface Product {
   salePrice2: number;
   barcode?: string;
   imageUrl?: string;
+  // Campos específicos para perfumes
+  brand?: string; // Marca del perfume
+  perfumeName?: string; // Nombre específico del perfume
   createdAt: Date;
   updatedAt: Date;
 }

@@ -32,6 +32,8 @@ const ExitNotes: React.FC = () => {
     weight: number;
     unitPrice: number;
   }>>([]);
+  const [showTemporaryNotes, setShowTemporaryNotes] = useState(false);
+  const [temporaryNotes, setTemporaryNotes] = useState<any[]>([]);
   const [skuSearch, setSkuSearch] = useState('');
   const [totalWeight, setTotalWeight] = useState(0);
 
@@ -44,6 +46,67 @@ const ExitNotes: React.FC = () => {
     const newTotalWeight = items.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
     setTotalWeight(newTotalWeight);
   }, [items]);
+
+  const openModal = () => {
+    setFormData({ sellerId: '', notes: '' });
+    setItems([]);
+    setShowModal(true);
+    
+    // Cargar borradores temporales disponibles
+    loadTemporaryDrafts();
+  };
+
+  const loadTemporaryDrafts = () => {
+    const drafts = JSON.parse(localStorage.getItem('exitNoteDrafts') || '[]');
+    if (drafts.length > 0) {
+      console.log('Borradores temporales disponibles:', drafts);
+      // Mostrar opción de cargar borrador si hay alguno
+      if (window.confirm(`Tienes ${drafts.length} borrador(es) temporal(es) guardado(s). ¿Quieres cargar el más reciente?`)) {
+        const latestDraft = drafts[drafts.length - 1];
+        loadDraft(latestDraft);
+      }
+    }
+  };
+
+  const loadDraft = (draft: any) => {
+    setFormData({
+      sellerId: draft.sellerId,
+      notes: draft.notes || ''
+    });
+    
+    const draftItems = draft.items.map((item: any) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      size: item.size,
+      weight: item.weight,
+      unitPrice: item.unitPrice
+    }));
+    
+    setItems(draftItems);
+    toast.success('Borrador temporal cargado');
+  };
+
+  const loadTemporaryNotes = () => {
+    const drafts = JSON.parse(localStorage.getItem('exitNoteDrafts') || '[]');
+    setTemporaryNotes(drafts);
+    setShowTemporaryNotes(true);
+  };
+
+  const deleteTemporaryNote = (draftId: string) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este borrador temporal?')) {
+      const drafts = JSON.parse(localStorage.getItem('exitNoteDrafts') || '[]');
+      const updatedDrafts = drafts.filter((draft: any) => draft.id !== draftId);
+      localStorage.setItem('exitNoteDrafts', JSON.stringify(updatedDrafts));
+      setTemporaryNotes(updatedDrafts);
+      toast.success('Borrador temporal eliminado');
+    }
+  };
+
+  const editTemporaryNote = (draft: any) => {
+    setShowTemporaryNotes(false);
+    setShowModal(true);
+    loadDraft(draft);
+  };
 
   const loadNotes = async () => {
     try {
@@ -253,6 +316,71 @@ const ExitNotes: React.FC = () => {
     }
   };
 
+  const handleSaveTemporary = async () => {
+    try {
+      if (items.length === 0) {
+        toast.error('Debe agregar al menos un producto');
+        return;
+      }
+
+      const selectedSeller = sellers.find(s => s.id === formData.sellerId);
+      if (!selectedSeller) {
+        toast.error('Por favor selecciona un vendedor');
+        return;
+      }
+
+      // Crear items con información completa del producto
+      const exitNoteItems = items.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (!product) throw new Error('Producto no encontrado');
+        
+        return {
+          id: Date.now().toString() + Math.random(),
+          productId: item.productId,
+          product: product,
+          quantity: item.quantity,
+          size: item.size,
+          weight: item.weight,
+          unitPrice: item.unitPrice,
+          totalPrice: item.unitPrice * item.quantity
+        };
+      });
+
+      const temporaryNote = {
+        sellerId: formData.sellerId,
+        sellerName: selectedSeller.name,
+        sellerEmail: selectedSeller.email,
+        items: exitNoteItems,
+        totalWeight: totalWeight,
+        totalItems: items.length,
+        totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
+        totalAmount: exitNoteItems.reduce((sum, item) => sum + item.totalPrice, 0),
+        status: 'temporary' as const,
+        notes: formData.notes,
+        date: new Date(),
+        createdBy: 'admin'
+      };
+
+      // Guardar en localStorage como borrador temporal
+      const existingDrafts = JSON.parse(localStorage.getItem('exitNoteDrafts') || '[]');
+      const draftId = `draft_${Date.now()}`;
+      
+      existingDrafts.push({
+        id: draftId,
+        ...temporaryNote,
+        savedAt: new Date().toISOString()
+      });
+      
+      localStorage.setItem('exitNoteDrafts', JSON.stringify(existingDrafts));
+      
+      toast.success('Nota de salida guardada temporalmente');
+      console.log('Borrador guardado:', temporaryNote);
+    } catch (error) {
+      console.error('Error saving temporary note:', error);
+      toast.error('Error al guardar temporalmente');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -428,11 +556,18 @@ const ExitNotes: React.FC = () => {
         </div>
         <div className="flex space-x-3">
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={openModal}
             className="btn-primary flex items-center"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nueva Nota
+          </button>
+          <button 
+            onClick={loadTemporaryNotes}
+            className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors flex items-center"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Notas Guardadas Temporalmente
           </button>
           <button
             onClick={async () => {
@@ -685,7 +820,7 @@ const ExitNotes: React.FC = () => {
           {!searchTerm && (
             <div className="mt-6">
               <button
-                onClick={() => setShowModal(true)}
+                onClick={openModal}
                 className="btn-primary"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -693,6 +828,85 @@ const ExitNotes: React.FC = () => {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal para notas temporales */}
+      {showTemporaryNotes && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Notas Guardadas Temporalmente</h3>
+              <button
+                onClick={() => setShowTemporaryNotes(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {temporaryNotes.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">No hay notas temporales guardadas</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {temporaryNotes.map((draft, index) => (
+                  <div key={draft.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">
+                          Borrador #{index + 1} - {draft.sellerName}
+                        </h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Guardado: {new Date(draft.savedAt).toLocaleString()}
+                        </p>
+                        <div className="mt-2 text-sm text-gray-600">
+                          <p><strong>Productos:</strong> {draft.totalItems}</p>
+                          <p><strong>Cantidad total:</strong> {draft.totalQuantity}</p>
+                          <p><strong>Peso total:</strong> {(draft.totalWeight / 453.592).toFixed(2)} lbs</p>
+                          <p><strong>Valor total:</strong> ${draft.totalAmount.toLocaleString()}</p>
+                          {draft.notes && (
+                            <p><strong>Notas:</strong> {draft.notes}</p>
+                          )}
+                        </div>
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-gray-700">Productos incluidos:</p>
+                          <div className="mt-1 space-y-1">
+                            {draft.items.slice(0, 3).map((item: any, itemIndex: number) => (
+                              <p key={itemIndex} className="text-xs text-gray-600">
+                                • {item.product.name} - Cantidad: {item.quantity}
+                              </p>
+                            ))}
+                            {draft.items.length > 3 && (
+                              <p className="text-xs text-gray-500">
+                                ... y {draft.items.length - 3} productos más
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex space-x-2 ml-4">
+                        <button
+                          onClick={() => editTemporaryNote(draft)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => deleteTemporaryNote(draft.id)}
+                          className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -968,6 +1182,14 @@ const ExitNotes: React.FC = () => {
                   Cancelar
                 </button>
                 <button
+                  type="button"
+                  onClick={handleSaveTemporary}
+                  className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors"
+                  disabled={items.length === 0}
+                >
+                  Guardar Temporal
+                </button>
+                <button
                   type="submit"
                   className="btn-primary"
                   disabled={items.length === 0}
@@ -1235,32 +1457,72 @@ const ExitNotes: React.FC = () => {
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+            {/* Buscador por SKU */}
+            <div className="p-4 border-b bg-gray-50">
+              <div className="flex items-center space-x-3">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por SKU..."
+                      value={skuSearch}
+                      onChange={(e) => setSkuSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSkuSearch('')}
+                  className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Limpiar
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                {products.map((product) => (
-                  <div
-                    key={product.id}
-                    className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => {
-                      const existingItem = items.find(item => item.productId === product.id);
-                      if (existingItem) {
-                        setItems(items.map(item => 
-                          item.productId === product.id 
-                            ? { ...item, quantity: item.quantity + 1 }
-                            : item
-                        ));
-                      } else {
-                        setItems([...items, {
-                          productId: product.id,
-                          quantity: 1,
-                          size: product.size || '',
-                          weight: product.weight || 0,
-                          unitPrice: product.salePrice1 || 0
-                        }]);
-                      }
-                      setShowProductGrid(false);
-                    }}
-                  >
+                {products
+                  .filter(product => {
+                    if (!skuSearch.trim()) return true;
+                    return product.sku.toLowerCase().includes(skuSearch.toLowerCase());
+                  })
+                  .map((product) => {
+                  // Verificar si el producto está en stock
+                  const productInInventory = inventory.find(item => item.productId === product.id);
+                  const isInStock = productInInventory && productInInventory.quantity > 0;
+                  
+                  return (
+                    <div
+                      key={product.id}
+                      className={`border border-gray-200 rounded-lg p-3 transition-shadow ${
+                        isInStock 
+                          ? 'hover:shadow-md cursor-pointer' 
+                          : 'opacity-50 cursor-not-allowed'
+                      }`}
+                      onClick={() => {
+                        if (!isInStock) return; // No permitir click si no hay stock
+                        
+                        const existingItem = items.find(item => item.productId === product.id);
+                        if (existingItem) {
+                          setItems(items.map(item => 
+                            item.productId === product.id 
+                              ? { ...item, quantity: item.quantity + 1 }
+                              : item
+                          ));
+                        } else {
+                          setItems([...items, {
+                            productId: product.id,
+                            quantity: 1,
+                            size: product.size || '',
+                            weight: product.weight || 0,
+                            unitPrice: product.salePrice1 || 0
+                          }]);
+                        }
+                        setShowProductGrid(false);
+                      }}
+                    >
                     <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden">
                       {product.imageUrl ? (
                         <img
@@ -1288,9 +1550,15 @@ const ExitNotes: React.FC = () => {
                       <p className="text-xs font-semibold text-green-600">
                         ${product.salePrice1?.toFixed(2) || '0.00'}
                       </p>
+                      {!isInStock && (
+                        <div className="mt-2 px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full">
+                          Sin Stock
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               
               {products.length === 0 && (

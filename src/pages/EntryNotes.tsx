@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, CheckCircle, XCircle, FileText, X, Trash2, Scan, Edit } from 'lucide-react';
+import { Plus, Search, Eye, CheckCircle, XCircle, FileText, X, Trash2, Scan, Edit, Package } from 'lucide-react';
 import { EntryNote, Product } from '../types';
 import { entryNoteService } from '../services/entryNoteService';
 import { productService } from '../services/productService';
@@ -17,6 +17,10 @@ const EntryNotes: React.FC = () => {
   const [viewingNote, setViewingNote] = useState<EntryNote | null>(null);
   const [editingNote, setEditingNote] = useState<EntryNote | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showProductGrid, setShowProductGrid] = useState(false);
+  const [skuSearch, setSkuSearch] = useState('');
+  const [nameSearch, setNameSearch] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
   const [formData, setFormData] = useState({
     supplier: '',
     location: ''
@@ -165,6 +169,14 @@ const EntryNotes: React.FC = () => {
       return;
     }
 
+    // Validar que no haya productos duplicados en la misma nota
+    const productIds = items.map(item => item.productId);
+    const uniqueProductIds = new Set(productIds);
+    if (productIds.length !== uniqueProductIds.size) {
+      toast.error('No puede agregar el mismo producto múltiples veces en una nota');
+      return;
+    }
+
     try {
       const entryNoteData = {
         supplier: formData.supplier,
@@ -192,7 +204,12 @@ const EntryNotes: React.FC = () => {
       for (const item of items) {
         const product = products.find(p => p.id === item.productId);
         if (product) {
-          await inventoryService.addStock(item.productId, item.quantity, item.cost, item.unitPrice, formData.location);
+          try {
+            await inventoryService.addStock(item.productId, item.quantity, item.cost, item.unitPrice, formData.location);
+          } catch (error) {
+            console.error(`Error updating inventory for product ${item.productId}:`, error);
+            // Continuar con los otros productos aunque uno falle
+          }
         }
       }
 
@@ -503,7 +520,7 @@ const EntryNotes: React.FC = () => {
                   <div className="flex space-x-2">
                     <button
                       type="button"
-                      onClick={addItem}
+                      onClick={() => setShowProductGrid(true)}
                       className="btn-secondary flex items-center"
                     >
                       <Plus className="h-4 w-4 mr-2" />
@@ -983,6 +1000,210 @@ const EntryNotes: React.FC = () => {
                   Guardar Cambios
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de cuadrícula de productos */}
+      {showProductGrid && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full mx-4 max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold text-gray-900">Seleccionar Producto</h3>
+              <button
+                onClick={() => setShowProductGrid(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            {/* Filtros de búsqueda */}
+            <div className="p-4 border-b bg-gray-50">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Buscador por SKU */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por SKU</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="SKU del producto..."
+                      value={skuSearch}
+                      onChange={(e) => setSkuSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Buscador por Nombre */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Buscar por Nombre</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Nombre del producto..."
+                      value={nameSearch}
+                      onChange={(e) => setNameSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Filtro por Fecha */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Filtrar por Fecha</label>
+                  <select
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="">Todas las fechas</option>
+                    <option value="today">Hoy</option>
+                    <option value="week">Esta semana</option>
+                    <option value="month">Este mes</option>
+                    <option value="last-month">Mes pasado</option>
+                    <option value="last-3-months">Últimos 3 meses</option>
+                    <option value="last-6-months">Últimos 6 meses</option>
+                    <option value="year">Este año</option>
+                  </select>
+                </div>
+              </div>
+              
+              {/* Botones de limpiar filtros */}
+              <div className="flex justify-end mt-3 space-x-2">
+                <button
+                  onClick={() => {
+                    setSkuSearch('');
+                    setNameSearch('');
+                    setDateFilter('');
+                  }}
+                  className="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Limpiar Filtros
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                {products
+                  .filter(product => {
+                    // Filtro por SKU
+                    const matchesSku = !skuSearch.trim() || 
+                      product.sku.toLowerCase().includes(skuSearch.toLowerCase());
+                    
+                    // Filtro por nombre
+                    const matchesName = !nameSearch.trim() || 
+                      product.name.toLowerCase().includes(nameSearch.toLowerCase());
+                    
+                    // Filtro por fecha
+                    let matchesDate = true;
+                    if (dateFilter) {
+                      const productDate = new Date(product.createdAt);
+                      const now = new Date();
+                      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                      
+                      switch (dateFilter) {
+                        case 'today':
+                          matchesDate = productDate >= today;
+                          break;
+                        case 'week':
+                          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          matchesDate = productDate >= weekAgo;
+                          break;
+                        case 'month':
+                          const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          matchesDate = productDate >= monthAgo;
+                          break;
+                        case 'last-month':
+                          const twoMonthsAgo = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
+                          const oneMonthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                          matchesDate = productDate >= twoMonthsAgo && productDate < oneMonthAgo;
+                          break;
+                        case 'last-3-months':
+                          const threeMonthsAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
+                          matchesDate = productDate >= threeMonthsAgo;
+                          break;
+                        case 'last-6-months':
+                          const sixMonthsAgo = new Date(today.getTime() - 180 * 24 * 60 * 60 * 1000);
+                          matchesDate = productDate >= sixMonthsAgo;
+                          break;
+                        case 'year':
+                          const yearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000);
+                          matchesDate = productDate >= yearAgo;
+                          break;
+                      }
+                    }
+                    
+                    return matchesSku && matchesName && matchesDate;
+                  })
+                  .map((product) => {
+                  return (
+                    <div
+                      key={product.id}
+                      className="border border-gray-200 rounded-lg p-3 transition-shadow hover:shadow-md cursor-pointer"
+                      onClick={() => {
+                        const existingItem = items.find(item => item.productId === product.id);
+                        if (existingItem) {
+                          setItems(items.map(item => 
+                            item.productId === product.id 
+                              ? { ...item, quantity: item.quantity + 1 }
+                              : item
+                          ));
+                        } else {
+                          setItems([...items, {
+                            productId: product.id,
+                            quantity: 1,
+                            cost: product.cost || 0, // Cargar el costo del producto
+                            unitPrice: product.salePrice1 || 0
+                          }]);
+                        }
+                        setShowProductGrid(false);
+                        toast.success(`Producto agregado: ${product.name}`);
+                      }}
+                    >
+                    <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <Package className="h-8 w-8" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <h4 className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
+                        {product.name}
+                      </h4>
+                      <p className="text-xs text-gray-500 mb-1">SKU: {product.sku}</p>
+                      {product.color && (
+                        <p className="text-xs text-gray-500 mb-1">Color: {product.color}</p>
+                      )}
+                      {product.size && (
+                        <p className="text-xs text-gray-500 mb-1">Talla: {product.size}</p>
+                      )}
+                      <p className="text-xs font-semibold text-green-600">
+                        ${product.salePrice1?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+              
+              {products.length === 0 && (
+                <div className="text-center py-8">
+                  <Package className="mx-auto h-12 w-12 text-gray-400" />
+                  <p className="mt-2 text-sm text-gray-500">No hay productos disponibles</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

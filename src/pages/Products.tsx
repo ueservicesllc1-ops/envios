@@ -18,6 +18,11 @@ const Products: React.FC = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+  const [showExistingProductModal, setShowExistingProductModal] = useState(false);
+  const [existingProduct, setExistingProduct] = useState<Product | null>(null);
+  const [skuSearching, setSkuSearching] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>('');
   
   // Estados para filtros
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -36,12 +41,77 @@ const Products: React.FC = () => {
     cost: 0,
     salePrice1: 0,
     salePrice2: 0,
-    barcode: '',
-    imageUrl: ''
+    imageUrl: '',
+    // Campos específicos para perfumes
+    brand: '',
+    perfumeName: ''
   });
 
   useEffect(() => {
     loadProducts();
+    
+    // Ejecutar limpieza automáticamente
+    const autoClean = async () => {
+      try {
+        console.log('Ejecutando limpieza automática de productos...');
+        const allProducts = await productService.getAll();
+        console.log(`Total productos: ${allProducts.length}`);
+        
+        let removed = 0;
+        for (const product of allProducts) {
+          const hasNoWeight = !product.weight || product.weight === 0;
+          const hasNoCost = !product.cost || product.cost === 0;
+          const hasNoPrice = !product.salePrice1 || product.salePrice1 === 0;
+          
+          if (hasNoWeight && hasNoCost && hasNoPrice) {
+            console.log(`Eliminando producto: ${product.name || 'Sin nombre'} - Peso: ${product.weight}, Costo: ${product.cost}, Precio: ${product.salePrice1}`);
+            await productService.delete(product.id);
+            removed++;
+          }
+        }
+        
+        if (removed > 0) {
+          console.log(`✅ Eliminados ${removed} productos inválidos`);
+          await loadProducts();
+          alert(`Se eliminaron ${removed} productos sin datos válidos`);
+        } else {
+          console.log('✅ No se encontraron productos inválidos para eliminar');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
+    
+    // Ejecutar limpieza después de 2 segundos
+    setTimeout(autoClean, 2000);
+    
+    // Exponer función de limpieza en el objeto window para uso manual
+    (window as any).cleanInvalidProducts = async () => {
+      try {
+        console.log('Ejecutando limpieza manual de productos...');
+        const allProducts = await productService.getAll();
+        console.log(`Total productos: ${allProducts.length}`);
+        
+        let removed = 0;
+        for (const product of allProducts) {
+          const hasNoWeight = !product.weight || product.weight === 0;
+          const hasNoCost = !product.cost || product.cost === 0;
+          const hasNoPrice = !product.salePrice1 || product.salePrice1 === 0;
+          
+          if (hasNoWeight && hasNoCost && hasNoPrice) {
+            console.log(`Eliminando producto: ${product.name || 'Sin nombre'} - Peso: ${product.weight}, Costo: ${product.cost}, Precio: ${product.salePrice1}`);
+            await productService.delete(product.id);
+            removed++;
+          }
+        }
+        
+        console.log(`✅ Eliminados ${removed} productos inválidos`);
+        await loadProducts();
+        alert(`Se eliminaron ${removed} productos sin datos válidos`);
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    };
   }, []);
 
   const loadProducts = async () => {
@@ -170,22 +240,51 @@ const Products: React.FC = () => {
     }
   };
 
-  const handleBarcodeScan = (barcode: string) => {
-    // Verificar si el SKU ya existe
-    const existingProduct = products.find(p => p.sku === barcode);
-    if (existingProduct) {
-      toast.error(`Ya existe un producto con el SKU: ${barcode}`);
-      return;
+  const handleBarcodeScan = async (barcode: string) => {
+    try {
+      // Verificar si el SKU ya existe en la base de datos
+      const existingProduct = await productService.getBySku(barcode);
+      if (existingProduct) {
+        setExistingProduct(existingProduct);
+        setShowExistingProductModal(true);
+        return;
+      }
+      
+      // Auto-rellenar el campo SKU
+      setFormData(prev => ({
+        ...prev,
+        sku: barcode
+      }));
+      
+      toast.success(`SKU escaneado: ${barcode}`);
+      setShowScanner(false);
+    } catch (error) {
+      console.error('Error verifying scanned SKU:', error);
+      toast.error('Error al verificar el código escaneado');
     }
+  };
+
+  const handleSkuSearch = async (sku: string) => {
+    if (!sku.trim()) return;
     
-    // Auto-rellenar el campo SKU
-    setFormData(prev => ({
-      ...prev,
-      sku: barcode
-    }));
+    setSkuSearching(true);
     
-    toast.success(`SKU escaneado: ${barcode}`);
-    setShowScanner(false);
+    try {
+      // Buscar producto existente directamente en la base de datos
+      const existingProduct = await productService.getBySku(sku);
+      
+      if (existingProduct) {
+        setExistingProduct(existingProduct);
+        setShowExistingProductModal(true);
+      } else {
+        toast.success('SKU disponible - puedes continuar agregando el producto');
+      }
+    } catch (error) {
+      console.error('Error searching SKU:', error);
+      toast.error('Error al verificar el SKU');
+    } finally {
+      setSkuSearching(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -219,8 +318,9 @@ const Products: React.FC = () => {
         cost: 0,
         salePrice1: 0,
         salePrice2: 0,
-        barcode: '',
-        imageUrl: ''
+        imageUrl: '',
+        brand: '',
+        perfumeName: ''
       });
     } catch (error) {
       console.error('Error saving product:', error);
@@ -241,14 +341,20 @@ const Products: React.FC = () => {
       cost: product.cost,
       salePrice1: product.salePrice1,
       salePrice2: product.salePrice2,
-      barcode: product.barcode || '',
-      imageUrl: product.imageUrl || ''
+      imageUrl: product.imageUrl || '',
+      brand: product.brand || '',
+      perfumeName: product.perfumeName || ''
     });
     setShowModal(true);
   };
 
   const handleView = (product: Product) => {
     setViewingProduct(product);
+  };
+
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setShowImageModal(true);
   };
 
   if (loading) {
@@ -355,6 +461,12 @@ const Products: React.FC = () => {
               className="input-field"
             >
               <option value="">Todas las categorías</option>
+              <option value="Electrónicos">Electrónicos</option>
+              <option value="Ropa">Ropa</option>
+              <option value="Hogar">Hogar</option>
+              <option value="Deportes">Deportes</option>
+              <option value="Libros">Libros</option>
+              <option value="Perfumes">Perfumes</option>
               <option value="ZAPATOS">ZAPATOS</option>
               <option value="VITAMINAS">VITAMINAS</option>
               <option value="Soy Burro">Soy Burro</option>
@@ -444,9 +556,11 @@ const Products: React.FC = () => {
                       <div className="h-10 w-10 flex-shrink-0">
                         {product.imageUrl ? (
                           <img
-                            className="h-10 w-10 rounded-lg object-cover"
+                            className="h-10 w-10 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
                             src={product.imageUrl}
                             alt={product.name}
+                            onClick={() => handleImageClick(product.imageUrl!)}
+                            title="Hacer clic para ver imagen grande"
                           />
                         ) : (
                           <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
@@ -471,11 +585,20 @@ const Products: React.FC = () => {
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {product.category}
                     </span>
-                    {(product.size || product.color || product.color2) && (
+                    {(product.size || product.color || product.color2 || product.brand || product.perfumeName) && (
                       <div className="mt-1 text-xs text-gray-500">
-                        {product.size && <span className="mr-2">Talla: {product.size}</span>}
-                        {product.color && <span className="mr-2">Color: {product.color}</span>}
-                        {product.color2 && <span>Color 2: {product.color2}</span>}
+                        {product.category === 'Perfumes' ? (
+                          <>
+                            {product.brand && <span className="mr-2">Marca: {product.brand}</span>}
+                            {product.perfumeName && <span>Perfume: {product.perfumeName}</span>}
+                          </>
+                        ) : (
+                          <>
+                            {product.size && <span className="mr-2">Talla: {product.size}</span>}
+                            {product.color && <span className="mr-2">Color: {product.color}</span>}
+                            {product.color2 && <span>Color 2: {product.color2}</span>}
+                          </>
+                        )}
                       </div>
                     )}
                   </td>
@@ -486,17 +609,17 @@ const Products: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-medium text-gray-900">
-                      ${product.cost.toLocaleString()}
+                      ${(product.cost || 0).toLocaleString()}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-medium text-gray-900">
-                      ${product.salePrice1.toLocaleString()}
+                      ${(product.salePrice1 || 0).toLocaleString()}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-medium text-gray-900">
-                      ${product.salePrice2.toLocaleString()}
+                      ${(product.salePrice2 || 0).toLocaleString()}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -602,8 +725,9 @@ const Products: React.FC = () => {
                     cost: 0,
                     salePrice1: 0,
                     salePrice2: 0,
-                    barcode: '',
-                    imageUrl: ''
+                    imageUrl: '',
+                    brand: '',
+                    perfumeName: ''
                   });
                 }}
                 className="p-1 text-gray-400 hover:text-gray-600"
@@ -638,6 +762,7 @@ const Products: React.FC = () => {
                       required
                       value={formData.sku}
                       onChange={(e) => setFormData({...formData, sku: e.target.value})}
+                      onBlur={(e) => handleSkuSearch(e.target.value)}
                       className="input-field flex-1"
                       placeholder="Ej: 1234567890123"
                     />
@@ -648,6 +773,19 @@ const Products: React.FC = () => {
                       title="Escanear código de barras"
                     >
                       <Scan className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSkuSearch(formData.sku)}
+                      disabled={skuSearching || !formData.sku.trim()}
+                      className="btn-secondary flex items-center px-3"
+                      title="Verificar si el SKU existe"
+                    >
+                      {skuSearching ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -668,6 +806,7 @@ const Products: React.FC = () => {
                     <option value="Hogar">Hogar</option>
                     <option value="Deportes">Deportes</option>
                     <option value="Libros">Libros</option>
+                    <option value="Perfumes">Perfumes</option>
                     <option value="ZAPATOS">ZAPATOS</option>
                     <option value="VITAMINAS">VITAMINAS</option>
                     <option value="Soy Burro">Soy Burro</option>
@@ -675,78 +814,131 @@ const Products: React.FC = () => {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Talla
-                    </label>
-                    <select
-                      value={formData.size}
-                      onChange={(e) => setFormData({...formData, size: e.target.value})}
-                      className="input-field"
-                    >
-                      <option value="">Seleccionar talla</option>
-                      <option value="S">S</option>
-                      <option value="M">M</option>
-                      <option value="L">L</option>
-                      <option value="XL">XL</option>
-                      <option value="XXL">XXL</option>
-                      <option value="36">36</option>
-                      <option value="37">37</option>
-                      <option value="38">38</option>
-                      <option value="39">39</option>
-                      <option value="40">40</option>
-                      <option value="41">41</option>
-                      <option value="42">42</option>
-                      <option value="43">43</option>
-                      <option value="44">44</option>
-                      <option value="45">45</option>
-                      <option value="4">4</option>
-                      <option value="4.5">4.5</option>
-                      <option value="5">5</option>
-                      <option value="5.5">5.5</option>
-                      <option value="6">6</option>
-                      <option value="6.5">6.5</option>
-                      <option value="7">7</option>
-                      <option value="7.5">7.5</option>
-                      <option value="8">8</option>
-                      <option value="8.5">8.5</option>
-                      <option value="9">9</option>
-                      <option value="9.5">9.5</option>
-                      <option value="10">10</option>
-                      <option value="10.5">10.5</option>
-                      <option value="11">11</option>
-                      <option value="11.5">11.5</option>
-                      <option value="12">12</option>
-                      <option value="Sin talla">Sin talla</option>
-                    </select>
+                {/* Campos dinámicos según la categoría */}
+                {formData.category === 'Perfumes' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Marca *
+                      </label>
+                      <select
+                        required
+                        value={formData.brand}
+                        onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                        className="input-field"
+                      >
+                        <option value="">Seleccionar marca</option>
+                        <option value="Lattafa">Lattafa</option>
+                        <option value="Chanel">Chanel</option>
+                        <option value="Dior">Dior</option>
+                        <option value="Versace">Versace</option>
+                        <option value="Armani">Armani</option>
+                        <option value="Gucci">Gucci</option>
+                        <option value="Prada">Prada</option>
+                        <option value="Hugo Boss">Hugo Boss</option>
+                        <option value="Calvin Klein">Calvin Klein</option>
+                        <option value="Tommy Hilfiger">Tommy Hilfiger</option>
+                        <option value="Lacoste">Lacoste</option>
+                        <option value="Polo Ralph Lauren">Polo Ralph Lauren</option>
+                        <option value="Burberry">Burberry</option>
+                        <option value="Yves Saint Laurent">Yves Saint Laurent</option>
+                        <option value="Dolce & Gabbana">Dolce & Gabbana</option>
+                        <option value="Otra">Otra</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre del Perfume *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.perfumeName}
+                        onChange={(e) => setFormData({...formData, perfumeName: e.target.value})}
+                        className="input-field"
+                        placeholder="Ej: Eau de Toilette"
+                      />
+                    </div>
                   </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Color 1
-                    </label>
-                    <select
-                      value={formData.color}
-                      onChange={(e) => setFormData({...formData, color: e.target.value})}
-                      className="input-field"
-                    >
-                      <option value="">Seleccionar color</option>
-                      <option value="Azul">Azul</option>
-                      <option value="Rojo">Rojo</option>
-                      <option value="Verde">Verde</option>
-                      <option value="Negro">Negro</option>
-                      <option value="Blanco">Blanco</option>
-                      <option value="Gris">Gris</option>
-                      <option value="Amarillo">Amarillo</option>
-                      <option value="Rosa">Rosa</option>
-                      <option value="Morado">Morado</option>
-                      <option value="Naranja">Naranja</option>
-                      <option value="Vino">Vino</option>
-                      <option value="Turqueza">Turqueza</option>
-                      <option value="Celeste">Celeste</option>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Talla
+                      </label>
+                      <select
+                        value={formData.size}
+                        onChange={(e) => setFormData({...formData, size: e.target.value})}
+                        className="input-field"
+                      >
+                        <option value="">Seleccionar talla</option>
+                        <option value="XS">XS</option>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="XXL">XXL</option>
+                        <option value="3XL">3XL</option>
+                        <option value="36">36</option>
+                        <option value="37">37</option>
+                        <option value="38">38</option>
+                        <option value="39">39</option>
+                        <option value="40">40</option>
+                        <option value="41">41</option>
+                        <option value="42">42</option>
+                        <option value="43">43</option>
+                        <option value="44">44</option>
+                        <option value="45">45</option>
+                        <option value="4">4</option>
+                        <option value="4.5">4.5</option>
+                        <option value="5">5</option>
+                        <option value="5.5">5.5</option>
+                        <option value="6">6</option>
+                        <option value="6.5">6.5</option>
+                        <option value="7">7</option>
+                        <option value="7.5">7.5</option>
+                        <option value="8">8</option>
+                        <option value="8.5">8.5</option>
+                        <option value="9">9</option>
+                        <option value="9.5">9.5</option>
+                        <option value="10">10</option>
+                        <option value="10.5">10.5</option>
+                        <option value="11">11</option>
+                        <option value="11.5">11.5</option>
+                        <option value="12">12</option>
+                        <option value="Sin talla">Sin talla</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Color 1
+                      </label>
+                      <select
+                        value={formData.color}
+                        onChange={(e) => setFormData({...formData, color: e.target.value})}
+                        className="input-field"
+                      >
+                        <option value="">Seleccionar color</option>
+                        <option value="Azul">Azul</option>
+                        <option value="Rojo">Rojo</option>
+                        <option value="Verde">Verde</option>
+                        <option value="Negro">Negro</option>
+                        <option value="Blanco">Blanco</option>
+                        <option value="Gris">Gris</option>
+                        <option value="Amarillo">Amarillo</option>
+                        <option value="Rosa">Rosa</option>
+                        <option value="Morado">Morado</option>
+                        <option value="Naranja">Naranja</option>
+                        <option value="Vino">Vino</option>
+                        <option value="Turqueza">Turqueza</option>
+                        <option value="Celeste">Celeste</option>
                       <option value="Verde Fluorescente">Verde Fluorescente</option>
                       <option value="Beige">Beige</option>
+                      <option value="Café">Café</option>
+                      <option value="Durazno">Durazno</option>
+                      <option value="Camuflaje">Camuflaje</option>
                       <option value="Sin color">Sin color</option>
                     </select>
                   </div>
@@ -776,10 +968,14 @@ const Products: React.FC = () => {
                       <option value="Celeste">Celeste</option>
                       <option value="Verde Fluorescente">Verde Fluorescente</option>
                       <option value="Beige">Beige</option>
+                      <option value="Café">Café</option>
+                      <option value="Durazno">Durazno</option>
+                      <option value="Camuflaje">Camuflaje</option>
                       <option value="Sin color">Sin color</option>
-                    </select>
+                      </select>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -796,18 +992,6 @@ const Products: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Código de Barras
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.barcode}
-                    onChange={(e) => setFormData({...formData, barcode: e.target.value})}
-                    className="input-field"
-                    placeholder="1234567890123"
-                  />
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -956,8 +1140,9 @@ const Products: React.FC = () => {
                       cost: 0,
                       salePrice1: 0,
                       salePrice2: 0,
-                      barcode: '',
-                      imageUrl: ''
+                      imageUrl: '',
+                      brand: '',
+                      perfumeName: ''
                     });
                   }}
                   className="btn-secondary"
@@ -999,7 +1184,9 @@ const Products: React.FC = () => {
                   <img
                     src={viewingProduct.imageUrl}
                     alt={viewingProduct.name}
-                    className="w-64 h-64 object-cover rounded-lg border border-gray-200 mx-auto"
+                    className="w-64 h-64 object-cover rounded-lg border border-gray-200 mx-auto cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => handleImageClick(viewingProduct.imageUrl!)}
+                    title="Hacer clic para ver imagen grande"
                   />
                 </div>
               )}
@@ -1033,32 +1220,56 @@ const Products: React.FC = () => {
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Talla
-                  </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {viewingProduct.size || 'Sin talla'}
-                  </p>
-                </div>
+                {viewingProduct.category === 'Perfumes' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Marca
+                      </label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                        {viewingProduct.brand || 'Sin marca'}
+                      </p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Color 1
-                  </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {viewingProduct.color || 'Sin color'}
-                  </p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nombre del Perfume
+                      </label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                        {viewingProduct.perfumeName || 'Sin nombre específico'}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Talla
+                      </label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                        {viewingProduct.size || 'Sin talla'}
+                      </p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Color 2
-                  </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {viewingProduct.color2 || 'Sin color'}
-                  </p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Color 1
+                      </label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                        {viewingProduct.color || 'Sin color'}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Color 2
+                      </label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                        {viewingProduct.color2 || 'Sin color'}
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1069,14 +1280,6 @@ const Products: React.FC = () => {
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Código de Barras
-                  </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {viewingProduct.barcode || 'Sin código'}
-                  </p>
-                </div>
               </div>
 
               {/* Descripción */}
@@ -1096,7 +1299,7 @@ const Products: React.FC = () => {
                     Costo
                   </label>
                   <p className="text-lg font-semibold text-gray-900 bg-gray-50 p-2 rounded">
-                    ${viewingProduct.cost.toLocaleString()}
+                    ${(viewingProduct.cost || 0).toLocaleString()}
                   </p>
                 </div>
 
@@ -1105,7 +1308,7 @@ const Products: React.FC = () => {
                     Precio Venta 1
                   </label>
                   <p className="text-lg font-semibold text-green-600 bg-gray-50 p-2 rounded">
-                    ${viewingProduct.salePrice1.toLocaleString()}
+                    ${(viewingProduct.salePrice1 || 0).toLocaleString()}
                   </p>
                 </div>
 
@@ -1114,7 +1317,7 @@ const Products: React.FC = () => {
                     Precio Venta 2
                   </label>
                   <p className="text-lg font-semibold text-blue-600 bg-gray-50 p-2 rounded">
-                    ${viewingProduct.salePrice2.toLocaleString()}
+                    ${(viewingProduct.salePrice2 || 0).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -1158,6 +1361,118 @@ const Products: React.FC = () => {
                 Editar Producto
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para producto existente */}
+      {showExistingProductModal && existingProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Producto Existente
+              </h3>
+              <button
+                onClick={() => {
+                  setShowExistingProductModal(false);
+                  setExistingProduct(null);
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <span className="text-yellow-600 text-sm font-semibold">!</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">
+                    Ya existe un producto con este SKU
+                  </p>
+                  <p className="text-xs text-yellow-600">
+                    SKU: {existingProduct.sku}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-2">Detalles del Producto Existente:</h4>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p><strong>Nombre:</strong> {existingProduct.name}</p>
+                  <p><strong>Categoría:</strong> {existingProduct.category}</p>
+                  <p><strong>Precio:</strong> ${(existingProduct.salePrice1 || 0).toLocaleString()}</p>
+                  {existingProduct.size && (
+                    <p><strong>Talla:</strong> {existingProduct.size}</p>
+                  )}
+                  {existingProduct.brand && (
+                    <p><strong>Marca:</strong> {existingProduct.brand}</p>
+                  )}
+                  {existingProduct.perfumeName && (
+                    <p><strong>Perfume:</strong> {existingProduct.perfumeName}</p>
+                  )}
+                  {existingProduct.color && (
+                    <p><strong>Color:</strong> {existingProduct.color}</p>
+                  )}
+                  {existingProduct.color2 && (
+                    <p><strong>Color 2:</strong> {existingProduct.color2}</p>
+                  )}
+                  {existingProduct.description && (
+                    <p><strong>Descripción:</strong> {existingProduct.description}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowExistingProductModal(false);
+                    setExistingProduct(null);
+                    setFormData(prev => ({ ...prev, sku: '' }));
+                  }}
+                  className="btn-secondary"
+                >
+                  Cambiar SKU
+                </button>
+                <button
+                  onClick={() => {
+                    setShowExistingProductModal(false);
+                    setExistingProduct(null);
+                    handleEdit(existingProduct);
+                  }}
+                  className="btn-primary"
+                >
+                  Editar Producto
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para ver imagen grande */}
+      {showImageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="relative max-w-4xl max-h-[90vh] mx-4">
+            <button
+              onClick={() => {
+                setShowImageModal(false);
+                setSelectedImage('');
+              }}
+              className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <img
+              src={selectedImage}
+              alt="Imagen del producto"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            />
           </div>
         </div>
       )}

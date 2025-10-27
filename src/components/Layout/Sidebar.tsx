@@ -10,7 +10,8 @@ import {
   Home,
   Calculator,
   Truck,
-  CreditCard
+  CreditCard,
+  ShoppingCart
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -24,6 +25,7 @@ const navigation = [
   { name: 'Notas de Pago', href: '/payment-notes', icon: CreditCard },
   { name: 'Paquetería', href: '/shipping', icon: Truck },
   { name: 'Contabilidad', href: '/accounting', icon: Calculator },
+  { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
   { name: 'Vendedores', href: '/sellers', icon: Users },
   { name: 'Configuración', href: '/settings', icon: Settings },
 ];
