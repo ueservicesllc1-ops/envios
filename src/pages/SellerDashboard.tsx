@@ -1310,11 +1310,12 @@ const SellerDashboard: React.FC = () => {
 
   const renderInventory = () => {
     // Calcular el valor actual del inventario (productos existentes)
+    // Usar el unitPrice del inventario del vendedor, no recalcular desde el producto
     const currentInventoryValue = sellerInventory.reduce((sum, item) => {
-      if (!item || !item.product) return sum;
-      const price = seller?.priceType === 'price2' 
-        ? (item.product.salePrice2 || 0)
-        : (item.product.salePrice1 || 0);
+      if (!item) return sum;
+      // Usar unitPrice del inventario del vendedor (precio al que se le entregó)
+      // Si no existe unitPrice, usar totalValue / quantity, o calcular desde el producto como fallback
+      const price = item.unitPrice || (item.totalValue && item.quantity ? item.totalValue / item.quantity : 0);
       return sum + (price * (item.quantity || 0));
     }, 0);
 

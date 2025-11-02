@@ -234,5 +234,139 @@ export const exitNoteService = {
       toast.error('Error al obtener la nota de salida');
       throw error;
     }
+  },
+
+  // Cambiar vendedor de una nota de salida
+  async changeSeller(
+    noteId: string, 
+    newSellerId: string, 
+    newSeller: { id: string; name: string; email: string; address?: string; city?: string; phone?: string; priceType?: string }
+  ): Promise<void> {
+    try {
+      // Obtener la nota de salida actual
+      const currentNote = await this.getById(noteId);
+      if (!currentNote) {
+        throw new Error('Nota de salida no encontrada');
+      }
+
+      const oldSellerId = currentNote.sellerId;
+
+      // Obtener todos los productos para actualizar precios
+      const allProducts = await productService.getAll();
+      const productMap = new Map(allProducts.map(p => [p.id, p]));
+
+      // Actualizar precios de los items según el nuevo vendedor
+      const updatedItems = currentNote.items.map(item => {
+        const product = productMap.get(item.productId);
+        if (!product) return item;
+
+        // Calcular nuevo precio según el tipo de precio del vendedor
+        const newUnitPrice = newSeller.priceType === 'price2' 
+          ? product.salePrice2 
+          : product.salePrice1;
+
+        return {
+          ...item,
+          unitPrice: newUnitPrice,
+          totalPrice: item.quantity * newUnitPrice
+        };
+      });
+
+      // Recalcular precio total
+      const newTotalPrice = updatedItems.reduce((sum, item) => sum + item.totalPrice, 0);
+
+      // Actualizar la nota de salida
+      await this.update(noteId, {
+        sellerId: newSellerId,
+        seller: newSeller.name,
+        customer: newSeller.name,
+        items: updatedItems,
+        totalPrice: newTotalPrice
+      });
+
+      // Actualizar el paquete de envío asociado si existe
+      if (currentNote.shippingId) {
+        const { shippingService } = await import('./shippingService');
+        await shippingService.update(currentNote.shippingId, {
+          recipient: newSeller.name,
+          sellerId: newSellerId,
+          address: newSeller.address || 'Dirección no especificada',
+          city: newSeller.city || 'Ciudad no especificada',
+          phone: newSeller.phone || 'Teléfono no especificado'
+        });
+      }
+
+      // Transferir productos del inventario del vendedor anterior al nuevo
+      // 1. Obtener productos del inventario del vendedor anterior
+      const oldSellerInventory = await sellerInventoryService.getBySeller(oldSellerId);
+
+      // 2. Para cada producto de la nota, transferirlo al nuevo vendedor
+      for (const noteItem of currentNote.items) {
+        const product = productMap.get(noteItem.productId);
+        if (!product) continue;
+
+        // Buscar items en el inventario del vendedor anterior que correspondan a este producto
+        const oldItems = oldSellerInventory.filter(item => item.productId === noteItem.productId);
+        
+        // Calcular cantidad total a transferir
+        let quantityToTransfer = noteItem.quantity;
+        
+        // Si hay items en el inventario anterior, eliminarlos
+        for (const oldItem of oldItems) {
+          if (quantityToTransfer > 0) {
+            const quantityToRemove = Math.min(oldItem.quantity, quantityToTransfer);
+            
+            if (quantityToRemove === oldItem.quantity) {
+              // Eliminar completamente el item
+              await sellerInventoryService.delete(oldItem.id);
+            } else {
+              // Reducir la cantidad del item
+              await sellerInventoryService.updateQuantity(
+                oldItem.id, 
+                oldItem.quantity - quantityToRemove
+              );
+            }
+            
+            quantityToTransfer -= quantityToRemove;
+          }
+        }
+        
+        // Agregar al inventario del nuevo vendedor con el nuevo precio
+        // Usar el precio del nuevo vendedor
+        const newUnitPrice = newSeller.priceType === 'price2' 
+          ? product.salePrice2 
+          : product.salePrice1;
+        
+        await sellerInventoryService.addToSellerInventory(
+          newSellerId,
+          noteItem.productId,
+          product,
+          noteItem.quantity,
+          newUnitPrice // Pasar el precio unitario correcto
+        );
+      }
+
+      // Actualizar entrada de contabilidad si existe
+      try {
+        const { exitNoteAccountingService } = await import('./exitNoteAccountingService');
+        const accountingEntries = await exitNoteAccountingService.getByNoteNumber(currentNote.number);
+        if (accountingEntries.length > 0) {
+          for (const entry of accountingEntries) {
+            await exitNoteAccountingService.update(entry.id, {
+              sellerName: newSeller.name,
+              totalValue: newTotalPrice
+            });
+          }
+        }
+      } catch (accountingError) {
+        console.warn('No se pudo actualizar la entrada de contabilidad:', accountingError);
+      }
+
+      toast.success(`Vendedor cambiado de ${currentNote.seller} a ${newSeller.name} exitosamente`);
+    } catch (error) {
+      console.error('Error changing seller:', error);
+      toast.error('Error al cambiar el vendedor');
+      throw error;
+    }
   }
 };

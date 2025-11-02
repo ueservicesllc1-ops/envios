@@ -2,6 +2,7 @@ import {
   collection, 
   addDoc, 
   getDocs, 
+  updateDoc,
   query, 
   orderBy,
   where,
@@ -98,6 +99,42 @@ export const exitNoteAccountingService = {
       }
     } catch (error) {
       console.error('Error deleting accounting entry by exit note ID:', error);
+      throw error;
+    }
+  },
+
+  // Obtener ventas por número de nota
+  async getByNoteNumber(noteNumber: string): Promise<ExitNoteSale[]> {
+    try {
+      const q = query(
+        collection(db, 'exitNoteSales'),
+        where('noteNumber', '==', noteNumber)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        date: convertTimestamp(doc.data().date),
+        createdAt: convertTimestamp(doc.data().createdAt)
+      })) as ExitNoteSale[];
+    } catch (error) {
+      console.error('Error getting exit note sales by note number:', error);
+      return [];
+    }
+  },
+
+  // Actualizar venta
+  async update(id: string, sale: Partial<ExitNoteSale>): Promise<void> {
+    try {
+      const docRef = doc(db, 'exitNoteSales', id);
+      const updateData: any = { ...sale };
+      if (sale.date) {
+        updateData.date = convertToTimestamp(sale.date);
+      }
+      await updateDoc(docRef, updateData);
+    } catch (error) {
+      console.error('Error updating exit note sale:', error);
       throw error;
     }
   }

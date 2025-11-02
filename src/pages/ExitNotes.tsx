@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan } from 'lucide-react';
+import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User } from 'lucide-react';
 import { ExitNote, Product, Seller } from '../types';
 import { exitNoteService } from '../services/exitNoteService';
 import { productService } from '../services/productService';
@@ -36,6 +36,8 @@ const ExitNotes: React.FC = () => {
   const [temporaryNotes, setTemporaryNotes] = useState<any[]>([]);
   const [skuSearch, setSkuSearch] = useState('');
   const [totalWeight, setTotalWeight] = useState(0);
+  const [showChangeSellerModal, setShowChangeSellerModal] = useState(false);
+  const [selectedNewSellerId, setSelectedNewSellerId] = useState('');
 
   useEffect(() => {
     loadNotes();
@@ -528,6 +530,56 @@ const ExitNotes: React.FC = () => {
       } catch (error) {
         console.error('Error deleting exit note:', error);
         toast.error('Error al eliminar la nota de salida');
+      }
+    }
+  };
+
+  const handleChangeSeller = async () => {
+    if (!viewingNote) return;
+    
+    if (!selectedNewSellerId) {
+      toast.error('Por favor selecciona un vendedor');
+      return;
+    }
+
+    const newSeller = sellers.find(s => s.id === selectedNewSellerId);
+    if (!newSeller) {
+      toast.error('Vendedor no encontrado');
+      return;
+    }
+
+    if (newSeller.id === viewingNote.sellerId) {
+      toast.error('Ya es el vendedor asignado a esta nota');
+      setShowChangeSellerModal(false);
+      return;
+    }
+
+    if (window.confirm(`¿Estás seguro de cambiar el vendedor de "${viewingNote.seller}" a "${newSeller.name}"?\n\nEsto actualizará:\n- La nota de salida\n- El paquete de envío asociado\n- El inventario de los vendedores`)) {
+      try {
+        await exitNoteService.changeSeller(
+          viewingNote.id,
+          newSeller.id,
+          {
+            id: newSeller.id,
+            name: newSeller.name,
+            email: newSeller.email,
+            address: newSeller.address,
+            city: newSeller.city,
+            phone: newSeller.phone,
+            priceType: newSeller.priceType
+          }
+        );
+        
+        setShowChangeSellerModal(false);
+        setSelectedNewSellerId('');
+        setViewingNote(null);
+        
+        // Recargar datos
+        await loadNotes();
+        toast.success('Vendedor cambiado exitosamente');
+      } catch (error) {
+        console.error('Error changing seller:', error);
+        toast.error('Error al cambiar el vendedor');
       }
     }
   };
@@ -1252,9 +1304,24 @@ const ExitNotes: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Vendedor
                   </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {viewingNote.seller}
-                  </p>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded flex-1">
+                      {viewingNote.seller}
+                    </p>
+                    {viewingNote.status !== 'cancelled' && (
+                      <button
+                        onClick={() => {
+                          setSelectedNewSellerId('');
+                          setShowChangeSellerModal(true);
+                        }}
+                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors flex items-center"
+                        title="Cambiar vendedor"
+                      >
+                        <User className="h-4 w-4 mr-1" />
+                        Cambiar
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1429,6 +1496,81 @@ const ExitNotes: React.FC = () => {
                 className="btn-secondary"
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para cambiar vendedor */}
+      {showChangeSellerModal && viewingNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Cambiar Vendedor
+              </h3>
+              <button
+                onClick={() => {
+                  setShowChangeSellerModal(false);
+                  setSelectedNewSellerId('');
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-900">
+                <strong>Nota de Salida:</strong> {viewingNote.number}
+              </p>
+              <p className="text-sm text-blue-900">
+                <strong>Vendedor Actual:</strong> {viewingNote.seller}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Seleccionar Nuevo Vendedor *
+              </label>
+              <select
+                value={selectedNewSellerId}
+                onChange={(e) => setSelectedNewSellerId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Seleccionar vendedor...</option>
+                {sellers
+                  .filter(seller => seller.id !== viewingNote.sellerId)
+                  .map(seller => (
+                    <option key={seller.id} value={seller.id}>
+                      {seller.name} - {seller.email} ({seller.priceType === 'price2' ? 'Precio 2' : 'Precio 1'})
+                    </option>
+                  ))}
+              </select>
+              {selectedNewSellerId && (
+                <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600">
+                  <p><strong>Nota:</strong> Los precios se actualizarán según el tipo de precio del nuevo vendedor.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowChangeSellerModal(false);
+                  setSelectedNewSellerId('');
+                }}
+                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleChangeSeller}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={!selectedNewSellerId}
+              >
+                Cambiar Vendedor
               </button>
             </div>
           </div>

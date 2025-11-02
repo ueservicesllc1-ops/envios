@@ -143,31 +143,36 @@ class SellerInventoryService {
     sellerId: string, 
     productId: string, 
     product: any, 
-    quantity: number
+    quantity: number,
+    unitPrice?: number // Precio unitario opcional (si no se proporciona, usa salePrice1)
   ): Promise<void> {
     try {
       // Verificar si ya existe el producto en el inventario del vendedor
       const existingItems = await this.getBySeller(sellerId);
       const existingItem = existingItems.find(item => item.productId === productId);
 
+      const priceToUse = unitPrice || product.salePrice1 || 0;
+
       if (existingItem) {
-        // Actualizar cantidad existente
+        // Actualizar cantidad existente y precio si es necesario
         const newQuantity = existingItem.quantity + quantity;
-        const newTotalValue = existingItem.unitPrice * newQuantity;
+        // Si se proporciona un nuevo precio, actualizarlo; de lo contrario, mantener el precio existente
+        const finalUnitPrice = unitPrice !== undefined ? unitPrice : existingItem.unitPrice;
+        const newTotalValue = finalUnitPrice * newQuantity;
         await this.update(existingItem.id, {
           quantity: newQuantity,
+          unitPrice: finalUnitPrice,
           totalValue: newTotalValue
         });
       } else {
         // Crear nuevo item en el inventario del vendedor
-        const unitPrice = product.salePrice1; // Usar precio de venta 1 por defecto
         await this.create({
           sellerId,
           productId,
           product,
           quantity,
-          unitPrice,
-          totalValue: unitPrice * quantity,
+          unitPrice: priceToUse,
+          totalValue: priceToUse * quantity,
           status: 'in-transit' // Estado inicial cuando se crea la nota de salida
         });
       }
