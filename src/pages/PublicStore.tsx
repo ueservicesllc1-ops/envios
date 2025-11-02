@@ -79,13 +79,28 @@ const PublicStore: React.FC = () => {
         }
       }
       
-      console.log('Vendedor encontrado:', sellerData);
+      console.log('Vendedor encontrado:', {
+        id: sellerData.id,
+        name: sellerData.name,
+        slug: sellerData.slug
+      });
       
       // Cargar productos de la tienda usando el ID del vendedor
+      console.log('Buscando productos de la tienda para sellerId:', sellerData.id);
       const products = await sellerStoreService.getActiveStoreProducts(sellerData.id);
       
       console.log('Productos obtenidos:', products.length);
-      console.log('Productos:', products);
+      if (products.length > 0) {
+        console.log('Primeros productos:', products.slice(0, 3).map(p => ({
+          id: p.id,
+          productName: p.product?.name,
+          isActive: p.isActive,
+          salePrice: p.salePrice
+        })));
+      } else {
+        console.log('⚠️ No se encontraron productos activos para este vendedor');
+        console.log('Verifica que el vendedor tenga productos agregados a la tienda y marcados como activos');
+      }
       
       setStoreProducts(products);
       setSeller(sellerData);
@@ -99,7 +114,11 @@ const PublicStore: React.FC = () => {
 
   useEffect(() => {
     if (slug) {
+      console.log('PublicStore mounted with slug:', slug);
+      console.log('User Agent:', navigator.userAgent);
       loadStoreData();
+    } else {
+      console.error('No slug provided in URL');
     }
   }, [slug, loadStoreData]);
 
@@ -165,11 +184,14 @@ const PublicStore: React.FC = () => {
         <div className="text-center">
           <Store className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">Tienda no encontrada</h3>
-          <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500">
             No se encontró una tienda para "{slug}".
           </p>
           <p className="mt-2 text-xs text-gray-400">
-            Verifica que el link sea correcto. El slug debe coincidir con el nombre del vendedor.
+            Verifica que el vendedor exista en Firestore y que el link sea correcto.
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            Revisa la consola del navegador para más detalles de debug.
           </p>
         </div>
       </div>
@@ -177,7 +199,7 @@ const PublicStore: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" style={{ minHeight: '-webkit-fill-available' }}>
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -194,7 +216,14 @@ const PublicStore: React.FC = () => {
           <div className="text-center py-12">
             <Store className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Tienda vacía</h3>
-            <p className="mt-1 text-sm text-gray-500">No hay productos disponibles en este momento.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              No hay productos disponibles en este momento.
+            </p>
+            <p className="mt-2 text-xs text-gray-400">
+              El vendedor existe pero no tiene productos activos en la tienda.
+              <br />
+              Agrega productos desde el panel del vendedor para que aparezcan aquí.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -255,8 +284,8 @@ const PublicStore: React.FC = () => {
       {cart.length > 0 && (
         <button
           onClick={() => setShowCart(!showCart)}
-          className="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full p-4 shadow-2xl hover:bg-blue-700 transition-colors z-40 flex items-center justify-center"
-          style={{ width: '56px', height: '56px' }}
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 bg-blue-600 text-white rounded-full p-4 shadow-2xl hover:bg-blue-700 active:bg-blue-800 transition-colors z-40 flex items-center justify-center touch-manipulation"
+          style={{ width: '56px', height: '56px', WebkitTapHighlightColor: 'transparent' }}
         >
           <ShoppingCart className="h-6 w-6" />
           {getCartItemsCount() > 0 && (
@@ -269,7 +298,7 @@ const PublicStore: React.FC = () => {
 
       {/* Panel del carrito */}
       {showCart && cart.length > 0 && (
-        <div className="fixed bottom-24 right-6 w-96 max-h-[70vh] bg-white rounded-lg shadow-2xl z-50 flex flex-col">
+        <div className="fixed bottom-24 right-2 sm:right-6 w-[calc(100%-1rem)] sm:w-96 max-h-[70vh] bg-white rounded-lg shadow-2xl z-50 flex flex-col">
           <div className="p-4 border-b flex justify-between items-center">
             <h3 className="text-lg font-bold text-gray-900">Carrito de Pedidos</h3>
             <button
@@ -389,8 +418,8 @@ const PublicStore: React.FC = () => {
 
       {/* Modal de Detalle del Producto */}
       {selectedProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedProduct(null)}>
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4" onClick={() => setSelectedProduct(null)}>
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Header del Modal */}
             <div className="flex justify-between items-center p-4 border-b">
               <h2 className="text-xl font-bold text-gray-900">Detalle del Producto</h2>
