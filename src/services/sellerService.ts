@@ -150,17 +150,72 @@ export const sellerService = {
   // Buscar vendedor por nombre (fallback si no hay slug)
   async getByName(name: string): Promise<Seller | null> {
     try {
+      console.log('🔍 Buscando vendedor por nombre:', name);
       const allSellers = await this.getAll();
+      console.log('📋 Total vendedores:', allSellers.length);
+      
       // Buscar vendedor cuyo slug generado coincida o cuyo nombre empiece con el slug proporcionado
       const normalizedSlug = name.toLowerCase().trim();
+      console.log('🔍 Slug normalizado para búsqueda:', normalizedSlug);
+      
+      // Log de todos los vendedores para debug
+      console.log('📋 Vendedores a revisar:', allSellers.map(s => ({
+        name: s.name,
+        slug: s.slug || generateSlug(s.name),
+        firstName: s.name.trim().split(' ')[0].toLowerCase()
+      })));
+      
       const foundSeller = allSellers.find(seller => {
         const sellerSlug = seller.slug || generateSlug(seller.name);
         const sellerFirstName = seller.name.trim().split(' ')[0].toLowerCase();
-        return sellerSlug === normalizedSlug || 
-               sellerFirstName === normalizedSlug || 
-               sellerFirstName.startsWith(normalizedSlug) ||
-               normalizedSlug.startsWith(sellerFirstName);
+        const sellerNameLower = seller.name.toLowerCase();
+        
+        // Pruebas múltiples de coincidencia
+        const exactSlugMatch = sellerSlug === normalizedSlug;
+        const exactFirstNameMatch = sellerFirstName === normalizedSlug;
+        const firstNameStarts = sellerFirstName.startsWith(normalizedSlug);
+        const slugStarts = normalizedSlug.startsWith(sellerFirstName);
+        const nameContains = sellerNameLower.includes(normalizedSlug);
+        const slugContains = sellerSlug.includes(normalizedSlug);
+        // Permitir que "luis" encuentre "luisuf" (el slug contiene el término de búsqueda)
+        const searchContainsSlug = normalizedSlug.length >= 3 && sellerSlug.includes(normalizedSlug);
+        const searchContainsFirstName = normalizedSlug.length >= 3 && sellerFirstName.includes(normalizedSlug);
+        
+        const matches = exactSlugMatch || 
+               exactFirstNameMatch || 
+               firstNameStarts ||
+               slugStarts ||
+               nameContains ||
+               slugContains ||
+               searchContainsSlug ||
+               searchContainsFirstName;
+        
+        if (matches) {
+          console.log('✅ Coincidencia encontrada:', {
+            name: seller.name,
+            slug: sellerSlug,
+            firstName: sellerFirstName,
+            searchSlug: normalizedSlug,
+            matches: {
+              exactSlug: exactSlugMatch,
+              exactFirstName: exactFirstNameMatch,
+              firstNameStarts,
+              slugStarts,
+              nameContains,
+              slugContains
+            }
+          });
+        }
+        
+        return matches;
       });
+      
+      if (foundSeller) {
+        console.log('✅ Vendedor encontrado por nombre:', foundSeller.name);
+      } else {
+        console.log('❌ No se encontró vendedor con nombre/slug:', normalizedSlug);
+      }
+      
       return foundSeller || null;
     } catch (error) {
       console.error('Error getting seller by name:', error);

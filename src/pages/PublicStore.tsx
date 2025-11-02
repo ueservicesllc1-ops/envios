@@ -22,43 +22,97 @@ const PublicStore: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
+  const [availableSellers, setAvailableSellers] = useState<any[]>([]);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Mostrar mensaje inicial
+  useEffect(() => {
+    console.log('🚀 PublicStore componente montado');
+    console.log('📱 Slug de URL:', slug);
+    console.log('🌐 URL completa:', window.location.href);
+  }, []);
 
   const loadStoreData = useCallback(async () => {
     if (!slug) {
-      console.error('No slug provided');
+      console.error('❌ No slug provided');
+      setLoading(false);
       return;
     }
     try {
       setLoading(true);
-      console.log('Cargando datos de la tienda para slug:', slug);
+      console.log('🚀 Iniciando carga de tienda para slug:', slug);
+      console.log('📱 User Agent:', navigator.userAgent);
+      console.log('🌐 URL:', window.location.href);
       
       // Buscar vendedor por slug
+      console.log('🔍 Paso 1: Buscando por slug:', slug);
       let sellerData = await sellerService.getBySlug(slug);
+      console.log('Resultado búsqueda por slug:', sellerData ? '✅ Encontrado' : '❌ No encontrado');
       
       // Si no se encuentra por slug, intentar buscar por nombre
       if (!sellerData) {
-        console.log('No se encontró por slug, intentando buscar por nombre:', slug);
+        console.log('🔍 Paso 2: No se encontró por slug, intentando buscar por nombre:', slug);
         sellerData = await sellerService.getByName(slug);
+        console.log('Resultado búsqueda por nombre:', sellerData ? '✅ Encontrado' : '❌ No encontrado');
       }
       
       // Si aún no se encuentra, intentar buscar por ID (para compatibilidad)
       if (!sellerData) {
-        console.log('No se encontró por nombre, intentando buscar por ID:', slug);
+        console.log('🔍 Paso 3: No se encontró por nombre, intentando buscar por ID:', slug);
         sellerData = await sellerService.getById(slug);
+        console.log('Resultado búsqueda por ID:', sellerData ? '✅ Encontrado' : '❌ No encontrado');
       }
       
       if (!sellerData) {
-        console.error('Vendedor no encontrado con slug/nombre/ID:', slug);
-        console.log('Intentando obtener todos los vendedores para debug...');
+        console.error('❌ Vendedor no encontrado con slug/nombre/ID:', slug);
+        console.log('📋 Obteniendo todos los vendedores para debug...');
         try {
           const allSellers = await sellerService.getAll();
-          console.log('Vendedores disponibles:', allSellers.map(s => ({ 
+          console.log('📋 Total vendedores en Firestore:', allSellers.length);
+          console.log('📋 Vendedores disponibles:', allSellers.map(s => ({ 
             name: s.name, 
-            slug: s.slug || 'sin slug', 
-            id: s.id 
+            slug: s.slug || '❌ sin slug', 
+            id: s.id,
+            email: s.email
           })));
+          
+          // Buscar si hay algún vendedor que coincida con "luis"
+          const matchingSellers = allSellers.filter(s => {
+            const nameLower = s.name.toLowerCase();
+            const slugLower = (s.slug || '').toLowerCase();
+            return nameLower.includes('luis') || slugLower.includes('luis');
+          });
+          
+          // Guardar información de debug para mostrar en la página
+          setDebugInfo({
+            slugBuscado: slug,
+            totalVendedores: allSellers.length,
+            vendedores: allSellers.map(s => ({
+              name: s.name,
+              slug: s.slug || 'sin slug',
+              id: s.id
+            })),
+            coincidencias: matchingSellers.map(s => ({
+              name: s.name,
+              slug: s.slug || 'sin slug',
+              id: s.id
+            }))
+          });
+          
+          if (matchingSellers.length > 0) {
+            console.log('🎯 Vendedores que coinciden con "luis":', matchingSellers.map(s => ({
+              name: s.name,
+              slug: s.slug,
+              id: s.id
+            })));
+          }
         } catch (debugError) {
           console.error('Error obteniendo vendedores para debug:', debugError);
+          setDebugInfo({
+            error: 'Error al obtener vendedores',
+            mensaje: debugError instanceof Error ? debugError.message : 'Error desconocido'
+          });
         }
         setLoading(false);
         return;
@@ -104,9 +158,39 @@ const PublicStore: React.FC = () => {
       
       setStoreProducts(products);
       setSeller(sellerData);
-    } catch (error) {
-      console.error('Error loading store data:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.log('✅ Tienda cargada exitosamente');
+    } catch (error: any) {
+      console.error('❌ Error loading store data:', error);
+      console.error('❌ Error message:', error?.message);
+      console.error('❌ Error stack:', error?.stack);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      
+      // Guardar error para mostrar en la página
+      setError(error?.message || 'Error desconocido al cargar la tienda');
+      
+      // Intentar mostrar información útil incluso si hay error
+      if (error?.code === 'unavailable' || error?.code === 'unauthenticated') {
+        console.error('⚠️ Problema de conexión con Firestore');
+        setError('Error de conexión con la base de datos. Verifica tu conexión a internet.');
+      }
+      
+      // Intentar obtener vendedores para mostrar ayuda
+      try {
+        const allSellers = await sellerService.getAll();
+        setDebugInfo({
+          error: true,
+          mensaje: error?.message || 'Error desconocido',
+          slugBuscado: slug,
+          totalVendedores: allSellers.length,
+          vendedores: allSellers.map(s => ({
+            name: s.name,
+            slug: s.slug || 'sin slug',
+            id: s.id
+          }))
+        });
+      } catch (err) {
+        console.error('Error obteniendo vendedores:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -121,6 +205,22 @@ const PublicStore: React.FC = () => {
       console.error('No slug provided in URL');
     }
   }, [slug, loadStoreData]);
+
+  // Cargar vendedores disponibles cuando no se encuentra el seller
+  useEffect(() => {
+    if (!seller && !loading && slug) {
+      sellerService.getAll().then(sellers => {
+        const matching = sellers.filter(s => {
+          const nameLower = s.name.toLowerCase();
+          const slugLower = (s.slug || '').toLowerCase();
+          return nameLower.includes('luis') || slugLower.includes('luis') || slugLower === slug.toLowerCase();
+        });
+        setAvailableSellers(matching.length > 0 ? matching : sellers.slice(0, 5));
+      }).catch(err => {
+        console.error('Error obteniendo vendedores:', err);
+      });
+    }
+  }, [seller, loading, slug]);
 
   // Funciones del carrito
   const addToCart = (storeProduct: any) => {
@@ -172,27 +272,117 @@ const PublicStore: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-sm text-gray-600">Cargando tienda...</p>
+          <p className="mt-2 text-xs text-gray-400">Buscando: {slug}</p>
+        </div>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+        <div className="text-center max-w-md w-full">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <h3 className="text-lg font-medium text-red-900">Error al cargar la tienda</h3>
+            <p className="mt-2 text-sm text-red-700">{error}</p>
+          </div>
+          {debugInfo && debugInfo.vendedores && (
+            <div className="mt-4 text-left bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+              <p className="text-xs font-semibold text-gray-700 mb-2">Vendedores disponibles:</p>
+              <ul className="space-y-2 text-xs">
+                {debugInfo.vendedores.slice(0, 5).map((s: any) => (
+                  <li key={s.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span className="font-medium text-gray-900">{s.name}</span>
+                    {s.slug && s.slug !== 'sin slug' ? (
+                      <a 
+                        href={`/store/${s.slug}`}
+                        className="text-blue-600 hover:text-blue-800 underline ml-2"
+                      >
+                        /store/{s.slug}
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 ml-2 text-[10px]">sin slug</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (!seller && !loading) {
+    const sellersToShow = debugInfo?.coincidencias?.length > 0 
+      ? debugInfo.coincidencias 
+      : (availableSellers.length > 0 ? availableSellers : (debugInfo?.vendedores?.slice(0, 5) || []));
+    
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
+        <div className="text-center max-w-md w-full">
+          <Store className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900">Tienda no encontrada</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            No se encontró una tienda para "<strong>{slug}</strong>".
+          </p>
+          
+          {debugInfo && (
+            <div className="mt-4 text-left bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs">
+              <p className="font-semibold text-yellow-800 mb-1">Información de debug:</p>
+              <p className="text-yellow-700">Slug buscado: <strong>{debugInfo.slugBuscado}</strong></p>
+              <p className="text-yellow-700">Total vendedores: {debugInfo.totalVendedores}</p>
+            </div>
+          )}
+          
+          {sellersToShow.length > 0 && (
+            <div className="mt-4 text-left bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+              <p className="text-xs font-semibold text-gray-700 mb-2">
+                {debugInfo?.coincidencias?.length > 0 
+                  ? 'Vendedores que coinciden:' 
+                  : 'Vendedores disponibles:'}
+              </p>
+              <ul className="space-y-2 text-xs">
+                {sellersToShow.map((s: any) => (
+                  <li key={s.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span className="font-medium text-gray-900">{s.name}</span>
+                    {s.slug && s.slug !== 'sin slug' ? (
+                      <a 
+                        href={`/store/${s.slug}`}
+                        className="text-blue-600 hover:text-blue-800 underline ml-2"
+                      >
+                        /store/{s.slug}
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 ml-2 text-[10px]">sin slug</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          <p className="mt-4 text-xs text-gray-500">
+            Si tu vendedor aparece arriba, usa el link correcto con su slug.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Esto nunca debería llegar aquí si no hay seller, pero por si acaso
   if (!seller) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 p-4">
         <div className="text-center">
           <Store className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Tienda no encontrada</h3>
-            <p className="mt-1 text-sm text-gray-500">
-            No se encontró una tienda para "{slug}".
-          </p>
-          <p className="mt-2 text-xs text-gray-400">
-            Verifica que el vendedor exista en Firestore y que el link sea correcto.
-          </p>
-          <p className="mt-1 text-xs text-gray-400">
-            Revisa la consola del navegador para más detalles de debug.
-          </p>
+          <h3 className="mt-2 text-lg font-medium text-gray-900">Estado desconocido</h3>
+          <p className="mt-1 text-sm text-gray-500">No se pudo determinar el estado de la tienda.</p>
+          <p className="mt-2 text-xs text-gray-400">Slug: {slug || 'no proporcionado'}</p>
         </div>
       </div>
     );
