@@ -35,21 +35,31 @@ const PublicStore: React.FC = () => {
       // Buscar vendedor por slug
       let sellerData = await sellerService.getBySlug(slug);
       
-      // Si no se encuentra por slug, intentar buscar por ID (para compatibilidad)
+      // Si no se encuentra por slug, intentar buscar por nombre
       if (!sellerData) {
-        console.log('No se encontró por slug, intentando buscar por ID:', slug);
+        console.log('No se encontró por slug, intentando buscar por nombre:', slug);
+        sellerData = await sellerService.getByName(slug);
+      }
+      
+      // Si aún no se encuentra, intentar buscar por ID (para compatibilidad)
+      if (!sellerData) {
+        console.log('No se encontró por nombre, intentando buscar por ID:', slug);
         sellerData = await sellerService.getById(slug);
       }
       
       if (!sellerData) {
-        console.error('Vendedor no encontrado con slug/ID:', slug);
+        console.error('Vendedor no encontrado con slug/nombre/ID:', slug);
         console.log('Intentando obtener todos los vendedores para debug...');
-        const allSellers = await sellerService.getAll();
-        console.log('Vendedores disponibles:', allSellers.map(s => ({ 
-          name: s.name, 
-          slug: s.slug, 
-          id: s.id 
-        })));
+        try {
+          const allSellers = await sellerService.getAll();
+          console.log('Vendedores disponibles:', allSellers.map(s => ({ 
+            name: s.name, 
+            slug: s.slug || 'sin slug', 
+            id: s.id 
+          })));
+        } catch (debugError) {
+          console.error('Error obteniendo vendedores para debug:', debugError);
+        }
         setLoading(false);
         return;
       }

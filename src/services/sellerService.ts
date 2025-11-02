@@ -3,7 +3,7 @@ import { db } from '../firebase/config';
 import { Seller } from '../types';
 
 // Función para generar un slug único desde el nombre
-function generateSlug(name: string): string {
+export function generateSlug(name: string): string {
   // Obtener el primer nombre (primera palabra)
   const firstName = name.trim().split(' ')[0].toLowerCase();
   
@@ -144,6 +144,27 @@ export const sellerService = {
     } catch (error) {
       console.error('Error getting seller by slug:', error);
       throw error;
+    }
+  },
+
+  // Buscar vendedor por nombre (fallback si no hay slug)
+  async getByName(name: string): Promise<Seller | null> {
+    try {
+      const allSellers = await this.getAll();
+      // Buscar vendedor cuyo slug generado coincida o cuyo nombre empiece con el slug proporcionado
+      const normalizedSlug = name.toLowerCase().trim();
+      const foundSeller = allSellers.find(seller => {
+        const sellerSlug = seller.slug || generateSlug(seller.name);
+        const sellerFirstName = seller.name.trim().split(' ')[0].toLowerCase();
+        return sellerSlug === normalizedSlug || 
+               sellerFirstName === normalizedSlug || 
+               sellerFirstName.startsWith(normalizedSlug) ||
+               normalizedSlug.startsWith(sellerFirstName);
+      });
+      return foundSeller || null;
+    } catch (error) {
+      console.error('Error getting seller by name:', error);
+      return null;
     }
   },
 
