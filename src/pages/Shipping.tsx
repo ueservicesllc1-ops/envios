@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Plus, Search, Eye, Edit, Trash2, MapPin, Clock, CheckCircle, XCircle, X, User, Phone, Package, DollarSign } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Truck, Plus, Search, Eye, Edit, Trash2, MapPin, Clock, CheckCircle, XCircle, X, User, Phone, Package, DollarSign, Store, ExternalLink } from 'lucide-react';
 import { Seller } from '../types';
 import { sellerService } from '../services/sellerService';
 import { shippingService, ShippingPackage } from '../services/shippingService';
@@ -11,6 +12,7 @@ import toast from 'react-hot-toast';
 
 
 const Shipping: React.FC = () => {
+  const navigate = useNavigate();
   const [packages, setPackages] = useState<ShippingPackage[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [exitNotes, setExitNotes] = useState<any[]>([]);
@@ -1591,9 +1593,38 @@ const Shipping: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Destinatario
                   </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {viewingPackage.recipient}
-                  </p>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded flex-1">
+                      {viewingPackage.recipient}
+                    </p>
+                    {viewingPackage.sellerId && (
+                      <button
+                        onClick={async () => {
+                          if (!viewingPackage.sellerId) return;
+                          
+                          try {
+                            // Obtener el vendedor para conseguir su slug
+                            const seller = await sellerService.getById(viewingPackage.sellerId);
+                            if (seller) {
+                              const slug = seller.slug || viewingPackage.sellerId;
+                              navigate(`/store/${slug}`);
+                              setViewingPackage(null);
+                            }
+                          } catch (error) {
+                            console.error('Error obteniendo vendedor:', error);
+                            // Si hay error, usar el ID como fallback
+                            navigate(`/store/${viewingPackage.sellerId}`);
+                            setViewingPackage(null);
+                          }
+                        }}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2 text-sm font-medium"
+                        title="Ver tienda del vendedor"
+                      >
+                        <Store className="h-4 w-4" />
+                        <span>Ver Tienda</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

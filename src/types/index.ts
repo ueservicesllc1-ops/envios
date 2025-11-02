@@ -121,6 +121,7 @@ export interface Seller {
   isActive: boolean;
   totalDebt?: number;
   lastDeliveryDate?: Date;
+  slug?: string; // Slug único para URL amigable (ej: "yenifer")
   createdAt: Date;
 }
 

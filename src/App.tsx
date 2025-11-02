@@ -18,32 +18,44 @@ import SellerPanel from './pages/SellerPanel';
 import Orders from './pages/Orders';
 import Settings from './pages/Settings';
 import MobileScanner from './pages/MobileScanner';
+import PublicStore from './pages/PublicStore';
 
 function App() {
   return (
     <Router>
       <div className="App">
-        <AuthWrapper>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/warehouse" element={<Warehouse />} />
-              <Route path="/inventory" element={<Inventory />} />
-              <Route path="/entry-notes" element={<EntryNotes />} />
-              <Route path="/exit-notes" element={<ExitNotes />} />
-              <Route path="/payment-notes" element={<PaymentNotes />} />
-              <Route path="/shipping" element={<Shipping />} />
-              <Route path="/accounting" element={<Accounting />} />
-              <Route path="/sellers" element={<Sellers />} />
-              <Route path="/sellers/:id" element={<SellerDetails />} />
-              <Route path="/seller-panel/:id" element={<SellerPanel />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/mobile-scanner" element={<MobileScanner />} />
-            </Routes>
-          </Layout>
-        </AuthWrapper>
+        <Routes>
+          {/* Ruta pública para la tienda del vendedor - sin Layout ni AuthWrapper */}
+          <Route path="/store/:slug" element={<PublicStore />} />
+          
+          {/* Rutas protegidas con AuthWrapper y Layout */}
+          <Route
+            path="/*"
+            element={
+              <AuthWrapper>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/products" element={<Products />} />
+                    <Route path="/warehouse" element={<Warehouse />} />
+                    <Route path="/inventory" element={<Inventory />} />
+                    <Route path="/entry-notes" element={<EntryNotes />} />
+                    <Route path="/exit-notes" element={<ExitNotes />} />
+                    <Route path="/payment-notes" element={<PaymentNotes />} />
+                    <Route path="/shipping" element={<Shipping />} />
+                    <Route path="/accounting" element={<Accounting />} />
+                    <Route path="/sellers" element={<Sellers />} />
+                    <Route path="/sellers/:id" element={<SellerDetails />} />
+                    <Route path="/seller-panel/:id" element={<SellerPanel />} />
+                    <Route path="/orders" element={<Orders />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/mobile-scanner" element={<MobileScanner />} />
+                  </Routes>
+                </Layout>
+              </AuthWrapper>
+            }
+          />
+        </Routes>
         <Toaster 
           position="top-right"
           toastOptions={{

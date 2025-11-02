@@ -78,6 +78,17 @@ const Sellers: React.FC = () => {
     }
   };
 
+  const handleGenerateSlugs = async () => {
+    try {
+      const count = await sellerService.generateMissingSlugs();
+      toast.success(`${count} slug${count !== 1 ? 's' : ''} generado${count !== 1 ? 's' : ''} correctamente`);
+      await loadSellers();
+    } catch (error) {
+      console.error('Error generating slugs:', error);
+      toast.error('Error al generar slugs');
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Estás seguro de eliminar este vendedor?')) {
       try {
@@ -290,6 +301,11 @@ const Sellers: React.FC = () => {
                   <p className="text-xs text-gray-500">
                     {seller.city} • Comisión: {seller.commission}% • {(seller.priceType || 'price1') === 'price1' ? 'Precio 1' : 'Precio 2'}
                   </p>
+                  {seller.slug && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Link: /store/{seller.slug}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center space-x-1">

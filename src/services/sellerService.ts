@@ -1,13 +1,56 @@
-import { collection, addDoc, updateDoc, deleteDoc, getDocs, getDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, getDocs, getDoc, doc, query, orderBy, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Seller } from '../types';
+
+// Función para generar un slug único desde el nombre
+function generateSlug(name: string): string {
+  // Obtener el primer nombre (primera palabra)
+  const firstName = name.trim().split(' ')[0].toLowerCase();
+  
+  // Remover acentos y caracteres especiales
+  return firstName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remover diacríticos
+    .replace(/[^a-z0-9]/g, '') // Remover caracteres no alfanuméricos
+    .toLowerCase();
+}
+
+// Función para generar un slug único verificando que no exista
+async function generateUniqueSlug(name: string, excludeId?: string): Promise<string> {
+  let baseSlug = generateSlug(name);
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const q = query(
+      collection(db, 'sellers'),
+      where('slug', '==', slug)
+    );
+    const snapshot = await getDocs(q);
+    
+    // Verificar si existe y no es el mismo vendedor
+    const exists = snapshot.docs.some(doc => doc.id !== excludeId);
+    
+    if (!exists) {
+      return slug;
+    }
+    
+    // Si existe, agregar un número
+    slug = `${baseSlug}${counter}`;
+    counter++;
+  }
+}
 
 export const sellerService = {
   // Crear nuevo vendedor
   async create(sellerData: Omit<Seller, 'id' | 'createdAt'>): Promise<string> {
     try {
+      // Generar slug único si no existe
+      const slug = sellerData.slug || await generateUniqueSlug(sellerData.name);
+      
       const docRef = await addDoc(collection(db, 'sellers'), {
         ...sellerData,
+        slug,
         createdAt: new Date()
       });
       return docRef.id;
@@ -60,12 +103,46 @@ export const sellerService = {
     try {
       const sellerRef = doc(db, 'sellers', id);
       // Filtrar campos undefined para evitar errores de Firebase
-      const cleanData = Object.fromEntries(
+      let cleanData = Object.fromEntries(
         Object.entries(sellerData).filter(([_, value]) => value !== undefined)
       );
+      
+      // Si se actualiza el nombre, generar nuevo slug si no existe
+      if (sellerData.name && !cleanData.slug) {
+        const currentSeller = await this.getById(id);
+        if (currentSeller) {
+          cleanData.slug = await generateUniqueSlug(sellerData.name, id);
+        }
+      }
+      
       await updateDoc(sellerRef, cleanData);
     } catch (error) {
       console.error('Error updating seller:', error);
+      throw error;
+    }
+  },
+
+  // Obtener vendedor por slug
+  async getBySlug(slug: string): Promise<Seller | null> {
+    try {
+      const q = query(
+        collection(db, 'sellers'),
+        where('slug', '==', slug)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return {
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          lastDeliveryDate: doc.data().lastDeliveryDate?.toDate() || undefined
+        } as Seller;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting seller by slug:', error);
       throw error;
     }
   },
@@ -77,6 +154,27 @@ export const sellerService = {
       await deleteDoc(sellerRef);
     } catch (error) {
       console.error('Error deleting seller:', error);
+      throw error;
+    }
+  },
+
+  // Generar slugs para vendedores que no lo tengan
+  async generateMissingSlugs(): Promise<number> {
+    try {
+      const allSellers = await this.getAll();
+      let count = 0;
+
+      for (const seller of allSellers) {
+        if (!seller.slug) {
+          const slug = await generateUniqueSlug(seller.name, seller.id);
+          await this.update(seller.id, { slug });
+          count++;
+        }
+      }
+
+      return count;
+    } catch (error) {
+      console.error('Error generating missing slugs:', error);
       throw error;
     }
   }

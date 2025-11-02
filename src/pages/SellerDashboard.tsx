@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Package, 
   TrendingUp, 
@@ -17,7 +18,11 @@ import {
   Receipt,
   LogOut,
   X,
-  Trash2
+  Trash2,
+  Store,
+  ExternalLink,
+  Edit,
+  Save
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { sellerService } from '../services/sellerService';
@@ -30,6 +35,7 @@ import { exitNoteService } from '../services/exitNoteService';
 import { ExitNote } from '../types';
 import { paymentNoteService } from '../services/paymentNoteService';
 import { shippingService, ShippingPackage } from '../services/shippingService';
+import { sellerStoreService, StoreProduct } from '../services/sellerStoreService';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { storage } from '../firebase/config';
@@ -146,6 +152,7 @@ interface Seller {
   address: string;
   priceType?: 'price1' | 'price2';
   isActive: boolean;
+  slug?: string;
 }
 
 interface SellerInventoryItem {
@@ -163,6 +170,7 @@ interface SellerInventoryItem {
 
 
 const SellerDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user, isAdmin, isSeller, loading: authLoading } = useAuth();
   const [seller, setSeller] = useState<Seller | null>(null);
   const [sellerInventory, setSellerInventory] = useState<SellerInventoryItem[]>([]);
@@ -208,6 +216,10 @@ const SellerDashboard: React.FC = () => {
     paymentType: 'credit' as 'credit' | 'cash',
     notes: ''
   });
+  const [storeProducts, setStoreProducts] = useState<StoreProduct[]>([]);
+  const [editingStoreProduct, setEditingStoreProduct] = useState<{ productId: string; salePrice: number; description: string } | null>(null);
+  const [showStorePreview, setShowStorePreview] = useState(false);
+  const [selectedStoreProduct, setSelectedStoreProduct] = useState<StoreProduct | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -226,8 +238,24 @@ const SellerDashboard: React.FC = () => {
       console.log('🔍 Todos los vendedores:', sellers.map(s => ({ id: s.id, email: s.email, name: s.name })));
       console.log('👤 Usuario actual:', user?.email);
       
-      const currentSeller = sellers.find(s => s.email === user?.email);
+      let currentSeller = sellers.find(s => s.email === user?.email);
       console.log('✅ Vendedor encontrado:', currentSeller ? 'SÍ' : 'NO');
+      
+      // Si el vendedor existe pero no tiene slug, generarlo automáticamente
+      if (currentSeller && !currentSeller.slug) {
+        try {
+          console.log('🔄 Generando slug para vendedor:', currentSeller.name);
+          await sellerService.generateMissingSlugs();
+          // Recargar el vendedor con el slug
+          const updatedSeller = await sellerService.getById(currentSeller.id);
+          if (updatedSeller) {
+            currentSeller = updatedSeller;
+            console.log('✅ Slug generado:', updatedSeller.slug);
+          }
+        } catch (error) {
+          console.error('Error generating slug:', error);
+        }
+      }
       
       if (!currentSeller) {
         console.log('❌ No se encontró vendedor para email:', user?.email);
@@ -367,7 +395,21 @@ const SellerDashboard: React.FC = () => {
     if (activeSection === 'my-orders' && seller) {
       loadSellerOrders();
     }
+    if (activeSection === 'store' && seller) {
+      loadStoreProducts();
+    }
   }, [activeSection, seller]);
+
+  const loadStoreProducts = async () => {
+    if (!seller) return;
+    try {
+      const products = await sellerStoreService.getStoreProducts(seller.id);
+      setStoreProducts(products);
+    } catch (error) {
+      console.error('Error loading store products:', error);
+      toast.error('Error al cargar productos de la tienda');
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -1869,6 +1911,601 @@ const SellerDashboard: React.FC = () => {
     );
   };
 
+  const handleAddToStore = async (item: SellerInventoryItem, salePrice: number, description: string) => {
+    if (!seller) return;
+    
+    if (!salePrice || salePrice <= 0) {
+      toast.error('Por favor ingresa un precio válido');
+      return;
+    }
+
+    try {
+      await sellerStoreService.addProductToStore(
+        seller.id,
+        item.productId,
+        item.product,
+        salePrice,
+        description
+      );
+      await loadStoreProducts();
+      setEditingStoreProduct(null);
+      toast.success('Producto agregado a la tienda');
+    } catch (error) {
+      console.error('Error adding product to store:', error);
+      toast.error('Error al agregar producto a la tienda');
+    }
+  };
+
+  const handleToggleStoreProduct = async (productId: string, isActive: boolean) => {
+    try {
+      await sellerStoreService.toggleProductActive(productId, !isActive);
+      await loadStoreProducts();
+    } catch (error) {
+      console.error('Error toggling product:', error);
+      toast.error('Error al actualizar producto');
+    }
+  };
+
+  const handleRemoveFromStore = async (productId: string) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este producto de la tienda?')) {
+      try {
+        await sellerStoreService.removeProductFromStore(productId);
+        await loadStoreProducts();
+      } catch (error) {
+        console.error('Error removing product:', error);
+        toast.error('Error al eliminar producto');
+      }
+    }
+  };
+
+  const renderStoreEditor = () => {
+    // Crear un mapa de productos ya en la tienda
+    const storeProductMap = new Map(storeProducts.map(p => [p.productId, p]));
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Editor de Tienda Online</h2>
+            <p className="text-gray-600">Gestiona los productos que aparecerán en tu tienda online</p>
+            {seller && (
+              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-blue-900 mb-1">Link de tu tienda:</p>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/store/${seller.slug || 'generando...'}`}
+                    className="flex-1 px-3 py-2 bg-white border border-blue-300 rounded-md text-sm text-gray-900"
+                  />
+                  <button
+                    onClick={async () => {
+                      // Asegurar que el vendedor tenga slug
+                      let slug = seller.slug;
+                      if (!slug) {
+                        try {
+                          // Generar slug si no existe
+                          const count = await sellerService.generateMissingSlugs();
+                          // Recargar el seller actualizado
+                          const updatedSeller = await sellerService.getById(seller.id);
+                          if (updatedSeller?.slug) {
+                            slug = updatedSeller.slug;
+                            setSeller(updatedSeller);
+                          }
+                        } catch (error) {
+                          console.error('Error generating slug:', error);
+                        }
+                      }
+                      
+                      const link = `${window.location.origin}/store/${slug || seller.id}`;
+                      navigator.clipboard.writeText(link);
+                      toast.success('Link copiado al portapapeles');
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center"
+                  >
+                    <Save className="h-4 w-4 mr-1" />
+                    Copiar Link
+                  </button>
+                </div>
+                <p className="text-xs text-blue-700 mt-2">
+                  Comparte este link con tus clientes para que vean tu tienda online
+                </p>
+                {!seller.slug && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await sellerService.generateMissingSlugs();
+                        const updatedSeller = await sellerService.getById(seller.id);
+                        if (updatedSeller) {
+                          setSeller(updatedSeller);
+                          toast.success('Slug generado correctamente');
+                        }
+                      } catch (error) {
+                        console.error('Error generating slug:', error);
+                        toast.error('Error al generar slug');
+                      }
+                    }}
+                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Generar slug para URL amigable
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={async () => {
+              if (seller?.id) {
+                // Asegurar que el vendedor tenga slug
+                let sellerSlug = seller.slug;
+                if (!sellerSlug) {
+                  // Generar slug si no existe
+                  try {
+                    const updatedSeller = await sellerService.getById(seller.id);
+                    if (updatedSeller?.slug) {
+                      sellerSlug = updatedSeller.slug;
+                    } else {
+                      // Si aún no tiene slug, usar el ID temporalmente
+                      sellerSlug = seller.id;
+                    }
+                  } catch (error) {
+                    sellerSlug = seller.id;
+                  }
+                }
+                navigate(`/store/${sellerSlug}`);
+              }
+            }}
+            className="btn-primary flex items-center"
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Ver Tienda
+          </button>
+        </div>
+
+        {/* Productos del Inventario */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Productos de tu Inventario</h3>
+            <p className="text-sm text-gray-500">Agrega productos a tu tienda estableciendo precio y descripción</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Imagen</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio en Tienda</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sellerInventory
+                  .filter(item => item.quantity > 0 && item.status === 'stock')
+                  .map((item) => {
+                    const storeProduct = storeProductMap.get(item.productId);
+                    const isInStore = !!storeProduct;
+                    
+                    return (
+                      <tr key={item.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-16 w-16 rounded-lg overflow-hidden">
+                            {item.product?.imageUrl ? (
+                              <img
+                                src={item.product.imageUrl}
+                                alt={item.product.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full w-full bg-gray-100 flex items-center justify-center">
+                                <Package className="h-6 w-6 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">{item.product?.name || 'N/A'}</div>
+                          {item.product?.category && (
+                            <div className="text-sm text-gray-500">{item.product.category}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {item.product?.sku || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {item.quantity}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {isInStore ? (
+                            <span className="text-sm font-medium text-green-600">
+                              ${storeProduct.salePrice.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">No en tienda</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {isInStore ? (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              storeProduct.isActive 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {storeProduct.isActive ? 'Activo' : 'Inactivo'}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {isInStore ? (
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => {
+                                  setEditingStoreProduct({
+                                    productId: item.productId,
+                                    salePrice: storeProduct.salePrice,
+                                    description: storeProduct.description || ''
+                                  });
+                                }}
+                                className="text-blue-600 hover:text-blue-900 flex items-center"
+                                title="Editar"
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                              </button>
+                              <button
+                                onClick={() => handleToggleStoreProduct(storeProduct.id, storeProduct.isActive)}
+                                className={`px-2 py-1 rounded text-xs ${
+                                  storeProduct.isActive
+                                    ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                    : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
+                                title={storeProduct.isActive ? 'Desactivar' : 'Activar'}
+                              >
+                                {storeProduct.isActive ? 'Ocultar' : 'Mostrar'}
+                              </button>
+                              <button
+                                onClick={() => handleRemoveFromStore(storeProduct.id)}
+                                className="text-red-600 hover:text-red-900"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setEditingStoreProduct({
+                                  productId: item.productId,
+                                  salePrice: item.unitPrice || 0,
+                                  description: ''
+                                });
+                              }}
+                              className="btn-primary flex items-center text-sm"
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Agregar a Tienda
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+          
+          {sellerInventory.filter(item => item.quantity > 0 && item.status === 'stock').length === 0 && (
+            <div className="text-center py-12">
+              <Package className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay productos disponibles</h3>
+              <p className="mt-1 text-sm text-gray-500">No tienes productos en stock para agregar a la tienda.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Modal para agregar/editar producto en tienda */}
+        {editingStoreProduct && (() => {
+          const inventoryItem = sellerInventory.find(item => item.productId === editingStoreProduct.productId);
+          if (!inventoryItem) return null;
+          
+          return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {storeProductMap.has(editingStoreProduct.productId) ? 'Editar Producto en Tienda' : 'Agregar Producto a Tienda'}
+                  </h3>
+                  <button
+                    onClick={() => setEditingStoreProduct(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Información del producto */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center space-x-4">
+                      {inventoryItem.product?.imageUrl && (
+                        <img
+                          src={inventoryItem.product.imageUrl}
+                          alt={inventoryItem.product.name}
+                          className="h-20 w-20 object-cover rounded-lg"
+                        />
+                      )}
+                      <div>
+                        <h4 className="font-medium text-gray-900">{inventoryItem.product?.name}</h4>
+                        <p className="text-sm text-gray-500">SKU: {inventoryItem.product?.sku}</p>
+                        <p className="text-sm text-gray-500">Stock disponible: {inventoryItem.quantity}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Precio de venta */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Precio de Venta *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingStoreProduct.salePrice}
+                      onChange={(e) => setEditingStoreProduct({
+                        ...editingStoreProduct,
+                        salePrice: parseFloat(e.target.value) || 0
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      placeholder="0.00"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Precio al que vendrás este producto a tus clientes
+                    </p>
+                  </div>
+
+                  {/* Descripción opcional */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Descripción (Opcional)
+                    </label>
+                    <textarea
+                      value={editingStoreProduct.description}
+                      onChange={(e) => setEditingStoreProduct({
+                        ...editingStoreProduct,
+                        description: e.target.value
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      rows={4}
+                      placeholder="Descripción del producto para tus clientes..."
+                    />
+                  </div>
+
+                  {/* Botones */}
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      onClick={() => setEditingStoreProduct(null)}
+                      className="btn-secondary"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => handleAddToStore(
+                        inventoryItem,
+                        editingStoreProduct.salePrice,
+                        editingStoreProduct.description
+                      )}
+                      className="btn-primary flex items-center"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      {storeProductMap.has(editingStoreProduct.productId) ? 'Actualizar' : 'Agregar a Tienda'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Modal de Vista Previa de la Tienda */}
+        {showStorePreview && seller && (
+          <div className="fixed inset-0 bg-white z-50 overflow-y-auto">
+            <div className="bg-white border-b sticky top-0 z-10">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Tienda de {seller.name}</h1>
+                    <p className="text-sm text-gray-600">Vista previa - Así verán tus clientes la tienda</p>
+                  </div>
+                  <button
+                    onClick={() => setShowStorePreview(false)}
+                    className="btn-secondary flex items-center"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cerrar Vista
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {storeProducts.filter(p => p.isActive).length === 0 ? (
+                <div className="text-center py-12">
+                  <Store className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">Tienda vacía</h3>
+                  <p className="mt-1 text-sm text-gray-500">Agrega productos a tu tienda para que aparezcan aquí.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {storeProducts
+                    .filter(p => p.isActive)
+                    .map((storeProduct) => (
+                      <div 
+                        key={storeProduct.id} 
+                        className="bg-white rounded-md shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full"
+                        onClick={() => setSelectedStoreProduct(storeProduct)}
+                      >
+                        <div className="w-full h-44 bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center p-1">
+                          {storeProduct.product?.imageUrl ? (
+                            <img
+                              src={storeProduct.product.imageUrl}
+                              alt={storeProduct.product.name}
+                              className="w-full h-full object-contain max-w-full max-h-full"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="h-8 w-8 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-2 flex flex-col flex-grow">
+                          <h3 className="font-medium text-xs text-gray-900 mb-0.5 line-clamp-2 leading-tight min-h-[2rem]">
+                            {storeProduct.product?.name || 'Producto'}
+                          </h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            {storeProduct.product?.sku && (
+                              <p className="text-xs text-gray-500 leading-tight">SKU: {storeProduct.product.sku}</p>
+                            )}
+                            {storeProduct.product?.size && (
+                              <p className="text-xs text-gray-700 font-semibold leading-tight">Talla: {storeProduct.product.size}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between mt-auto">
+                            <span className="text-sm font-bold text-primary-600">
+                              ${storeProduct.salePrice.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal de Detalle del Producto en Vista Previa */}
+            {selectedStoreProduct && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4" onClick={() => setSelectedStoreProduct(null)}>
+                <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                  {/* Header del Modal */}
+                  <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-900">Detalle del Producto</h2>
+                    <button
+                      onClick={() => setSelectedStoreProduct(null)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  {/* Contenido del Modal */}
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Imagen */}
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                        {selectedStoreProduct.product?.imageUrl ? (
+                          <img
+                            src={selectedStoreProduct.product.imageUrl}
+                            alt={selectedStoreProduct.product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="h-24 w-24 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Detalles */}
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                            {selectedStoreProduct.product?.name || 'Producto'}
+                          </h3>
+                          {selectedStoreProduct.product?.sku && (
+                            <p className="text-sm text-gray-500">SKU: {selectedStoreProduct.product.sku}</p>
+                          )}
+                        </div>
+
+                        {/* Talla y Color */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {selectedStoreProduct.product?.size && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-1">Talla</h4>
+                              <p className="text-base text-gray-900 font-medium">
+                                {selectedStoreProduct.product.size}
+                              </p>
+                            </div>
+                          )}
+                          {(selectedStoreProduct.product?.color || selectedStoreProduct.product?.color2) && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-1">Color</h4>
+                              <p className="text-base text-gray-900 font-medium">
+                                {selectedStoreProduct.product.color}
+                                {selectedStoreProduct.product.color2 && selectedStoreProduct.product.color && ' / '}
+                                {selectedStoreProduct.product.color2}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {selectedStoreProduct.description && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Descripción</h4>
+                            <p className="text-gray-600 leading-relaxed">
+                              {selectedStoreProduct.description}
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedStoreProduct.product?.description && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Información del Producto</h4>
+                            <p className="text-gray-600 leading-relaxed">
+                              {selectedStoreProduct.product.description}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="pt-4 border-t">
+                          <div className="flex items-baseline space-x-2">
+                            <span className="text-3xl font-bold text-primary-600">
+                              ${selectedStoreProduct.salePrice.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        {seller && (
+                          <div className="pt-4 border-t">
+                            <p className="text-sm text-gray-500">
+                              Vendedor: <span className="font-medium text-gray-700">{seller.name}</span>
+                            </p>
+                            {seller.phone && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                Teléfono: <span className="font-medium text-gray-700">{seller.phone}</span>
+                              </p>
+                            )}
+                            {seller.email && (
+                              <p className="text-sm text-gray-500 mt-1">
+                                Email: <span className="font-medium text-gray-700">{seller.email}</span>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 px-[200px]">
       {/* Header */}
@@ -2012,6 +2649,17 @@ const SellerDashboard: React.FC = () => {
             <Package className="h-5 w-5 inline mr-2" />
             Mis Pedidos
           </button>
+          <button
+            onClick={() => setActiveSection('store')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeSection === 'store'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Store className="h-5 w-5 inline mr-2" />
+            Tienda Online
+          </button>
         </nav>
       </div>
 
@@ -2025,6 +2673,7 @@ const SellerDashboard: React.FC = () => {
         {activeSection === 'payment-notes' && renderPaymentNotes()}
         {activeSection === 'generate-order' && renderGenerateOrder()}
         {activeSection === 'my-orders' && renderMyOrders()}
+        {activeSection === 'store' && renderStoreEditor()}
       </div>
 
       {/* Modal de Nueva Venta */}
