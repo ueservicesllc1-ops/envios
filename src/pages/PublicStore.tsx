@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Package, Store, X, ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
 import { sellerStoreService } from '../services/sellerStoreService';
 import { sellerService } from '../services/sellerService';
+import toast from 'react-hot-toast';
 
 interface CartItem {
   storeProductId: string;
@@ -12,6 +13,7 @@ interface CartItem {
   quantity: number;
   unitPrice: number;
   description?: string;
+  availableStock?: number;
 }
 
 const PublicStore: React.FC = () => {
@@ -224,9 +226,21 @@ const PublicStore: React.FC = () => {
 
   // Funciones del carrito
   const addToCart = (storeProduct: any) => {
+    // Verificar stock disponible
+    const availableStock = storeProduct.availableStock || 0;
+    if (availableStock <= 0) {
+      toast.error('Este producto no tiene stock disponible');
+      return;
+    }
+    
     const existingItem = cart.find(item => item.storeProductId === storeProduct.id);
     
     if (existingItem) {
+      // Verificar que no exceda el stock disponible
+      if (existingItem.quantity + 1 > availableStock) {
+        toast.error(`Solo hay ${availableStock} unidades disponibles`);
+        return;
+      }
       setCart(cart.map(item =>
         item.storeProductId === storeProduct.id
           ? { ...item, quantity: item.quantity + 1 }
@@ -240,7 +254,8 @@ const PublicStore: React.FC = () => {
         productImage: storeProduct.product?.imageUrl,
         quantity: 1,
         unitPrice: storeProduct.salePrice,
-        description: storeProduct.description
+        description: storeProduct.description,
+        availableStock: availableStock
       }]);
     }
     setShowCart(true);
@@ -251,6 +266,16 @@ const PublicStore: React.FC = () => {
       removeFromCart(storeProductId);
       return;
     }
+    
+    // Buscar el producto para obtener su stock disponible
+    const storeProduct = storeProducts.find(p => p.id === storeProductId);
+    const availableStock = (storeProduct?.availableStock || 0);
+    
+    if (newQuantity > availableStock) {
+      toast.error(`Solo hay ${availableStock} unidades disponibles`);
+      return;
+    }
+    
     setCart(cart.map(item =>
       item.storeProductId === storeProductId
         ? { ...item, quantity: newQuantity }
@@ -609,23 +634,23 @@ const PublicStore: React.FC = () => {
       {/* Modal de Detalle del Producto */}
       {selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4" onClick={() => setSelectedProduct(null)}>
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            {/* Header del Modal */}
-            <div className="flex justify-between items-center p-4 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Detalle del Producto</h2>
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header del Modal - Sticky */}
+            <div className="flex justify-between items-center p-3 sm:p-4 border-b bg-white flex-shrink-0 sticky top-0 z-10">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Detalle del Producto</h2>
               <button
                 onClick={() => setSelectedProduct(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
 
-            {/* Contenido del Modal */}
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Contenido del Modal - Scrollable */}
+            <div className="p-3 sm:p-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {/* Imagen */}
-                <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden max-h-[40vh] sm:max-h-none">
                   {selectedProduct.product?.imageUrl ? (
                     <img
                       src={selectedProduct.product.imageUrl}
@@ -634,36 +659,36 @@ const PublicStore: React.FC = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-24 w-24 text-gray-400" />
+                      <Package className="h-16 w-16 sm:h-24 sm:w-24 text-gray-400" />
                     </div>
                   )}
                 </div>
 
                 {/* Detalles */}
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">
                       {selectedProduct.product?.name || 'Producto'}
                     </h3>
                     {selectedProduct.product?.sku && (
-                      <p className="text-sm text-gray-500">SKU: {selectedProduct.product.sku}</p>
+                      <p className="text-xs sm:text-sm text-gray-500">SKU: {selectedProduct.product.sku}</p>
                     )}
                   </div>
 
                   {/* Talla y Color */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     {selectedProduct.product?.size && (
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-1">Talla</h4>
-                        <p className="text-base text-gray-900 font-medium">
+                        <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1">Talla</h4>
+                        <p className="text-sm sm:text-base text-gray-900 font-medium">
                           {selectedProduct.product.size}
                         </p>
                       </div>
                     )}
                     {(selectedProduct.product?.color || selectedProduct.product?.color2) && (
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-1">Color</h4>
-                        <p className="text-base text-gray-900 font-medium">
+                        <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1">Color</h4>
+                        <p className="text-sm sm:text-base text-gray-900 font-medium">
                           {selectedProduct.product.color}
                           {selectedProduct.product.color2 && selectedProduct.product.color && ' / '}
                           {selectedProduct.product.color2}
@@ -674,8 +699,8 @@ const PublicStore: React.FC = () => {
 
                   {selectedProduct.description && (
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Descripción</h4>
-                      <p className="text-gray-600 leading-relaxed">
+                      <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">Descripción</h4>
+                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                         {selectedProduct.description}
                       </p>
                     </div>
@@ -683,16 +708,16 @@ const PublicStore: React.FC = () => {
 
                   {selectedProduct.product?.description && (
                     <div>
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Información del Producto</h4>
-                      <p className="text-gray-600 leading-relaxed">
+                      <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">Información del Producto</h4>
+                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                         {selectedProduct.product.description}
                       </p>
                     </div>
                   )}
 
-                  <div className="pt-4 border-t">
-                    <div className="flex items-baseline justify-between mb-4">
-                      <span className="text-3xl font-bold text-blue-600">
+                  <div className="pt-3 sm:pt-4 border-t">
+                    <div className="flex items-baseline justify-between mb-3 sm:mb-4">
+                      <span className="text-2xl sm:text-3xl font-bold text-blue-600">
                         ${selectedProduct.salePrice.toLocaleString()}
                       </span>
                     </div>
@@ -701,25 +726,25 @@ const PublicStore: React.FC = () => {
                         addToCart(selectedProduct);
                         setSelectedProduct(null);
                       }}
-                      className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center shadow-md"
+                      className="w-full bg-blue-600 text-white py-2.5 sm:py-3 px-4 rounded-lg text-sm sm:text-base font-medium hover:bg-blue-700 transition-colors flex items-center justify-center shadow-md"
                     >
-                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                       Agregar al pedido
                     </button>
                   </div>
 
                   {seller && (
-                    <div className="pt-4 border-t">
-                      <p className="text-sm text-gray-500">
+                    <div className="pt-3 sm:pt-4 border-t">
+                      <p className="text-xs sm:text-sm text-gray-500">
                         Vendedor: <span className="font-medium text-gray-700">{seller.name}</span>
                       </p>
                       {seller.phone && (
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-500 mt-1">
                           Teléfono: <span className="font-medium text-gray-700">{seller.phone}</span>
                         </p>
                       )}
                       {seller.email && (
-                        <p className="text-sm text-gray-500 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-500 mt-1">
                           Email: <span className="font-medium text-gray-700">{seller.email}</span>
                         </p>
                       )}

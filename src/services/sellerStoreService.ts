@@ -22,6 +22,7 @@ export interface StoreProduct {
   salePrice: number; // Precio de venta que el vendedor pone
   description?: string; // Descripción opcional
   isActive: boolean; // Si está visible en la tienda
+  availableStock?: number; // Stock disponible del inventario del vendedor
   createdAt: Date;
   updatedAt: Date;
 }
@@ -131,6 +132,21 @@ export const sellerStoreService = {
     try {
       console.log('Obteniendo productos activos para vendedor:', sellerId);
       
+      // Obtener inventario del vendedor para verificar stock
+      const { sellerInventoryService } = await import('./sellerInventoryService');
+      const sellerInventory = await sellerInventoryService.getBySeller(sellerId);
+      
+      // Crear un mapa de stock disponible por productId
+      const stockMap = new Map<string, number>();
+      sellerInventory
+        .filter(item => item.status === 'stock' && item.quantity > 0)
+        .forEach(item => {
+          const currentStock = stockMap.get(item.productId) || 0;
+          stockMap.set(item.productId, currentStock + item.quantity);
+        });
+      
+      console.log('Stock disponible:', Array.from(stockMap.entries()).map(([id, qty]) => ({ productId: id, quantity: qty })));
+      
       // Primero obtener todos los productos del vendedor
       const q = query(
         collection(db, 'sellerStore'),
@@ -138,35 +154,39 @@ export const sellerStoreService = {
       );
       const querySnapshot = await getDocs(q);
       
-      console.log('Total productos encontrados:', querySnapshot.docs.length);
+      console.log('Total productos encontrados en tienda:', querySnapshot.docs.length);
       
-      // Filtrar productos activos y ordenar en memoria
+      // Filtrar productos activos que tengan stock disponible
       const products = querySnapshot.docs
         .map(doc => {
           const data = doc.data();
+          const availableStock = stockMap.get(data.productId) || 0;
+          
           console.log('Producto encontrado:', {
             id: doc.id,
             productId: data.productId,
             productName: data.product?.name,
             salePrice: data.salePrice,
             isActive: data.isActive,
-            description: data.description
+            stockDisponible: availableStock
           });
+          
           return {
             id: doc.id,
             ...data,
+            availableStock, // Agregar stock disponible
             createdAt: convertTimestamp(data.createdAt),
             updatedAt: convertTimestamp(data.updatedAt)
           };
-        }) as StoreProduct[];
+        }) as (StoreProduct & { availableStock: number })[];
       
-      // Filtrar solo los activos y ordenar por updatedAt
+      // Filtrar solo los activos que tengan stock disponible y ordenar por updatedAt
       const activeProducts = products
-        .filter(p => p.isActive === true)
+        .filter(p => p.isActive === true && p.availableStock > 0)
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       
-      console.log('Productos activos:', activeProducts.length);
-      return activeProducts;
+      console.log('Productos activos con stock:', activeProducts.length);
+      return activeProducts as StoreProduct[];
     } catch (error) {
       console.error('Error getting active store products:', error);
       console.error('Error details:', error);
