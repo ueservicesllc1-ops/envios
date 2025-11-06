@@ -65,6 +65,46 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
+    // Reglas para productos vendidos
+    match /soldProducts/{soldProductId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para notas de pago
+    match /paymentNotes/{paymentNoteId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para ventas de notas de salida
+    match /exitNoteSales/{saleId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para ventas eliminadas
+    match /deletedSales/{deletedSaleId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para envíos (shipping)
+    match /shipping/{shippingId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para gastos de envío (shippingExpenses)
+    match /shippingExpenses/{expenseId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para gastos de notas de entrada (entryNoteExpenses)
+    match /entryNoteExpenses/{expenseId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para órdenes (orders)
+    match /orders/{orderId} {
+      allow read, write: if request.auth != null;
+    }
+    
     // Regla por defecto - denegar todo lo demás
     match /{document=**} {
       allow read, write: if false;
