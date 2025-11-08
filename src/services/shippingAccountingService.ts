@@ -16,6 +16,7 @@ export interface ShippingExpense {
   id: string;
   packageNumber: number;
   trackingNumber?: string;
+  shippingId?: string;
   recipient: string;
   cost: number;
   date: Date;
@@ -103,15 +104,30 @@ export const shippingAccountingService = {
   // Eliminar gasto de paquetería por ID de envío
   async deleteByShippingId(shippingId: string): Promise<void> {
     try {
-      // Buscar la entrada de contabilidad por trackingNumber o ID
+      // Buscar la entrada de contabilidad por shippingId o trackingNumber
       const q = query(
+        collection(db, 'shippingExpenses'),
+        where('shippingId', '==', shippingId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      const qByTracking = query(
         collection(db, 'shippingExpenses'),
         where('trackingNumber', '==', shippingId)
       );
-      const querySnapshot = await getDocs(q);
+      const trackingSnapshot = await getDocs(qByTracking);
+      
+      const docsMap = new Map<string, typeof querySnapshot.docs[number]>();
+      for (const docSnapshot of querySnapshot.docs) {
+        docsMap.set(docSnapshot.id, docSnapshot);
+      }
+      for (const docSnapshot of trackingSnapshot.docs) {
+        docsMap.set(docSnapshot.id, docSnapshot);
+      }
       
       // Eliminar todas las entradas encontradas
-      for (const docSnapshot of querySnapshot.docs) {
+      const docsToDelete = Array.from(docsMap.values());
+      for (const docSnapshot of docsToDelete) {
         await deleteDoc(doc(db, 'shippingExpenses', docSnapshot.id));
         console.log('Gasto de paquetería eliminado:', docSnapshot.id);
       }

@@ -58,8 +58,10 @@ export const shippingService = {
       
       // Registrar gasto en contabilidad automáticamente
       try {
+        const trackingNumber = pkg.trackingNumber || docRef.id;
         await shippingAccountingService.create({
-          trackingNumber: pkg.trackingNumber,
+          trackingNumber,
+          shippingId: docRef.id,
           recipient: pkg.recipient,
           cost: pkg.cost,
           date: pkg.shippingDate,

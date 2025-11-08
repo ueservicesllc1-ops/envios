@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { 
   Package, 
   TrendingUp, 
@@ -171,7 +171,11 @@ interface SellerInventoryItem {
 
 const SellerDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { id: sellerIdParam } = useParams<{ id?: string }>();
+  const [searchParams] = useSearchParams();
   const { user, isAdmin, isSeller, loading: authLoading } = useAuth();
+  const previewMode = searchParams.get('mode');
+  const isAdminPreview = Boolean(previewMode === 'admin' && sellerIdParam && isAdmin);
   const [seller, setSeller] = useState<Seller | null>(null);
   const [sellerInventory, setSellerInventory] = useState<SellerInventoryItem[]>([]);
   const [soldProducts, setSoldProducts] = useState<SoldProduct[]>([]);
@@ -225,148 +229,158 @@ const SellerDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      console.log('🔐 Estado de autenticación:', { user, isAdmin, isSeller, loading });
+      console.log('🔐 Estado de autenticación:', { user, isAdmin, isSeller, isAdminPreview, loading });
       
-      if (!user) {
+      if (!user && !isAdminPreview) {
         console.log('❌ Usuario no autenticado');
+        setSeller(null);
         setLoading(false);
         return;
       }
-      
-      // Buscar el vendedor por email
-      const sellers = await sellerService.getAll();
-      console.log('🔍 Todos los vendedores:', sellers.map(s => ({ id: s.id, email: s.email, name: s.name })));
-      console.log('👤 Usuario actual:', user?.email);
-      
-      let currentSeller = sellers.find(s => s.email === user?.email);
-      console.log('✅ Vendedor encontrado:', currentSeller ? 'SÍ' : 'NO');
-      
-      // Si el vendedor existe pero no tiene slug, generarlo automáticamente
-      if (currentSeller && !currentSeller.slug) {
-        try {
-          console.log('🔄 Generando slug para vendedor:', currentSeller.name);
-          await sellerService.generateMissingSlugs();
-          // Recargar el vendedor con el slug
-          const updatedSeller = await sellerService.getById(currentSeller.id);
-          if (updatedSeller) {
-            currentSeller = updatedSeller;
-            console.log('✅ Slug generado:', updatedSeller.slug);
-          }
-        } catch (error) {
-          console.error('Error generating slug:', error);
+
+      let currentSeller: Seller | null = null;
+
+      if (isAdminPreview) {
+        console.log('👀 Vista previa de administrador para vendedor:', sellerIdParam);
+        if (!sellerIdParam) {
+          toast.error('ID de vendedor no proporcionado');
+          setLoading(false);
+          return;
         }
-      }
-      
-      if (!currentSeller) {
-        console.log('❌ No se encontró vendedor para email:', user?.email);
+        const sellerData = await sellerService.getById(sellerIdParam);
+        if (!sellerData) {
+          toast.error('Vendedor no encontrado');
+          setSeller(null);
+          setLoading(false);
+          return;
+        }
+        currentSeller = sellerData;
+        setSeller(sellerData);
+      } else {
+        const sellers = await sellerService.getAll();
+        console.log('🔍 Todos los vendedores:', sellers.map(s => ({ id: s.id, email: s.email, name: s.name })));
+        console.log('👤 Usuario actual:', user?.email);
         
-        // Si es luisuf@gmail.com, crear automáticamente
-        if (user?.email === 'luisuf@gmail.com') {
-          console.log('🚀 Creando vendedor Luisuf automáticamente...');
+        let foundSeller = sellers.find(s => s.email === user?.email);
+        console.log('✅ Vendedor encontrado:', foundSeller ? 'SÍ' : 'NO');
+        
+        if (foundSeller && !foundSeller.slug) {
           try {
-            const luisufData = {
-              name: 'Luisuf',
-              email: 'luisuf@gmail.com',
-              phone: '+1234567890',
-              city: 'Ciudad',
-              address: 'Dirección por definir',
-              commission: 10,
-              priceType: 'price1' as 'price1' | 'price2',
-              isActive: true
-            };
-            
-            const luisufId = await sellerService.create(luisufData);
-            console.log('✅ Luisuf creado con ID:', luisufId);
-            
-            // Recargar datos
-            const updatedSellers = await sellerService.getAll();
-            const newCurrentSeller = updatedSellers.find(s => s.email === user?.email);
-            
-            if (newCurrentSeller) {
-              setSeller(newCurrentSeller);
-              console.log('✅ Luisuf configurado correctamente');
-            } else {
-              toast.error('Error al configurar vendedor');
-              return;
+            console.log('🔄 Generando slug para vendedor:', foundSeller.name);
+            await sellerService.generateMissingSlugs();
+            const updatedSeller = await sellerService.getById(foundSeller.id);
+            if (updatedSeller) {
+              foundSeller = updatedSeller;
+              console.log('✅ Slug generado:', updatedSeller.slug);
             }
           } catch (error) {
-            console.error('Error creando Luisuf:', error);
-            toast.error('Error al crear vendedor');
+            console.error('Error generating slug:', error);
+          }
+        }
+
+        if (!foundSeller) {
+          console.log('❌ No se encontró vendedor para email:', user?.email);
+          
+          if (user?.email === 'luisuf@gmail.com') {
+            console.log('🚀 Creando vendedor Luisuf automáticamente...');
+            try {
+              const luisufData = {
+                name: 'Luisuf',
+                email: 'luisuf@gmail.com',
+                phone: '+1234567890',
+                city: 'Ciudad',
+                address: 'Dirección por definir',
+                commission: 10,
+                priceType: 'price1' as 'price1' | 'price2',
+                isActive: true
+              };
+              
+              const luisufId = await sellerService.create(luisufData);
+              console.log('✅ Luisuf creado con ID:', luisufId);
+              
+              const updatedSellers = await sellerService.getAll();
+              const newCurrentSeller = updatedSellers.find(s => s.email === user?.email);
+              
+              if (newCurrentSeller) {
+                currentSeller = newCurrentSeller;
+                setSeller(newCurrentSeller);
+                console.log('✅ Luisuf configurado correctamente');
+              } else {
+                toast.error('Error al configurar vendedor');
+                setLoading(false);
+                return;
+              }
+            } catch (error) {
+              console.error('Error creando Luisuf:', error);
+              toast.error('Error al crear vendedor');
+              setLoading(false);
+              return;
+            }
+          } else {
+            toast.error('No tienes permisos de vendedor');
+            setLoading(false);
             return;
           }
         } else {
-          toast.error('No tienes permisos de vendedor');
-          return;
+          currentSeller = foundSeller;
+          setSeller(foundSeller);
         }
-      } else {
-        setSeller(currentSeller);
       }
 
-      // Cargar inventario del vendedor
-      const sellerToUse = currentSeller || seller;
-      if (sellerToUse) {
-        const inventoryData = await sellerInventoryService.getBySeller(sellerToUse.id);
-        console.log('Inventario del vendedor cargado:', inventoryData);
-        setSellerInventory(inventoryData);
+      if (!currentSeller) {
+        setLoading(false);
+        return;
       }
 
-      // Cargar ventas del vendedor
-      if (sellerToUse) {
-        const salesData = await soldProductService.getBySeller(sellerToUse.id);
-        setSoldProducts(salesData);
+      const sellerId = currentSeller.id;
 
-        // Cargar notas de salida del vendedor
-        const exitNotesData = await exitNoteService.getAll();
-        const sellerExitNotes = exitNotesData.filter(note => note.sellerId === sellerToUse.id);
-        setExitNotes(sellerExitNotes);
+      const inventoryData = await sellerInventoryService.getBySeller(sellerId);
+      console.log('Inventario del vendedor cargado:', inventoryData);
+      setSellerInventory(inventoryData);
 
-        // Sincronizar inventario del vendedor con las notas de salida y ventas realizadas
-        // Esto reconstruirá completamente el inventario considerando notas de salida menos ventas
-        await syncSellerInventory(sellerToUse.id, sellerExitNotes, salesData);
+      const salesData = await soldProductService.getBySeller(sellerId);
+      setSoldProducts(salesData);
 
-        // Recargar inventario actualizado después de la sincronización
-        const updatedInventoryData = await sellerInventoryService.getBySeller(sellerToUse.id);
-        setSellerInventory(updatedInventoryData);
+      const exitNotesData = await exitNoteService.getAll();
+      const sellerExitNotes = exitNotesData.filter(note => note.sellerId === sellerId);
+      setExitNotes(sellerExitNotes);
 
-        // Cargar paquetes de envío del vendedor
-        const shippingData = await shippingService.getAll();
-        const sellerShippingPackages = shippingData.filter(pkg => pkg.sellerId === sellerToUse.id);
-        console.log('📦 Paquetes del vendedor encontrados:', sellerShippingPackages.length);
-        
-        // Asociar productos de las notas de salida con los paquetes
-        const packagesWithItems = sellerShippingPackages.map(pkg => {
-          // Buscar la nota de salida asociada a este paquete
-          const associatedExitNote = exitNotes.find(note => note.shippingId === pkg.id);
-          console.log(`📦 Paquete ${pkg.id}:`, {
-            hasExitNote: !!associatedExitNote,
-            itemsCount: associatedExitNote ? associatedExitNote.items.length : 0
-          });
-          return {
-            ...pkg,
-            items: associatedExitNote ? associatedExitNote.items : []
-          };
+      await syncSellerInventory(sellerId, sellerExitNotes, salesData);
+
+      const updatedInventoryData = await sellerInventoryService.getBySeller(sellerId);
+      setSellerInventory(updatedInventoryData);
+
+      const shippingData = await shippingService.getAll();
+      const sellerShippingPackages = shippingData.filter(pkg => pkg.sellerId === sellerId);
+      console.log('📦 Paquetes del vendedor encontrados:', sellerShippingPackages.length);
+
+      const packagesWithItems = sellerShippingPackages.map(pkg => {
+        const associatedExitNote = sellerExitNotes.find(note => note.shippingId === pkg.id);
+        console.log(`📦 Paquete ${pkg.id}:`, {
+          hasExitNote: !!associatedExitNote,
+          itemsCount: associatedExitNote ? associatedExitNote.items.length : 0
         });
-        
-        console.log('📦 Paquetes con items:', packagesWithItems);
-        setShippingPackages(packagesWithItems);
+        return {
+          ...pkg,
+          items: associatedExitNote ? associatedExitNote.items : []
+        };
+      });
 
-        // Cargar notas de pago del vendedor
-        const paymentNotesData = await paymentNoteService.getAll();
-        const sellerPaymentNotes = paymentNotesData.filter(note => note.sellerId === sellerToUse.id);
-        setPaymentNotes(sellerPaymentNotes);
-        
-        // Cargar pedidos del vendedor
-        await loadSellerOrders();
-      }
+      console.log('📦 Paquetes con items:', packagesWithItems);
+      setShippingPackages(packagesWithItems);
+
+      const paymentNotesData = await paymentNoteService.getAll();
+      const sellerPaymentNotes = paymentNotesData.filter(note => note.sellerId === sellerId);
+      setPaymentNotes(sellerPaymentNotes);
+
+      await loadSellerOrders(sellerId);
       
-      // Cargar inventario del admin
-      const [inventoryData, productsData] = await Promise.all([
+      const [inventoryDataAdmin, productsData] = await Promise.all([
         inventoryService.getAll(),
         productService.getAll()
       ]);
       
-      // Combinar datos de inventario con productos
-      const inventoryWithProducts = inventoryData.map(item => {
+      const inventoryWithProducts = inventoryDataAdmin.map(item => {
         const product = productsData.find(p => p.id === item.productId);
         return {
           ...item,
@@ -382,7 +396,7 @@ const SellerDashboard: React.FC = () => {
       toast.error('Error al cargar los datos');
       setLoading(false);
     }
-  }, [user, isAdmin, isSeller]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, isAdminPreview, sellerIdParam, isAdmin, isSeller]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!authLoading) {
@@ -427,16 +441,17 @@ const SellerDashboard: React.FC = () => {
     setShowProductModal(true);
   };
 
-  const loadSellerOrders = async () => {
-    if (!seller) {
+  const loadSellerOrders = async (sellerIdOverride?: string) => {
+    const targetSellerId = sellerIdOverride ?? seller?.id;
+    if (!targetSellerId) {
       console.log('No seller found, cannot load orders');
       return;
     }
     
     try {
       setLoadingOrders(true);
-      console.log('Loading orders for seller:', seller.id);
-      const orders = await orderService.getBySeller(seller.id);
+      console.log('Loading orders for seller:', targetSellerId);
+      const orders = await orderService.getBySeller(targetSellerId);
       console.log('Loaded orders:', orders);
       setSellerOrders(orders);
     } catch (error) {
@@ -1214,7 +1229,7 @@ const SellerDashboard: React.FC = () => {
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-900">Mis Pedidos</h2>
           <button
-            onClick={loadSellerOrders}
+            onClick={() => loadSellerOrders()}
             className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors flex items-center"
           >
             <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

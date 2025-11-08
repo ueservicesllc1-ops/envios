@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User } from 'lucide-react';
+import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User, Edit } from 'lucide-react';
 import { ExitNote, Product, Seller } from '../types';
 import { exitNoteService } from '../services/exitNoteService';
 import { productService } from '../services/productService';
@@ -7,10 +7,14 @@ import { sellerService } from '../services/sellerService';
 import { inventoryService } from '../services/inventoryService';
 import { syncService } from '../services/syncService';
 import { shippingService } from '../services/shippingService';
+import { sellerInventoryService } from '../services/sellerInventoryService';
+import { exitNoteAccountingService } from '../services/exitNoteAccountingService';
+import { useAuth } from '../hooks/useAuth';
 import SimpleBarcodeScanner from '../components/SimpleBarcodeScanner';
 import toast from 'react-hot-toast';
 
 const ExitNotes: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [notes, setNotes] = useState<ExitNote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -20,12 +24,15 @@ const ExitNotes: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [viewingNote, setViewingNote] = useState<ExitNote | null>(null);
+  const [editingNote, setEditingNote] = useState<ExitNote | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [showProductGrid, setShowProductGrid] = useState(false);
   const [formData, setFormData] = useState({
     sellerId: '',
     notes: ''
   });
   const [items, setItems] = useState<Array<{
+    id?: string;
     productId: string;
     quantity: number;
     size: string;
@@ -39,6 +46,20 @@ const ExitNotes: React.FC = () => {
   const [showChangeSellerModal, setShowChangeSellerModal] = useState(false);
   const [selectedNewSellerId, setSelectedNewSellerId] = useState('');
 
+  const resetForm = () => {
+    setFormData({ sellerId: '', notes: '' });
+    setItems([]);
+    setSkuSearch('');
+    setShowScanner(false);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingNote(null);
+    resetForm();
+    setIsSaving(false);
+  };
+
   useEffect(() => {
     loadNotes();
   }, []);
@@ -50,8 +71,8 @@ const ExitNotes: React.FC = () => {
   }, [items]);
 
   const openModal = () => {
-    setFormData({ sellerId: '', notes: '' });
-    setItems([]);
+    setEditingNote(null);
+    resetForm();
     setShowModal(true);
     
     // Cargar borradores temporales disponibles
@@ -70,6 +91,29 @@ const ExitNotes: React.FC = () => {
     }
   };
 
+  const openEditModal = (note: ExitNote) => {
+    setViewingNote(null);
+    setEditingNote(note);
+    setFormData({
+      sellerId: note.sellerId,
+      notes: note.notes || ''
+    });
+
+    const mappedItems = note.items.map(item => ({
+      id: item.id,
+      productId: item.productId,
+      quantity: item.quantity,
+      size: item.size || '',
+      weight: item.weight || item.product?.weight || 0,
+      unitPrice: item.unitPrice
+    }));
+
+    setItems(mappedItems);
+    setSkuSearch('');
+    setShowScanner(false);
+    setShowModal(true);
+  };
+
   const loadDraft = (draft: any) => {
     setFormData({
       sellerId: draft.sellerId,
@@ -77,6 +121,7 @@ const ExitNotes: React.FC = () => {
     });
     
     const draftItems = draft.items.map((item: any) => ({
+      id: item.id,
       productId: item.productId,
       quantity: item.quantity,
       size: item.size,
@@ -318,6 +363,39 @@ const ExitNotes: React.FC = () => {
     }
   };
 
+  const canEditNote = (note: ExitNote) => !['delivered', 'received', 'cancelled'].includes(note.status);
+
+  const buildExitNoteItems = (selectedSeller: Seller) => {
+    const exitNoteItems = items.map(item => {
+      const product = products.find(p => p.id === item.productId) 
+        || editingNote?.items.find(original => original.productId === item.productId)?.product;
+
+      if (!product) {
+        throw new Error('Producto no encontrado');
+      }
+
+      const quantity = Number(item.quantity) || 0;
+      const unitPrice = Number(item.unitPrice) || 0;
+      const weight = Number(item.weight) || product.weight || 0;
+
+      return {
+        id: item.id || `${Date.now()}-${Math.random()}`,
+        productId: item.productId,
+        product,
+        quantity,
+        size: item.size,
+        weight,
+        unitPrice,
+        totalPrice: unitPrice * quantity
+      };
+    });
+
+    const totalPrice = exitNoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const totalWeightInGrams = exitNoteItems.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
+
+    return { exitNoteItems, totalPrice, totalWeightInGrams };
+  };
+
   const handleSaveTemporary = async () => {
     try {
       if (items.length === 0) {
@@ -331,22 +409,7 @@ const ExitNotes: React.FC = () => {
         return;
       }
 
-      // Crear items con información completa del producto
-      const exitNoteItems = items.map(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (!product) throw new Error('Producto no encontrado');
-        
-        return {
-          id: Date.now().toString() + Math.random(),
-          productId: item.productId,
-          product: product,
-          quantity: item.quantity,
-          size: item.size,
-          weight: item.weight,
-          unitPrice: item.unitPrice,
-          totalPrice: item.unitPrice * item.quantity
-        };
-      });
+      const { exitNoteItems, totalPrice } = buildExitNoteItems(selectedSeller);
 
       const temporaryNote = {
         sellerId: formData.sellerId,
@@ -356,7 +419,7 @@ const ExitNotes: React.FC = () => {
         totalWeight: totalWeight,
         totalItems: items.length,
         totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
-        totalAmount: exitNoteItems.reduce((sum, item) => sum + item.totalPrice, 0),
+        totalAmount: totalPrice,
         status: 'temporary' as const,
         notes: formData.notes,
         date: new Date(),
@@ -385,6 +448,14 @@ const ExitNotes: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingNote) {
+      await handleUpdateNote();
+    } else {
+      await handleCreateNote();
+    }
+  };
+
+  const handleCreateNote = async () => {
     try {
       if (items.length === 0) {
         toast.error('Debe agregar al menos un producto');
@@ -412,101 +483,196 @@ const ExitNotes: React.FC = () => {
         }
       }
 
+      const { exitNoteItems, totalPrice, totalWeightInGrams } = buildExitNoteItems(selectedSeller);
+
       // Validar peso total (máximo 8 libras ±0.5)
-      const totalWeightInGrams = items.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
-      const totalWeightInPounds = totalWeightInGrams / 453.592; // Convertir gramos a libras
-      const maxWeight = 8.5; // 8 libras + 0.5 de tolerancia
-      
+      const totalWeightInPounds = totalWeightInGrams / 453.592;
+      const maxWeight = 8.5;
+
       if (totalWeightInPounds > maxWeight) {
         toast.error(`El peso total (${totalWeightInPounds.toFixed(2)} lbs) excede el límite máximo de ${maxWeight} libras.`);
         return;
       }
 
-      // Crear items con información completa del producto
-      const exitNoteItems = items.map(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (!product) throw new Error('Producto no encontrado');
-        
-        return {
-          id: Date.now().toString() + Math.random(),
-          productId: item.productId,
-          product: product,
-          quantity: item.quantity,
-          size: item.size,
-          weight: item.weight,
-          unitPrice: item.unitPrice,
-          totalPrice: item.quantity * item.unitPrice
-        };
-      });
-
-      const totalPrice = exitNoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
+      setIsSaving(true);
 
       const exitNoteData = {
         number: `NS-${Date.now()}`,
         date: new Date(),
         sellerId: selectedSeller.id,
         seller: selectedSeller.name,
-        customer: selectedSeller.name, // El vendedor es el cliente
+        customer: selectedSeller.name,
         items: exitNoteItems,
-        totalPrice: totalPrice,
+        totalPrice,
         status: 'pending' as const,
         notes: formData.notes,
         createdAt: new Date(),
-        createdBy: 'admin' // TODO: Obtener del usuario actual
+        createdBy: 'admin'
       };
 
-      // Crear la nota de salida
       const createdExitNote = await exitNoteService.create(exitNoteData);
-      
-      // Crear el paquete de envío automáticamente
+
       const shippingPackageData = {
         recipient: selectedSeller.name,
         address: selectedSeller.address || 'Dirección no especificada',
         city: selectedSeller.city || 'Ciudad no especificada',
         phone: selectedSeller.phone || 'Teléfono no especificado',
-        weight: exitNoteItems.reduce((sum, item) => sum + (item.weight * item.quantity), 0) / 1000, // Convertir gramos a kg
+        weight: totalWeightInGrams / 1000,
         dimensions: 'Funda',
         status: 'pending' as const,
         shippingDate: new Date(),
-        cost: 28, // Costo fijo de $28
+        cost: 28,
         notes: `Nota de salida: ${exitNoteData.number} - ${formData.notes || 'Sin notas adicionales'}`,
         sellerId: selectedSeller.id
       };
-
-      // Crear el paquete de envío
-      const { shippingService } = await import('../services/shippingService');
+ 
       const shippingId = await shippingService.create(shippingPackageData);
-      
-      // Vincular la nota de salida con el paquete de envío
-      await exitNoteService.update(createdExitNote, { 
-        shippingId: shippingId,
+ 
+      await exitNoteService.update(createdExitNote, {
+        shippingId,
         notes: `${formData.notes || ''} - Envío: ${shippingId}`.trim()
       });
-      
-      // Actualizar stock después de crear la nota
-      for (const item of items) {
-        await inventoryService.updateStockAfterExit(item.productId, item.quantity);
+ 
+      for (const item of exitNoteItems) {
+        await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id);
       }
-
-      // Agregar productos al inventario del vendedor
-      const { sellerInventoryService } = await import('../services/sellerInventoryService');
+ 
       for (const item of exitNoteItems) {
         await sellerInventoryService.addToSellerInventory(
           selectedSeller.id,
           item.productId,
           item.product,
-          item.quantity
+          item.quantity,
+          item.unitPrice
         );
       }
-      
+
       toast.success('Nota de salida y paquete de envío creados correctamente');
-      setShowModal(false);
-      setFormData({ sellerId: '', notes: '' });
-      setItems([]);
+      closeModal();
       loadNotes();
     } catch (error) {
       console.error('Error creating exit note:', error);
       toast.error('Error al crear la nota de salida');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateNote = async () => {
+    if (!editingNote) return;
+    if (!isAdmin) {
+      toast.error('No tienes permisos para editar notas de salida');
+      return;
+    }
+
+    try {
+      if (items.length === 0) {
+        toast.error('Debe agregar al menos un producto');
+        return;
+      }
+
+      const selectedSeller = sellers.find(s => s.id === editingNote.sellerId);
+      if (!selectedSeller) {
+        toast.error('No se encontró el vendedor original de la nota');
+        return;
+      }
+
+      const { exitNoteItems, totalPrice, totalWeightInGrams } = buildExitNoteItems(selectedSeller);
+
+      const totalWeightInPounds = totalWeightInGrams / 453.592;
+      const maxWeight = 8.5;
+
+      if (totalWeightInPounds > maxWeight) {
+        toast.error(`El peso total (${totalWeightInPounds.toFixed(2)} lbs) excede el límite máximo de ${maxWeight} libras.`);
+        return;
+      }
+
+      setIsSaving(true);
+
+      // Revertir el efecto de la nota original
+      for (const originalItem of editingNote.items) {
+        let product = products.find(p => p.id === originalItem.productId) || originalItem.product;
+        if (!product) {
+          try {
+            product = await productService.getById(originalItem.productId);
+          } catch (fetchError) {
+            console.warn('No fue posible recuperar el producto', originalItem.productId, fetchError);
+          }
+        }
+        if (!product) continue;
+
+        const cost = product.cost || 0;
+        const unitPrice = product.salePrice1 || originalItem.unitPrice || 0;
+
+        await inventoryService.updateStockAfterEntry(
+          originalItem.productId,
+          originalItem.quantity,
+          cost,
+          unitPrice
+        );
+
+        await sellerInventoryService.removeFromSellerInventory(
+          editingNote.sellerId,
+          originalItem.productId,
+          originalItem.quantity
+        );
+      }
+
+      // Aplicar los nuevos items
+      for (const newItem of exitNoteItems) {
+        await inventoryService.updateStockAfterExit(
+          newItem.productId,
+          newItem.quantity,
+          editingNote.id,
+          editingNote.sellerId
+        );
+
+        await sellerInventoryService.addToSellerInventory(
+          editingNote.sellerId,
+          newItem.productId,
+          newItem.product,
+          newItem.quantity,
+          newItem.unitPrice
+        );
+      }
+
+      await exitNoteService.update(editingNote.id, {
+        items: exitNoteItems,
+        totalPrice,
+        notes: formData.notes
+      });
+
+      if (editingNote.shippingId) {
+        const shippingUpdate: any = {
+          weight: totalWeightInGrams / 1000
+        };
+        if (formData.notes) {
+          shippingUpdate.notes = formData.notes;
+        }
+        await shippingService.update(editingNote.shippingId, shippingUpdate);
+      }
+
+      try {
+        const accountingEntries = await exitNoteAccountingService.getByNoteNumber(editingNote.number);
+        for (const entry of accountingEntries) {
+          await exitNoteAccountingService.update(entry.id, {
+            totalValue: totalPrice,
+            notes: `Venta a vendedor - ${selectedSeller.name}`
+          });
+        }
+      } catch (accountingError) {
+        console.warn('No se pudo actualizar la entrada de contabilidad:', accountingError);
+      }
+
+      toast.success('Nota de salida actualizada correctamente');
+      closeModal();
+      setEditingNote(null);
+      loadNotes();
+    } catch (error) {
+      console.error('Error updating exit note:', error);
+      toast.error('Error al actualizar la nota de salida');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -967,9 +1133,11 @@ const ExitNotes: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-7xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Nueva Nota de Salida</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {editingNote ? 'Editar Nota de Salida' : 'Nueva Nota de Salida'}
+              </h3>
               <button
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
                 className="p-1 text-gray-400 hover:text-gray-600"
               >
                 <X className="h-5 w-5" />
@@ -991,6 +1159,7 @@ const ExitNotes: React.FC = () => {
                     setTimeout(() => updateSellerPrices(), 100);
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  disabled={Boolean(editingNote)}
                 >
                   <option value="">Seleccionar vendedor</option>
                   {sellers.map(seller => (
@@ -1036,11 +1205,13 @@ const ExitNotes: React.FC = () => {
                             <option value="">Seleccionar producto</option>
                             {products.map(product => {
                               const availableStock = getAvailableStock(product.id);
+                              const isExistingItem = Boolean(editingNote && editingNote.items.some(noteItem => noteItem.productId === product.id));
+                              const disableOption = !isExistingItem && availableStock === 0;
                               return (
                                 <option 
                                   key={product.id} 
                                   value={product.id}
-                                  disabled={availableStock === 0}
+                                  disabled={disableOption}
                                   title={`${product.name} - ${product.sku} ${product.size ? `(Talla: ${product.size})` : ''} - Stock: ${availableStock}`}
                                 >
                                   {product.name} - {product.sku} {product.size ? `(Talla: ${product.size})` : ''} - Stock: {availableStock}
@@ -1225,28 +1396,23 @@ const ExitNotes: React.FC = () => {
 
 
               {/* Botones principales */}
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveTemporary}
-                  className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors"
-                  disabled={items.length === 0}
-                >
-                  Guardar Temporal
-                </button>
+              <div className="flex justify-end space-x-3 pt-6">
+                {!editingNote && (
+                  <button
+                    type="button"
+                    onClick={handleSaveTemporary}
+                    className="btn-secondary"
+                    disabled={items.length === 0 || isSaving}
+                  >
+                    Guardar Temporal
+                  </button>
+                )}
                 <button
                   type="submit"
                   className="btn-primary"
-                  disabled={items.length === 0}
+                  disabled={items.length === 0 || isSaving}
                 >
-                  Crear Nota de Salida
+                  {isSaving ? 'Guardando...' : editingNote ? 'Actualizar Nota de Salida' : 'Crear Nota de Salida'}
                 </button>
               </div>
             </form>
@@ -1262,12 +1428,23 @@ const ExitNotes: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900">
                 Detalles de la Nota de Salida
               </h3>
-              <button
-                onClick={() => setViewingNote(null)}
-                className="p-1 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
+              <div className="flex items-center space-x-2">
+                {isAdmin && canEditNote(viewingNote) && (
+                  <button
+                    onClick={() => openEditModal(viewingNote)}
+                    className="px-3 py-2 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 transition-colors flex items-center"
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Editar
+                  </button>
+                )}
+                <button
+                  onClick={() => setViewingNote(null)}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-6">

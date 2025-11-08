@@ -181,6 +181,37 @@ class SellerInventoryService {
       throw error;
     }
   }
+
+  async removeFromSellerInventory(sellerId: string, productId: string, quantity: number): Promise<void> {
+    try {
+      let remaining = quantity;
+      const items = await this.getBySeller(sellerId);
+      const relevantItems = items.filter(item => item.productId === productId);
+
+      for (const item of relevantItems) {
+        if (remaining <= 0) break;
+
+        if (item.quantity > remaining) {
+          const newQuantity = item.quantity - remaining;
+          await this.update(item.id, {
+            quantity: newQuantity,
+            totalValue: (item.unitPrice || 0) * newQuantity
+          });
+          remaining = 0;
+        } else {
+          await this.delete(item.id);
+          remaining -= item.quantity;
+        }
+      }
+
+      if (remaining > 0) {
+        throw new Error('Inventario del vendedor insuficiente para remover la cantidad solicitada');
+      }
+    } catch (error) {
+      console.error('Error removing from seller inventory:', error);
+      throw error;
+    }
+  }
 }
 
 export const sellerInventoryService = new SellerInventoryService();

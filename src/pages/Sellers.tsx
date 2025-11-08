@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Edit, Eye, Trash2, Mail, Phone, DollarSign, X } from 'lucide-react';
+import { Users, Plus, Search, Edit, Eye, Trash2, Mail, Phone, DollarSign, X, LayoutDashboard } from 'lucide-react';
 import { Seller } from '../types';
 import { sellerService } from '../services/sellerService';
 import toast from 'react-hot-toast';
@@ -172,6 +172,10 @@ const Sellers: React.FC = () => {
     navigate(`/sellers/${sellerId}`);
   };
 
+  const handleOpenSellerPanel = (sellerId: string) => {
+    navigate(`/seller-dashboard/${sellerId}?mode=admin`);
+  };
+
   const filteredSellers = sellers.filter(seller =>
     seller.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     seller.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -323,6 +327,13 @@ const Sellers: React.FC = () => {
                   >
                     <Eye className="h-4 w-4" />
                   </button>
+                <button
+                  onClick={() => handleOpenSellerPanel(seller.id)}
+                  className="p-1 text-gray-400 hover:text-purple-600"
+                  title="Ver panel del vendedor"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                </button>
                 <button
                   onClick={() => handleDelete(seller.id)}
                   className="p-1 text-gray-400 hover:text-red-600"
