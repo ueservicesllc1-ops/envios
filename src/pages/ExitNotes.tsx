@@ -591,7 +591,7 @@ const ExitNotes: React.FC = () => {
 
       // Revertir el efecto de la nota original
       for (const originalItem of editingNote.items) {
-        let product = products.find(p => p.id === originalItem.productId) || originalItem.product;
+        let product: Product | null = products.find(p => p.id === originalItem.productId) || originalItem.product || null;
         if (!product) {
           try {
             product = await productService.getById(originalItem.productId);
