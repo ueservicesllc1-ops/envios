@@ -11,7 +11,8 @@ import {
   Calculator,
   Truck,
   CreditCard,
-  ShoppingCart
+  ShoppingCart,
+  Percent
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Paquetería', href: '/shipping', icon: Truck },
   { name: 'Contabilidad', href: '/accounting', icon: Calculator },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
+  { name: 'Interes Compuesto', href: '/compound-interest', icon: Percent },
   { name: 'Vendedores', href: '/sellers', icon: Users },
   { name: 'Configuración', href: '/settings', icon: Settings },
 ];

@@ -20,6 +20,7 @@ import Orders from './pages/Orders';
 import Settings from './pages/Settings';
 import MobileScanner from './pages/MobileScanner';
 import PublicStore from './pages/PublicStore';
+import CompoundInterest from './pages/CompoundInterest';
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
                     <Route path="/seller-panel/:id" element={<SellerPanel />} />
                     <Route path="/seller-dashboard/:id" element={<SellerDashboard />} />
                     <Route path="/orders" element={<Orders />} />
+                    <Route path="/compound-interest" element={<CompoundInterest />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/mobile-scanner" element={<MobileScanner />} />
                   </Routes>
