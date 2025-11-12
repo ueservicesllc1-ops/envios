@@ -97,7 +97,10 @@ const Accounting: React.FC = () => {
       setEntryNoteExpenses(expensesData);
       
       // Calcular gastos de compras = suma de todas las notas de entrada
-      const totalPurchaseExpenses = entryNotesData.reduce((sum, note) => sum + note.totalCost, 0);
+      const totalPurchaseExpenses = entryNotesData.reduce(
+        (sum, note) => sum + (note.totalCost ?? 0),
+        0
+      );
       
       // Calcular ventas a vendedores = suma de todas las notas de salida
       const totalSalesToSellers = exitNotesData.reduce((sum, note) => sum + note.totalPrice, 0);
@@ -106,7 +109,9 @@ const Accounting: React.FC = () => {
       let totalHistoricalCostValue = 0;
       entryNotesData.forEach(note => {
         note.items.forEach(item => {
-          totalHistoricalCostValue += item.cost * item.quantity;
+          const itemCost = item.cost ?? 0;
+          const itemQuantity = item.quantity ?? 0;
+          totalHistoricalCostValue += itemCost * itemQuantity;
         });
       });
       
@@ -117,7 +122,8 @@ const Accounting: React.FC = () => {
           // Buscar el producto para obtener su precio 1
           const product = products.find(p => p.id === item.productId);
           if (product) {
-            totalSalePrice1Value += (product.salePrice1 || 0) * item.quantity;
+            const itemQuantity = item.quantity ?? 0;
+            totalSalePrice1Value += (product.salePrice1 || 0) * itemQuantity;
           }
         });
       });

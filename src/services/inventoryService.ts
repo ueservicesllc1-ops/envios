@@ -389,11 +389,19 @@ export const inventoryService = {
       for (const note of entryNotes) {
         console.log(`Procesando nota de entrada: ${note.number}`);
         for (const item of note.items) {
+          const quantity = item.quantity ?? 0;
+          if (quantity <= 0) {
+            continue;
+          }
+
+          const cost = item.cost ?? 0;
+          const unitPrice = item.unitPrice ?? cost;
+
           await this.updateStockAfterEntry(
             item.productId,
-            item.quantity,
-            item.cost,
-            item.unitPrice
+            quantity,
+            cost,
+            unitPrice
           );
         }
       }
@@ -407,7 +415,12 @@ export const inventoryService = {
       for (const note of exitNotes) {
         console.log(`Procesando nota de salida: ${note.number}`);
         for (const item of note.items) {
-          await this.removeStock(item.productId, item.quantity);
+          const quantity = item.quantity ?? 0;
+          if (quantity <= 0) {
+            continue;
+          }
+
+          await this.removeStock(item.productId, quantity);
         }
       }
       

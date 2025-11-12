@@ -3112,6 +3112,7 @@ const SellerDashboard: React.FC = () => {
                       // Crear la nota de pago
                       const paymentNoteData = {
                         number: `PN-${Date.now()}`, // Generar número único
+                        sourceType: 'seller' as const,
                         sellerId: seller.id,
                         sellerName: seller.name,
                         items: [{

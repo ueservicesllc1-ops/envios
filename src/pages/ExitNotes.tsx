@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User, Edit } from 'lucide-react';
+import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User, Edit, Download } from 'lucide-react';
 import { ExitNote, Product, Seller } from '../types';
 import { exitNoteService } from '../services/exitNoteService';
 import { productService } from '../services/productService';
@@ -12,6 +12,9 @@ import { exitNoteAccountingService } from '../services/exitNoteAccountingService
 import { useAuth } from '../hooks/useAuth';
 import SimpleBarcodeScanner from '../components/SimpleBarcodeScanner';
 import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 const ExitNotes: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -228,6 +231,109 @@ const ExitNotes: React.FC = () => {
     const inventoryItem = inventory.find(item => item.productId === productId);
     return inventoryItem ? inventoryItem.quantity : 0;
   };
+
+const calculateItemTotal = (item: ExitNote['items'][number]): number => {
+  const quantity = item.quantity ?? 0;
+  const unitPrice = item.unitPrice ?? 0;
+  const explicitTotal = item.totalPrice;
+
+  if (typeof explicitTotal === 'number') {
+    return explicitTotal;
+  }
+
+  return quantity * unitPrice;
+};
+
+const generateExitNotePdf = (note: ExitNote) => {
+  const doc = new jsPDF();
+  const marginLeft = 14;
+  const lineHeight = 6;
+
+  doc.setFontSize(16);
+  doc.text('Nota de Salida', marginLeft, 20);
+
+  doc.setFontSize(11);
+  const headerLines = [
+    `Número: ${note.number}`,
+    `Fecha: ${formatDate(note.date)}`,
+    `Vendedor: ${note.seller}`,
+    `Cliente: ${note.customer}`,
+    note.shippingId ? `Envío asociado: ${note.shippingId}` : ''
+  ].filter(Boolean) as string[];
+
+  headerLines.forEach((line, index) => {
+    doc.text(line, marginLeft, 32 + index * lineHeight);
+  });
+
+  if (note.notes) {
+    doc.setFontSize(10);
+    doc.text(
+      `Notas: ${note.notes}`,
+      marginLeft,
+      32 + headerLines.length * lineHeight + 4
+    );
+  }
+
+  const tableStartY = 60;
+  const tableBody = note.items.map((item, index) => {
+    const product = item.product || ({} as Product);
+    const quantity = item.quantity ?? 0;
+    const weight = item.weight ?? product.weight ?? 0;
+    const unitPrice =
+      item.unitPrice ??
+      product.salePrice1 ??
+      product.salePrice2 ??
+      product.cost ??
+      0;
+    const total = calculateItemTotal(item);
+
+    return [
+      String(index + 1),
+      product.name || 'Producto sin nombre',
+      product.sku || '—',
+      String(quantity),
+      `${weight} g`,
+      formatCurrency(unitPrice),
+      formatCurrency(total)
+    ];
+  });
+
+  autoTable(doc, {
+    startY: tableStartY,
+    head: [['#', 'Producto', 'SKU', 'Cant.', 'Peso', 'Precio Unit.', 'Total']],
+    body: tableBody,
+    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { fillColor: [17, 24, 39] }
+  });
+
+  const finalY =
+    ((doc as any).lastAutoTable?.finalY as number | undefined) ?? tableStartY;
+
+  const subtotal = note.items.reduce(
+    (sum, item) => sum + calculateItemTotal(item),
+    0
+  );
+  const shippingCost = 28;
+  const total = note.totalPrice ?? subtotal + shippingCost;
+
+  doc.setFontSize(11);
+  doc.text(`Subtotal: ${formatCurrency(subtotal)}`, marginLeft, finalY + 10);
+  doc.text(
+    `Costo de envío: ${formatCurrency(shippingCost)}`,
+    marginLeft,
+    finalY + 16
+  );
+  doc.text(`Total: ${formatCurrency(total)}`, marginLeft, finalY + 22);
+
+  doc.setFontSize(9);
+  doc.text(
+    'Generado automáticamente por el sistema de gestión de notas de salida.',
+    marginLeft,
+    finalY + 32
+  );
+
+  doc.save(`${note.number || 'nota-de-salida'}.pdf`);
+};
 
   const addItem = () => {
     setItems([...items, { productId: '', quantity: 1, size: '', weight: 0, unitPrice: 0 }]);
@@ -756,6 +862,16 @@ const ExitNotes: React.FC = () => {
     note.customer.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+const handleDownloadPdf = (note: ExitNote) => {
+  try {
+    generateExitNotePdf(note);
+    toast.success('Descargando PDF de la nota de salida');
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    toast.error('No se pudo generar el PDF');
+  }
+};
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -977,6 +1093,13 @@ const ExitNotes: React.FC = () => {
                   </td>
                   <td className="table-cell">
                     <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleDownloadPdf(note)}
+                        className="p-1 text-gray-400 hover:text-indigo-600"
+                        title="Descargar PDF"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={() => setViewingNote(note)}
                         className="p-1 text-gray-400 hover:text-blue-600"
@@ -1429,6 +1552,13 @@ const ExitNotes: React.FC = () => {
                 Detalles de la Nota de Salida
               </h3>
               <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleDownloadPdf(viewingNote)}
+                  className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  PDF
+                </button>
                 {isAdmin && canEditNote(viewingNote) && (
                   <button
                     onClick={() => openEditModal(viewingNote)}

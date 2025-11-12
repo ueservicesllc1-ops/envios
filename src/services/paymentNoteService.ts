@@ -15,17 +15,23 @@ export interface PaymentNoteItem {
 export interface PaymentNote {
   id: string;
   number: string;
-  sellerId: string;
-  sellerName: string;
+  sellerId?: string;
+  sellerName?: string;
+  customerId?: string;
+  customerName?: string;
+  sourceType: 'seller' | 'customer';
   items: PaymentNoteItem[];
   totalAmount: number;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: Date;
   approvedAt?: Date;
   approvedBy?: string;
+  paymentDate?: Date;
+  reference?: string;
   notes?: string;
   paymentMethod: 'cash' | 'bank_deposit';
   receiptImageUrl?: string;
+  createdBy?: string;
 }
 
 const convertTimestamp = (timestamp: any): Date => {
@@ -40,6 +46,7 @@ export const paymentNoteService = {
     try {
       const docRef = await addDoc(collection(db, 'paymentNotes'), {
         ...paymentNoteData,
+        sourceType: paymentNoteData.sourceType ?? 'seller',
         createdAt: new Date()
       });
       return docRef.id;
@@ -53,12 +60,19 @@ export const paymentNoteService = {
     try {
       const q = query(collection(db, 'paymentNotes'), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: convertTimestamp(doc.data().createdAt),
-        approvedAt: convertTimestamp(doc.data().approvedAt)
-      })) as PaymentNote[];
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        const sourceType = (data.sourceType as 'seller' | 'customer') ?? 'seller';
+
+        return {
+          id: doc.id,
+          ...data,
+          sourceType,
+          createdAt: convertTimestamp(data.createdAt),
+          approvedAt: convertTimestamp(data.approvedAt),
+          paymentDate: convertTimestamp(data.paymentDate)
+        } as PaymentNote;
+      });
     } catch (error) {
       console.error('Error getting payment notes:', error);
       throw error;
@@ -71,12 +85,19 @@ export const paymentNoteService = {
       const q = query(collection(db, 'paymentNotes'), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
       
-      const allNotes = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: convertTimestamp(doc.data().createdAt),
-        approvedAt: convertTimestamp(doc.data().approvedAt)
-      })) as PaymentNote[];
+      const allNotes = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        const sourceType = (data.sourceType as 'seller' | 'customer') ?? 'seller';
+
+        return {
+          id: doc.id,
+          ...data,
+          sourceType,
+          createdAt: convertTimestamp(data.createdAt),
+          approvedAt: convertTimestamp(data.approvedAt),
+          paymentDate: convertTimestamp(data.paymentDate)
+        } as PaymentNote;
+      });
 
       // Filtrar por sellerId en el cliente
       return allNotes.filter(note => note.sellerId === sellerId);
@@ -94,12 +115,19 @@ export const paymentNoteService = {
         orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: convertTimestamp(doc.data().createdAt),
-        approvedAt: convertTimestamp(doc.data().approvedAt)
-      })) as PaymentNote[];
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        const sourceType = (data.sourceType as 'seller' | 'customer') ?? 'seller';
+
+        return {
+          id: doc.id,
+          ...data,
+          sourceType,
+          createdAt: convertTimestamp(data.createdAt),
+          approvedAt: convertTimestamp(data.approvedAt),
+          paymentDate: convertTimestamp(data.paymentDate)
+        } as PaymentNote;
+      });
     } catch (error) {
       console.error('Error getting pending payment notes:', error);
       throw error;
@@ -111,11 +139,16 @@ export const paymentNoteService = {
       const docRef = doc(db, 'paymentNotes', id);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
+        const data = docSnap.data();
+        const sourceType = (data.sourceType as 'seller' | 'customer') ?? 'seller';
+
         return {
           id: docSnap.id,
-          ...docSnap.data(),
-          createdAt: convertTimestamp(docSnap.data().createdAt),
-          approvedAt: convertTimestamp(docSnap.data().approvedAt)
+          ...data,
+          sourceType,
+          createdAt: convertTimestamp(data.createdAt),
+          approvedAt: convertTimestamp(data.approvedAt),
+          paymentDate: convertTimestamp(data.paymentDate)
         } as PaymentNote;
       }
       return null;

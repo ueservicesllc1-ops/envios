@@ -7,6 +7,8 @@ import { storage } from '../firebase/config';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import SimpleBarcodeScanner from '../components/SimpleBarcodeScanner';
 import toast from 'react-hot-toast';
+import { calculateCostPlusShipping, calculateShippingCost } from '../utils/shippingCost';
+import { formatCurrency } from '../utils/formatters';
 
 const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -543,112 +545,133 @@ const Products: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Peso</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo + Envío</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio 1</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio 2</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
-                        {product.imageUrl ? (
-                          <img
-                            className="h-10 w-10 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                            src={product.imageUrl}
-                            alt={product.name}
-                            onClick={() => handleImageClick(product.imageUrl!)}
-                            title="Hacer clic para ver imagen grande"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-500 text-sm">IMG</span>
+              {filteredProducts.map((product) => {
+                const productCost =
+                  typeof product.cost === 'number' && !Number.isNaN(product.cost)
+                    ? product.cost
+                    : 0;
+                const shippingCost = calculateShippingCost(product.weight);
+                const costPlusShipping = calculateCostPlusShipping(
+                  product.cost,
+                  product.weight
+                );
+
+                return (
+                  <tr key={product.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          {product.imageUrl ? (
+                            <img
+                              className="h-10 w-10 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                              src={product.imageUrl}
+                              alt={product.name}
+                              onClick={() => handleImageClick(product.imageUrl!)}
+                              title="Hacer clic para ver imagen grande"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-500 text-sm">IMG</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {product.name}
                           </div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {product.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {product.description}
+                          <div className="text-sm text-gray-500">
+                            {product.description}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-900">{product.sku}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {product.category}
-                    </span>
-                    {(product.size || product.color || product.color2 || product.brand || product.perfumeName) && (
-                      <div className="mt-1 text-xs text-gray-500">
-                        {product.category === 'Perfumes' ? (
-                          <>
-                            {product.brand && <span className="mr-2">Marca: {product.brand}</span>}
-                            {product.perfumeName && <span>Perfume: {product.perfumeName}</span>}
-                          </>
-                        ) : (
-                          <>
-                            {product.size && <span className="mr-2">Talla: {product.size}</span>}
-                            {product.color && <span className="mr-2">Color: {product.color}</span>}
-                            {product.color2 && <span>Color 2: {product.color2}</span>}
-                          </>
-                        )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900">{product.sku}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {product.category}
+                      </span>
+                      {(product.size || product.color || product.color2 || product.brand || product.perfumeName) && (
+                        <div className="mt-1 text-xs text-gray-500">
+                          {product.category === 'Perfumes' ? (
+                            <>
+                              {product.brand && <span className="mr-2">Marca: {product.brand}</span>}
+                              {product.perfumeName && <span>Perfume: {product.perfumeName}</span>}
+                            </>
+                          ) : (
+                            <>
+                              {product.size && <span className="mr-2">Talla: {product.size}</span>}
+                              {product.color && <span className="mr-2">Color: {product.color}</span>}
+                              {product.color2 && <span>Color 2: {product.color2}</span>}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-900">
+                        {product.weight ? `${product.weight}g` : 'Sin peso'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatCurrency(productCost)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {formatCurrency(costPlusShipping)}
                       </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-900">
-                      {product.weight ? `${product.weight}g` : 'Sin peso'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-gray-900">
-                      ${(product.cost || 0).toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-gray-900">
-                      ${(product.salePrice1 || 0).toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-gray-900">
-                      ${(product.salePrice2 || 0).toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(product)}
-                        className="p-1 text-gray-400 hover:text-blue-600"
-                        title="Editar"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleView(product)}
-                        className="p-1 text-gray-400 hover:text-green-600"
-                        title="Ver detalles"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="p-1 text-gray-400 hover:text-red-600"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      <div className="text-xs text-gray-500">
+                        {shippingCost > 0 ? `Incluye envío: ${formatCurrency(shippingCost)}` : 'Sin costo de envío'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatCurrency(typeof product.salePrice1 === 'number' ? product.salePrice1 : 0)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatCurrency(typeof product.salePrice2 === 'number' ? product.salePrice2 : 0)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEdit(product)}
+                          className="p-1 text-gray-400 hover:text-blue-600"
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleView(product)}
+                          className="p-1 text-gray-400 hover:text-green-600"
+                          title="Ver detalles"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           
@@ -1299,7 +1322,30 @@ const Products: React.FC = () => {
                     Costo
                   </label>
                   <p className="text-lg font-semibold text-gray-900 bg-gray-50 p-2 rounded">
-                    ${(viewingProduct.cost || 0).toLocaleString()}
+                    {formatCurrency(typeof viewingProduct.cost === 'number' ? viewingProduct.cost : 0)}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Costo de Envío (según peso)
+                  </label>
+                  <p className="text-lg font-semibold text-gray-900 bg-gray-50 p-2 rounded">
+                    {formatCurrency(calculateShippingCost(viewingProduct.weight))}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Costo + Envío
+                  </label>
+                  <p className="text-lg font-semibold text-gray-900 bg-gray-50 p-2 rounded">
+                    {formatCurrency(
+                      calculateCostPlusShipping(
+                        viewingProduct.cost,
+                        viewingProduct.weight
+                      )
+                    )}
                   </p>
                 </div>
 
@@ -1308,7 +1354,7 @@ const Products: React.FC = () => {
                     Precio Venta 1
                   </label>
                   <p className="text-lg font-semibold text-green-600 bg-gray-50 p-2 rounded">
-                    ${(viewingProduct.salePrice1 || 0).toLocaleString()}
+                    {formatCurrency(typeof viewingProduct.salePrice1 === 'number' ? viewingProduct.salePrice1 : 0)}
                   </p>
                 </div>
 
@@ -1317,7 +1363,7 @@ const Products: React.FC = () => {
                     Precio Venta 2
                   </label>
                   <p className="text-lg font-semibold text-blue-600 bg-gray-50 p-2 rounded">
-                    ${(viewingProduct.salePrice2 || 0).toLocaleString()}
+                    {formatCurrency(typeof viewingProduct.salePrice2 === 'number' ? viewingProduct.salePrice2 : 0)}
                   </p>
                 </div>
               </div>
@@ -1406,7 +1452,7 @@ const Products: React.FC = () => {
                 <div className="space-y-1 text-sm text-gray-600">
                   <p><strong>Nombre:</strong> {existingProduct.name}</p>
                   <p><strong>Categoría:</strong> {existingProduct.category}</p>
-                  <p><strong>Precio:</strong> ${(existingProduct.salePrice1 || 0).toLocaleString()}</p>
+                  <p><strong>Precio:</strong> {formatCurrency(typeof existingProduct.salePrice1 === 'number' ? existingProduct.salePrice1 : 0)}</p>
                   {existingProduct.size && (
                     <p><strong>Talla:</strong> {existingProduct.size}</p>
                   )}

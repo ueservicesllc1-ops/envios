@@ -57,12 +57,13 @@ export interface EntryNote {
 export interface EntryNoteItem {
   id: string;
   productId: string;
-  product: Product;
-  quantity: number;
-  cost: number;
-  unitPrice: number;
-  totalCost: number;
-  totalPrice: number;
+  product?: Product;
+  quantity?: number;
+  cost?: number;
+  unitPrice?: number;
+  totalCost?: number;
+  totalPrice?: number;
+  weight?: number; // Peso en gramos
 }
 
 // Tipos para Notas de Salida

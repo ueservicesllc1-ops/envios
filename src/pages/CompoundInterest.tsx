@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { entryNoteService } from '../services/entryNoteService';
-import { EntryNote } from '../types';
+import { productService } from '../services/productService';
+import { EntryNote, EntryNoteItem, Product } from '../types';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { calculateCostPlusShipping } from '../utils/shippingCost';
 
 interface CalculatedEntryNote {
   note: EntryNote;
@@ -12,11 +14,26 @@ interface CalculatedEntryNote {
   compoundedProfit: number;
 }
 
+interface ProductGainMetric {
+  productId: string;
+  name: string;
+  sku?: string;
+  salePrice1?: number;
+  totalCost: number;
+  totalSale: number;
+  quantity: number;
+  margin: number;
+}
+
 const CompoundInterest: React.FC = () => {
   const [entryNotes, setEntryNotes] = useState<EntryNote[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [months, setMonths] = useState<number>(6);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [excludedNoteIds, setExcludedNoteIds] = useState<string[]>([]);
+  const [productSearch, setProductSearch] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
 
   const loadEntryNotes = async () => {
     try {
@@ -24,6 +41,9 @@ const CompoundInterest: React.FC = () => {
       setError(null);
       const notes = await entryNoteService.getAll();
       setEntryNotes(notes);
+      setExcludedNoteIds((prev) =>
+        prev.filter((id) => notes.some((note) => note.id === id))
+      );
     } catch (err) {
       console.error(err);
       setError('No se pudieron cargar las notas de entrada.');
@@ -32,16 +52,163 @@ const CompoundInterest: React.FC = () => {
     }
   };
 
+  const loadProducts = async () => {
+    try {
+      const data = await productService.getAll();
+      setProducts(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     loadEntryNotes();
+    loadProducts();
   }, []);
+
+  const handleMonthsChange = (value: number) => {
+    if (Number.isNaN(value)) {
+      setMonths(0);
+      return;
+    }
+    setMonths(Math.max(0, value));
+  };
+
+  const productsById = useMemo(() => {
+    const map = new Map<string, Product>();
+    products.forEach((product) => {
+      map.set(product.id, product);
+    });
+    return map;
+  }, [products]);
+
+  const productsBySku = useMemo(() => {
+    const map = new Map<string, Product>();
+    products.forEach((product) => {
+      if (product.sku) {
+        map.set(product.sku, product);
+      }
+    });
+    return map;
+  }, [products]);
+
+  const findCatalogProduct = (item: EntryNoteItem): Product | undefined => {
+    if (item.productId) {
+      const byId = productsById.get(item.productId);
+      if (byId) {
+        return byId;
+      }
+    }
+
+    if (item.product?.id) {
+      const byId = productsById.get(item.product.id);
+      if (byId) {
+        return byId;
+      }
+    }
+
+    if (item.product?.sku) {
+      const bySku = productsBySku.get(item.product.sku);
+      if (bySku) {
+        return bySku;
+      }
+    }
+
+    return undefined;
+  };
+
+  const computeCostData = (item: EntryNoteItem) => {
+    const catalogProduct = findCatalogProduct(item);
+    const quantity = item.quantity ?? 0;
+    const safeQuantity = quantity > 0 ? quantity : 1;
+
+    const baseCostPerUnit =
+      item.cost !== undefined
+        ? item.cost
+        : item.totalCost !== undefined
+        ? item.totalCost / safeQuantity
+        : catalogProduct?.cost ?? item.product?.cost ?? 0;
+
+    const weightPerUnit =
+      item.weight ?? catalogProduct?.weight ?? item.product?.weight ?? 0;
+
+    const costPlusShippingPerUnit = calculateCostPlusShipping(
+      baseCostPerUnit,
+      weightPerUnit
+    );
+
+    const baseCostTotal =
+      item.totalCost !== undefined
+        ? item.totalCost
+        : baseCostPerUnit * safeQuantity;
+
+    const shippingPerUnit = costPlusShippingPerUnit - baseCostPerUnit;
+    const totalShipping = shippingPerUnit * safeQuantity;
+    const totalCostWithShipping = baseCostTotal + totalShipping;
+
+    return {
+      catalogProduct,
+      quantity,
+      safeQuantity,
+      baseCostPerUnit,
+      costPlusShippingPerUnit,
+      baseCostTotal,
+      shippingPerUnit,
+      totalShipping,
+      totalCostWithShipping,
+    };
+  };
+
+  const excludedNoteIdsSet = useMemo(
+    () => new Set(excludedNoteIds),
+    [excludedNoteIds]
+  );
+
+  const activeEntryNotes = useMemo(
+    () => entryNotes.filter((note) => !excludedNoteIdsSet.has(note.id)),
+    [entryNotes, excludedNoteIdsSet]
+  );
+
+  const toggleNoteExclusion = (noteId: string) => {
+    setExcludedNoteIds((prev) =>
+      prev.includes(noteId)
+        ? prev.filter((id) => id !== noteId)
+        : [...prev, noteId]
+    );
+  };
 
   const calculations = useMemo<CalculatedEntryNote[]>(() => {
     const effectiveMonths = Math.max(0, months);
 
     return entryNotes.map((note) => {
-      const investment = note.totalCost || 0;
-      const saleValue = note.totalPrice || 0;
+      const investment =
+        note.items && note.items.length > 0
+          ? note.items.reduce(
+              (sum, item) => sum + computeCostData(item).totalCostWithShipping,
+              0
+            )
+          : note.totalCost ?? 0;
+
+      const saleValue =
+        note.items?.reduce((sum, item) => {
+          const quantity = item.quantity || 0;
+
+          const catalogProduct = findCatalogProduct(item);
+
+          const price1 =
+            catalogProduct?.salePrice1 ??
+            item.product?.salePrice1 ??
+            item.unitPrice ??
+            (item.totalPrice && quantity > 0
+              ? item.totalPrice / quantity
+              : undefined) ??
+            0;
+
+          return sum + price1 * quantity;
+        }, 0) ??
+        note.totalPrice ??
+        0;
+
       const monthlyRate =
         investment > 0 ? (saleValue - investment) / investment : 0;
       const compoundedValue =
@@ -59,14 +226,22 @@ const CompoundInterest: React.FC = () => {
         compoundedProfit,
       };
     });
-  }, [entryNotes, months]);
+  }, [entryNotes, months, productsById, productsBySku]);
+
+  const activeCalculations = useMemo(
+    () =>
+      calculations.filter(
+        (item) => !excludedNoteIdsSet.has(item.note.id)
+      ),
+    [calculations, excludedNoteIdsSet]
+  );
 
   const totals = useMemo(() => {
-    const totalInvestment = calculations.reduce(
+    const totalInvestment = activeCalculations.reduce(
       (acc, item) => acc + item.investment,
       0
     );
-    const totalCompoundedValue = calculations.reduce(
+    const totalCompoundedValue = activeCalculations.reduce(
       (acc, item) => acc + item.compoundedValue,
       0
     );
@@ -74,7 +249,7 @@ const CompoundInterest: React.FC = () => {
 
     const weightedMonthlyRate =
       totalInvestment > 0
-        ? calculations.reduce(
+        ? activeCalculations.reduce(
             (acc, item) => acc + item.monthlyRate * item.investment,
             0
           ) / totalInvestment
@@ -86,15 +261,104 @@ const CompoundInterest: React.FC = () => {
       totalProfit,
       weightedMonthlyRate,
     };
-  }, [calculations]);
+  }, [activeCalculations]);
 
-  const handleMonthsChange = (value: number) => {
-    if (Number.isNaN(value)) {
-      setMonths(0);
-      return;
-    }
-    setMonths(Math.max(0, value));
-  };
+  const productMetrics = useMemo<ProductGainMetric[]>(() => {
+    const map = new Map<string, ProductGainMetric>();
+
+    activeEntryNotes.forEach((note) => {
+      note.items?.forEach((item) => {
+        const productId = item.productId || item.id;
+        const {
+          catalogProduct,
+          quantity,
+          safeQuantity,
+          totalCostWithShipping,
+        } = computeCostData(item);
+
+        const key =
+          productId ||
+          catalogProduct?.id ||
+          item.product?.id ||
+          `${note.id}-${item.id}`;
+
+        const name =
+          item.product?.name ||
+          catalogProduct?.name ||
+          item.product?.description ||
+          catalogProduct?.description ||
+          `Producto ${item.productId || catalogProduct?.id || ''}`;
+
+        const sku = item.product?.sku || catalogProduct?.sku;
+        const price1 =
+          catalogProduct?.salePrice1 ?? item.product?.salePrice1 ?? undefined;
+
+        const salePerUnit =
+          price1 ??
+          catalogProduct?.salePrice2 ??
+          item.product?.salePrice2 ??
+          item.unitPrice ??
+          (item.totalPrice !== undefined && quantity > 0
+            ? item.totalPrice / quantity
+            : undefined) ??
+          catalogProduct?.cost ??
+          item.product?.cost ??
+          0;
+
+        const quantityForTotals = item.quantity ?? safeQuantity;
+        const totalSale = salePerUnit * quantityForTotals;
+        const totalCost = totalCostWithShipping;
+
+        if (!map.has(key)) {
+          map.set(key, {
+            productId: key,
+            name,
+            sku,
+            salePrice1: price1,
+            totalCost,
+            totalSale,
+            quantity: quantityForTotals,
+            margin: totalCost > 0 ? (totalSale - totalCost) / totalCost : 0,
+          });
+        } else {
+          const existing = map.get(key)!;
+          const newTotalCost = existing.totalCost + totalCost;
+          const newTotalSale = existing.totalSale + totalSale;
+          const newQuantity = existing.quantity + quantityForTotals;
+          map.set(key, {
+            ...existing,
+            salePrice1: price1 ?? existing.salePrice1,
+            totalCost: newTotalCost,
+            totalSale: newTotalSale,
+            quantity: newQuantity,
+            margin:
+              newTotalCost > 0
+                ? (newTotalSale - newTotalCost) / newTotalCost
+                : 0,
+          });
+        }
+      });
+    });
+
+    return Array.from(map.values());
+  }, [activeEntryNotes, productsById, productsBySku]);
+
+  const filteredProductMetrics = useMemo(() => {
+    const normalizedSearch = productSearch.trim().toLowerCase();
+
+    const result = normalizedSearch
+      ? productMetrics.filter(
+          (metric) =>
+            metric.name.toLowerCase().includes(normalizedSearch) ||
+            (metric.sku && metric.sku.toLowerCase().includes(normalizedSearch))
+        )
+      : [...productMetrics];
+
+    return result.sort((a, b) => {
+      const diff = (a.margin || 0) - (b.margin || 0);
+      return sortDirection === 'desc' ? diff * -1 : diff;
+    });
+  }, [productMetrics, productSearch, sortDirection]);
 
   return (
     <div className="space-y-6 p-6">
@@ -141,6 +405,14 @@ const CompoundInterest: React.FC = () => {
           Recargar datos
         </button>
       </div>
+
+      {excludedNoteIds.length > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+          {excludedNoteIds.length === 1
+            ? '1 nota está excluida del cálculo actual de interés compuesto.'
+            : `${excludedNoteIds.length} notas están excluidas del cálculo actual de interés compuesto.`}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
@@ -239,6 +511,9 @@ const CompoundInterest: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Incluir
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Nota
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -268,7 +543,7 @@ const CompoundInterest: React.FC = () => {
               {loading && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-6 py-10 text-center text-sm text-gray-500"
                   >
                     Cargando notas de entrada...
@@ -279,7 +554,7 @@ const CompoundInterest: React.FC = () => {
               {!loading && calculations.length === 0 && (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-6 py-10 text-center text-sm text-gray-500"
                   >
                     No hay notas de entrada registradas.
@@ -289,31 +564,68 @@ const CompoundInterest: React.FC = () => {
 
               {!loading &&
                 calculations.map((item) => {
+                  const isExcluded = excludedNoteIdsSet.has(item.note.id);
                   const monthlyProfit = item.investment * item.monthlyRate;
+                  const valueTextClass = isExcluded
+                    ? 'text-gray-400'
+                    : 'text-gray-900';
+                  const highlightTextClass = isExcluded
+                    ? 'text-gray-400'
+                    : 'text-primary-600';
                   return (
-                    <tr key={item.note.id}>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <tr
+                      key={item.note.id}
+                      className={isExcluded ? 'bg-gray-50 text-gray-500' : ''}
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            checked={!isExcluded}
+                            onChange={() => toggleNoteExclusion(item.note.id)}
+                          />
+                          <span className="text-xs text-gray-500">
+                            {isExcluded ? 'Excluida' : 'Incluida'}
+                          </span>
+                        </label>
+                      </td>
+                      <td
+                        className={`px-6 py-4 text-sm font-medium ${valueTextClass}`}
+                      >
                         {item.note.number || item.note.id}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {formatDate(item.note.date)}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      <td
+                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
+                      >
                         {formatCurrency(item.investment)}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      <td
+                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
+                      >
                         {formatCurrency(item.saleValue)}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      <td
+                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
+                      >
                         {(item.monthlyRate * 100).toFixed(2)}%
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      <td
+                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
+                      >
                         {formatCurrency(monthlyProfit)}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      <td
+                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
+                      >
                         {formatCurrency(item.compoundedValue)}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-primary-600">
+                      <td
+                        className={`px-6 py-4 text-right text-sm ${highlightTextClass}`}
+                      >
                         {formatCurrency(item.compoundedProfit)}
                       </td>
                     </tr>
@@ -327,6 +639,111 @@ const CompoundInterest: React.FC = () => {
             {error}
           </div>
         )}
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Productos con mayor porcentaje de ganancia
+            </h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Agrupamos los productos de todas las notas de entrada para comparar su margen entre costo y precio de venta 1.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="relative">
+              <input
+                type="search"
+                placeholder="Filtrar por nombre o SKU"
+                value={productSearch}
+                onChange={(event) => setProductSearch(event.target.value)}
+                className="w-60 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+              }
+              className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Ordenar por % {sortDirection === 'desc' ? '↓' : '↑'}
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Producto
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  SKU
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Cantidad total
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Inversión total
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Venta 1 total
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Precio venta 1
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                  % ganancia
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {filteredProductMetrics.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-10 text-center text-sm text-gray-500"
+                  >
+                    {productMetrics.length === 0
+                      ? 'No hay productos registrados en notas de entrada.'
+                      : 'No se encontraron productos que coincidan con el filtro.'}
+                  </td>
+                </tr>
+              ) : (
+                filteredProductMetrics.map((metric) => (
+                  <tr key={metric.productId}>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {metric.name}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {metric.sku || 'Sin SKU'}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      {metric.quantity.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      {formatCurrency(metric.totalCost)}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      {formatCurrency(metric.totalSale)}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-gray-900">
+                      {metric.salePrice1 !== undefined
+                        ? formatCurrency(metric.salePrice1)
+                        : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-primary-600">
+                      {(metric.margin * 100).toFixed(2)}%
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

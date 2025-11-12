@@ -181,19 +181,32 @@ const EntryNotes: React.FC = () => {
       const entryNoteData = {
         supplier: formData.supplier,
         location: formData.location,
-        items: items.map(item => ({
-          id: '',
-          productId: item.productId,
-          product: products.find(p => p.id === item.productId) || {} as Product,
-          quantity: item.quantity,
-          cost: item.cost,
-          unitPrice: item.unitPrice,
-          totalCost: item.cost * item.quantity,
-          totalPrice: item.unitPrice * item.quantity
-        })),
+        items: items.map(item => {
+          const quantity = item.quantity ?? 0;
+          const cost = item.cost ?? 0;
+          const unitPrice = item.unitPrice ?? 0;
+
+          return {
+            id: '',
+            productId: item.productId,
+            product:
+              products.find(p => p.id === item.productId) || ({} as Product),
+            quantity,
+            cost,
+            unitPrice,
+            totalCost: cost * quantity,
+            totalPrice: unitPrice * quantity
+          };
+        }),
         status: 'pending' as const,
-        totalCost: items.reduce((sum, item) => sum + (item.cost * item.quantity), 0),
-        totalPrice: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0),
+        totalCost: items.reduce(
+          (sum, item) => sum + (item.cost ?? 0) * (item.quantity ?? 0),
+          0
+        ),
+        totalPrice: items.reduce(
+          (sum, item) => sum + (item.unitPrice ?? 0) * (item.quantity ?? 0),
+          0
+        ),
         date: new Date(),
         createdBy: 'admin'
       };
@@ -202,10 +215,18 @@ const EntryNotes: React.FC = () => {
       
       // Actualizar inventario para cada item
       for (const item of items) {
+        const quantity = item.quantity ?? 0;
+        const cost = item.cost ?? 0;
+        const unitPrice = item.unitPrice ?? 0;
+
+        if (quantity <= 0) {
+          continue;
+        }
+
         const product = products.find(p => p.id === item.productId);
         if (product) {
           try {
-            await inventoryService.addStock(item.productId, item.quantity, item.cost, item.unitPrice, formData.location);
+            await inventoryService.addStock(item.productId, quantity, cost, unitPrice, formData.location);
           } catch (error) {
             console.error(`Error updating inventory for product ${item.productId}:`, error);
             // Continuar con los otros productos aunque uno falle
@@ -236,12 +257,14 @@ const EntryNotes: React.FC = () => {
       supplier: note.supplier,
       location: note.location || ''
     });
-    setEditItems(note.items.map(item => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      cost: item.cost,
-      unitPrice: item.unitPrice
-    })));
+    setEditItems(
+      note.items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity ?? 0,
+        cost: item.cost ?? 0,
+        unitPrice: item.unitPrice ?? 0
+      }))
+    );
     setShowEditModal(true);
   };
 
@@ -250,20 +273,27 @@ const EntryNotes: React.FC = () => {
 
     try {
       // Calcular totales
-      const totalCost = editItems.reduce((sum, item) => sum + (item.cost * item.quantity), 0);
+      const totalCost = editItems.reduce(
+        (sum, item) => sum + (item.cost ?? 0) * (item.quantity ?? 0),
+        0
+      );
       
       // Mapear editItems a EntryNoteItem[]
       const entryNoteItems = editItems.map(item => {
         const product = products.find(p => p.id === item.productId);
+        const quantity = item.quantity ?? 0;
+        const cost = item.cost ?? 0;
+        const unitPrice = item.unitPrice ?? 0;
+
         return {
           id: `${Date.now()}-${Math.random()}`, // ID temporal
           productId: item.productId,
           product: product || {} as Product,
-          quantity: item.quantity,
-          cost: item.cost,
-          unitPrice: item.unitPrice,
-          totalCost: item.cost * item.quantity,
-          totalPrice: item.unitPrice * item.quantity
+          quantity,
+          cost,
+          unitPrice,
+          totalCost: cost * quantity,
+          totalPrice: unitPrice * quantity
         };
       });
 
@@ -280,19 +310,28 @@ const EntryNotes: React.FC = () => {
 
       // PRIMERO: Revertir todo el stock de la nota original
       for (const originalItem of originalItems) {
+        const quantity = originalItem.quantity ?? 0;
+        if (quantity <= 0) continue;
+
         await inventoryService.removeStock(
-          originalItem.productId, 
-          originalItem.quantity
+          originalItem.productId,
+          quantity
         );
       }
 
       // SEGUNDO: Aplicar el nuevo stock de la nota editada
       for (const newItem of entryNoteItems) {
+        const quantity = newItem.quantity ?? 0;
+        const cost = newItem.cost ?? 0;
+        const unitPrice = newItem.unitPrice ?? 0;
+
+        if (quantity <= 0) continue;
+
         await inventoryService.addStock(
           newItem.productId, 
-          newItem.quantity, 
-          newItem.cost, 
-          newItem.unitPrice, 
+          quantity, 
+          cost, 
+          unitPrice, 
           editFormData.location
         );
       }
@@ -401,7 +440,10 @@ const EntryNotes: React.FC = () => {
                   </td>
                   <td className="table-cell">
                     <span className="text-sm text-gray-900">
-                      {note.items.reduce((sum, item) => sum + item.quantity, 0)}
+                      {note.items.reduce(
+                        (sum, item) => sum + (item.quantity ?? 0),
+                        0
+                      )}
                     </span>
                   </td>
                   <td className="table-cell">
@@ -412,12 +454,15 @@ const EntryNotes: React.FC = () => {
                   </td>
                   <td className="table-cell">
                     <span className="text-sm text-gray-900">
-                      ${note.items.length > 0 ? note.items[0].cost.toFixed(2) : '0.00'}
+                      $
+                      {note.items.length > 0
+                        ? (note.items[0].cost ?? 0).toFixed(2)
+                        : '0.00'}
                     </span>
                   </td>
                   <td className="table-cell">
                     <span className="text-sm font-medium text-gray-900">
-                      ${note.totalCost.toLocaleString()}
+                      ${(note.totalCost ?? 0).toLocaleString()}
                     </span>
                   </td>
                   <td className="table-cell">
@@ -594,8 +639,14 @@ const EntryNotes: React.FC = () => {
                               type="number"
                               min="1"
                               required
-                              value={item.quantity}
-                              onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                              value={item.quantity ?? 0}
+                              onChange={(e) =>
+                                updateItem(
+                                  index,
+                                  'quantity',
+                                  parseInt(e.target.value, 10) || 0
+                                )
+                              }
                               className="input-field w-full"
                               placeholder="0"
                             />
@@ -610,8 +661,14 @@ const EntryNotes: React.FC = () => {
                               min="0"
                               step="0.01"
                               required
-                              value={item.cost}
-                              onChange={(e) => updateItem(index, 'cost', parseFloat(e.target.value) || 0)}
+                              value={item.cost ?? 0}
+                              onChange={(e) =>
+                                updateItem(
+                                  index,
+                                  'cost',
+                                  parseFloat(e.target.value) || 0
+                                )
+                              }
                               className="input-field w-full"
                               placeholder="0.00"
                             />
@@ -623,7 +680,9 @@ const EntryNotes: React.FC = () => {
                             </label>
                             <input
                               type="text"
-                              value={`$${(item.cost * item.quantity).toFixed(2)}`}
+                              value={`$${(
+                                (item.cost ?? 0) * (item.quantity ?? 0)
+                              ).toFixed(2)}`}
                               className="input-field bg-gray-100 w-full"
                               disabled
                             />
@@ -661,7 +720,15 @@ const EntryNotes: React.FC = () => {
                       <h4 className="text-md font-medium text-gray-900 mb-2">Resumen</h4>
                       <div className="text-center">
                         <span className="text-lg font-bold text-gray-900">
-                          Total: ${items.reduce((sum, item) => sum + (item.cost * item.quantity), 0).toFixed(2)}
+                          Total: $
+                          {items
+                            .reduce(
+                              (sum, item) =>
+                                sum +
+                                (item.cost ?? 0) * (item.quantity ?? 0),
+                              0
+                            )
+                            .toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -763,13 +830,13 @@ const EntryNotes: React.FC = () => {
                             {item.product?.sku || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {item.quantity}
+                            {item.quantity ?? 0}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            ${item.cost.toFixed(2)}
+                            ${(item.cost ?? 0).toFixed(2)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            ${item.totalCost.toFixed(2)}
+                            ${(item.totalCost ?? 0).toFixed(2)}
                           </td>
                         </tr>
                       ))}
@@ -783,7 +850,7 @@ const EntryNotes: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-medium text-gray-900">Total de la Nota:</span>
                   <span className="text-xl font-bold text-gray-900">
-                    ${viewingNote.totalCost.toLocaleString()}
+                    ${(viewingNote.totalCost ?? 0).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -898,7 +965,7 @@ const EntryNotes: React.FC = () => {
                             <input
                               type="number"
                               min="1"
-                              value={item.quantity}
+                              value={item.quantity ?? 0}
                               onChange={(e) => {
                                 const newItems = [...editItems];
                                 newItems[index].quantity = parseInt(e.target.value) || 0;
@@ -915,7 +982,7 @@ const EntryNotes: React.FC = () => {
                               type="number"
                               min="0"
                               step="0.01"
-                              value={item.cost}
+                              value={item.cost ?? 0}
                               onChange={(e) => {
                                 const newItems = [...editItems];
                                 newItems[index].cost = parseFloat(e.target.value) || 0;
@@ -930,7 +997,9 @@ const EntryNotes: React.FC = () => {
                             <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
                             <input
                               type="text"
-                              value={`$${(item.cost * item.quantity).toFixed(2)}`}
+                              value={`$${(
+                                (item.cost ?? 0) * (item.quantity ?? 0)
+                              ).toFixed(2)}`}
                               className="input-field bg-gray-100 w-full"
                               disabled
                             />
@@ -978,7 +1047,14 @@ const EntryNotes: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-medium text-gray-900">Total:</span>
                     <span className="text-xl font-bold text-primary-600">
-                      ${editItems.reduce((sum, item) => sum + (item.cost * item.quantity), 0).toFixed(2)}
+                      $
+                      {editItems
+                        .reduce(
+                          (sum, item) =>
+                            sum + (item.cost ?? 0) * (item.quantity ?? 0),
+                          0
+                        )
+                        .toFixed(2)}
                     </span>
                   </div>
                 </div>

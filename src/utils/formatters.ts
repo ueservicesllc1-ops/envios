@@ -1,17 +1,22 @@
 // Utilidades para formateo seguro de números y fechas
 
+const decimalOptions: Intl.NumberFormatOptions = {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+};
+
 export const formatCurrency = (value: number | undefined | null): string => {
   if (value === undefined || value === null || isNaN(value)) {
-    return '$0';
+    return '$0.00';
   }
-  return `$${value.toLocaleString()}`;
+  return `$${value.toLocaleString('en-US', decimalOptions)}`;
 };
 
 export const formatNumber = (value: number | undefined | null): string => {
   if (value === undefined || value === null || isNaN(value)) {
-    return '0';
+    return '0.00';
   }
-  return value.toLocaleString();
+  return value.toLocaleString('en-US', decimalOptions);
 };
 
 export const formatDate = (date: Date | undefined | null): string => {
@@ -27,9 +32,12 @@ export const formatDate = (date: Date | undefined | null): string => {
   });
 };
 
-export const safeToLocaleString = (value: number | undefined | null, fallback: string = '0'): string => {
+export const safeToLocaleString = (
+  value: number | undefined | null,
+  fallback: string = '0.00'
+): string => {
   if (value === undefined || value === null || isNaN(value)) {
     return fallback;
   }
-  return value.toLocaleString();
+  return value.toLocaleString('en-US', decimalOptions);
 };

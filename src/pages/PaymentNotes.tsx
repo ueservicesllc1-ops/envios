@@ -9,7 +9,8 @@ import {
   DollarSign,
   Calendar,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 import { paymentNoteService, PaymentNote, PaymentNoteItem } from '../services/paymentNoteService';
 import { sellerService } from '../services/sellerService';
@@ -28,6 +29,16 @@ const PaymentNotes: React.FC = () => {
   const [selectedNote, setSelectedNote] = useState<PaymentNote | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    customerName: '',
+    amount: '',
+    paymentMethod: 'cash',
+    paymentDate: new Date().toISOString().split('T')[0],
+    reference: '',
+    notes: ''
+  });
 
   useEffect(() => {
     loadData();
@@ -131,6 +142,83 @@ const PaymentNotes: React.FC = () => {
     filterStatus === 'all' || note.status === filterStatus
   );
 
+  const getPayerLabel = (note: PaymentNote) => {
+    if (note.sourceType === 'customer') {
+      return note.customerName || 'Cliente sin nombre';
+    }
+    return note.sellerName || 'Vendedor sin nombre';
+  };
+
+  const getPayerTypeLabel = (note: PaymentNote) =>
+    note.sourceType === 'customer' ? 'Cliente' : 'Vendedor';
+
+  const resetCreateForm = () => {
+    setNewCustomerForm({
+      customerName: '',
+      amount: '',
+      paymentMethod: 'cash',
+      paymentDate: new Date().toISOString().split('T')[0],
+      reference: '',
+      notes: ''
+    });
+  };
+
+  const handleCreateCustomerPayment = async () => {
+    try {
+      const trimmedName = newCustomerForm.customerName.trim();
+      if (!trimmedName) {
+        toast.error('Ingresa el nombre del cliente');
+        return;
+      }
+
+      const amount = Number(newCustomerForm.amount);
+      if (Number.isNaN(amount) || amount <= 0) {
+        toast.error('El monto debe ser mayor a 0');
+        return;
+      }
+
+      const paymentDate = newCustomerForm.paymentDate
+        ? new Date(newCustomerForm.paymentDate)
+        : new Date();
+
+      setIsSaving(true);
+
+      await paymentNoteService.create({
+        number: `PNC-${Date.now()}`,
+        sourceType: 'customer',
+        customerName: trimmedName,
+        items: [
+          {
+            description:
+              newCustomerForm.notes.trim() ||
+              `Pago recibido de ${trimmedName}`,
+            amount,
+            totalPrice: amount
+          }
+        ],
+        totalAmount: amount,
+        status: 'approved',
+        notes: newCustomerForm.notes.trim() || undefined,
+        paymentMethod: newCustomerForm.paymentMethod as 'cash' | 'bank_deposit',
+        paymentDate,
+        reference: newCustomerForm.reference.trim() || undefined,
+        approvedAt: paymentDate,
+        approvedBy: 'Administrador',
+        createdBy: 'Administrador'
+      });
+
+      toast.success('Nota de pago de cliente creada');
+      resetCreateForm();
+      setShowCreateModal(false);
+      await loadData();
+    } catch (error) {
+      console.error('Error creating customer payment note:', error);
+      toast.error('No se pudo crear la nota de pago');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const stats = {
     total: paymentNotes.length,
     pending: paymentNotes.filter(n => n.status === 'pending').length,
@@ -154,8 +242,15 @@ const PaymentNotes: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Notas de Pago</h1>
-          <p className="text-gray-600">Gestiona las notas de pago de los vendedores</p>
+          <p className="text-gray-600">Gestiona las notas de pago de vendedores y clientes</p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="btn-primary flex items-center"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Registrar pago de cliente
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -309,9 +404,20 @@ const PaymentNotes: React.FC = () => {
                     <div className="text-sm font-medium text-gray-900">{note.number}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <User className="h-4 w-4 text-gray-400 mr-2" />
-                      <div className="text-sm text-gray-900">{note.sellerName}</div>
+                    <div className="flex items-center space-x-2">
+                      <User className="h-4 w-4 text-gray-400" />
+                      <div>
+                        <div className="text-sm text-gray-900">{getPayerLabel(note)}</div>
+                        <span
+                          className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            note.sourceType === 'customer'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {getPayerTypeLabel(note)}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -371,9 +477,24 @@ const PaymentNotes: React.FC = () => {
                 <h4 className="text-sm font-medium text-gray-500 mb-2">Información General</h4>
                 <div className="space-y-2">
                   <p><span className="font-medium">Número:</span> {selectedNote.number}</p>
-                  <p><span className="font-medium">Vendedor:</span> {selectedNote.sellerName}</p>
+                  <p>
+                    <span className="font-medium">
+                      {selectedNote.sourceType === 'customer' ? 'Cliente:' : 'Vendedor:'}
+                    </span>{' '}
+                    {getPayerLabel(selectedNote)}
+                  </p>
                   <p><span className="font-medium">Monto Total:</span> ${selectedNote.totalAmount.toLocaleString()}</p>
                   <p><span className="font-medium">Fecha de Creación:</span> {new Date(selectedNote.createdAt).toLocaleDateString()}</p>
+                  {selectedNote.paymentDate && (
+                    <p><span className="font-medium">Fecha de Pago:</span> {new Date(selectedNote.paymentDate).toLocaleDateString()}</p>
+                  )}
+                  <p>
+                    <span className="font-medium">Método de Pago:</span>{' '}
+                    {selectedNote.paymentMethod === 'cash' ? 'Efectivo' : 'Depósito bancario'}
+                  </p>
+                  {selectedNote.reference && (
+                    <p><span className="font-medium">Referencia:</span> {selectedNote.reference}</p>
+                  )}
                   <p><span className="font-medium">Estado:</span> 
                     <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedNote.status)}`}>
                       {getStatusIcon(selectedNote.status)}
@@ -397,38 +518,49 @@ const PaymentNotes: React.FC = () => {
             </div>
 
             <div className="mb-6">
-              <h4 className="text-sm font-medium text-gray-500 mb-3">Productos Incluidos</h4>
+              <h4 className="text-sm font-medium text-gray-500 mb-3">Detalle del Pago</h4>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Unit.</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Descripción
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Producto
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Cantidad
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Monto
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {selectedNote.items?.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.productName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.sku}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.quantity}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${(item.unitPrice || 0).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${(item.totalPrice || 0).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
+                    {selectedNote.items?.map((item, index) => {
+                      const amountValue =
+                        item.totalPrice ??
+                        item.amount ??
+                        (item.unitPrice ?? 0) * (item.quantity ?? 1);
+
+                      return (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {item.description}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.productName || '—'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.quantity ?? '—'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${amountValue.toLocaleString()}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -460,6 +592,160 @@ const PaymentNotes: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* Create customer payment modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Registrar pago de cliente
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateForm();
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre del cliente *
+                </label>
+                <input
+                  type="text"
+                  value={newCustomerForm.customerName}
+                  onChange={(e) =>
+                    setNewCustomerForm((prev) => ({
+                      ...prev,
+                      customerName: e.target.value
+                    }))
+                  }
+                  className="input-field"
+                  placeholder="Ej: Juan Pérez"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Monto pagado *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newCustomerForm.amount}
+                  onChange={(e) =>
+                    setNewCustomerForm((prev) => ({
+                      ...prev,
+                      amount: e.target.value
+                    }))
+                  }
+                  className="input-field"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Método de pago
+                  </label>
+                  <select
+                    value={newCustomerForm.paymentMethod}
+                    onChange={(e) =>
+                      setNewCustomerForm((prev) => ({
+                        ...prev,
+                        paymentMethod: e.target.value
+                      }))
+                    }
+                    className="input-field"
+                  >
+                    <option value="cash">Efectivo</option>
+                    <option value="bank_deposit">Depósito bancario</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha del pago
+                  </label>
+                  <input
+                    type="date"
+                    value={newCustomerForm.paymentDate}
+                    onChange={(e) =>
+                      setNewCustomerForm((prev) => ({
+                        ...prev,
+                        paymentDate: e.target.value
+                      }))
+                    }
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Referencia (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={newCustomerForm.reference}
+                  onChange={(e) =>
+                    setNewCustomerForm((prev) => ({
+                      ...prev,
+                      reference: e.target.value
+                    }))
+                  }
+                  className="input-field"
+                  placeholder="Número de comprobante o referencia"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notas (opcional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={newCustomerForm.notes}
+                  onChange={(e) =>
+                    setNewCustomerForm((prev) => ({
+                      ...prev,
+                      notes: e.target.value
+                    }))
+                  }
+                  className="input-field"
+                  placeholder="Detalles adicionales del pago"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateForm();
+                }}
+                className="btn-secondary"
+                disabled={isSaving}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateCustomerPayment}
+                className="btn-primary"
+                disabled={isSaving}
+              >
+                {isSaving ? 'Guardando...' : 'Registrar pago'}
+              </button>
+            </div>
           </div>
         </div>
       )}
