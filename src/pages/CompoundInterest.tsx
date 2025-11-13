@@ -264,84 +264,33 @@ const CompoundInterest: React.FC = () => {
   }, [activeCalculations]);
 
   const productMetrics = useMemo<ProductGainMetric[]>(() => {
-    const map = new Map<string, ProductGainMetric>();
+    // Calcular margen por producto individual usando costo + envío vs precio 1
+    return products
+      .filter((product) => {
+        // Solo incluir productos que tengan costo y precio 1
+        const hasCost = product.cost !== undefined && product.cost > 0;
+        const hasPrice1 = product.salePrice1 !== undefined && product.salePrice1 > 0;
+        return hasCost && hasPrice1;
+      })
+      .map((product) => {
+        const cost = product.cost ?? 0;
+        const weight = product.weight ?? 0;
+        const costPlusShipping = calculateCostPlusShipping(cost, weight);
+        const salePrice1 = product.salePrice1 ?? 0;
+        const margin = costPlusShipping > 0 ? (salePrice1 - costPlusShipping) / costPlusShipping : 0;
 
-    activeEntryNotes.forEach((note) => {
-      note.items?.forEach((item) => {
-        const productId = item.productId || item.id;
-        const {
-          catalogProduct,
-          quantity,
-          safeQuantity,
-          totalCostWithShipping,
-        } = computeCostData(item);
-
-        const key =
-          productId ||
-          catalogProduct?.id ||
-          item.product?.id ||
-          `${note.id}-${item.id}`;
-
-        const name =
-          item.product?.name ||
-          catalogProduct?.name ||
-          item.product?.description ||
-          catalogProduct?.description ||
-          `Producto ${item.productId || catalogProduct?.id || ''}`;
-
-        const sku = item.product?.sku || catalogProduct?.sku;
-        const price1 =
-          catalogProduct?.salePrice1 ?? item.product?.salePrice1 ?? undefined;
-
-        const salePerUnit =
-          price1 ??
-          catalogProduct?.salePrice2 ??
-          item.product?.salePrice2 ??
-          item.unitPrice ??
-          (item.totalPrice !== undefined && quantity > 0
-            ? item.totalPrice / quantity
-            : undefined) ??
-          catalogProduct?.cost ??
-          item.product?.cost ??
-          0;
-
-        const quantityForTotals = item.quantity ?? safeQuantity;
-        const totalSale = salePerUnit * quantityForTotals;
-        const totalCost = totalCostWithShipping;
-
-        if (!map.has(key)) {
-          map.set(key, {
-            productId: key,
-            name,
-            sku,
-            salePrice1: price1,
-            totalCost,
-            totalSale,
-            quantity: quantityForTotals,
-            margin: totalCost > 0 ? (totalSale - totalCost) / totalCost : 0,
-          });
-        } else {
-          const existing = map.get(key)!;
-          const newTotalCost = existing.totalCost + totalCost;
-          const newTotalSale = existing.totalSale + totalSale;
-          const newQuantity = existing.quantity + quantityForTotals;
-          map.set(key, {
-            ...existing,
-            salePrice1: price1 ?? existing.salePrice1,
-            totalCost: newTotalCost,
-            totalSale: newTotalSale,
-            quantity: newQuantity,
-            margin:
-              newTotalCost > 0
-                ? (newTotalSale - newTotalCost) / newTotalCost
-                : 0,
-          });
-        }
+        return {
+          productId: product.id,
+          name: product.name,
+          sku: product.sku,
+          salePrice1: salePrice1,
+          totalCost: costPlusShipping,
+          totalSale: salePrice1,
+          quantity: 1, // Siempre 1 porque es por producto individual
+          margin: margin,
+        };
       });
-    });
-
-    return Array.from(map.values());
-  }, [activeEntryNotes, productsById, productsBySku]);
+  }, [products]);
 
   const filteredProductMetrics = useMemo(() => {
     const normalizedSearch = productSearch.trim().toLowerCase();
@@ -648,7 +597,7 @@ const CompoundInterest: React.FC = () => {
               Productos con mayor porcentaje de ganancia
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              Agrupamos los productos de todas las notas de entrada para comparar su margen entre costo y precio de venta 1.
+              Compara el margen de ganancia de cada producto usando su costo + envío vs precio de venta 1.
             </p>
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -684,19 +633,13 @@ const CompoundInterest: React.FC = () => {
                   SKU
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Cantidad total
+                  Costo + Envío
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Inversión total
+                  Precio Venta 1
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Venta 1 total
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Precio venta 1
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  % ganancia
+                  % Ganancia
                 </th>
               </tr>
             </thead>
@@ -704,11 +647,11 @@ const CompoundInterest: React.FC = () => {
               {filteredProductMetrics.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={5}
                     className="px-6 py-10 text-center text-sm text-gray-500"
                   >
                     {productMetrics.length === 0
-                      ? 'No hay productos registrados en notas de entrada.'
+                      ? 'No hay productos con costo y precio de venta 1 registrados.'
                       : 'No se encontraron productos que coincidan con el filtro.'}
                   </td>
                 </tr>
@@ -722,20 +665,12 @@ const CompoundInterest: React.FC = () => {
                       {metric.sku || 'Sin SKU'}
                     </td>
                     <td className="px-6 py-4 text-right text-sm text-gray-900">
-                      {metric.quantity.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm text-gray-900">
                       {formatCurrency(metric.totalCost)}
                     </td>
                     <td className="px-6 py-4 text-right text-sm text-gray-900">
-                      {formatCurrency(metric.totalSale)}
+                      {formatCurrency(metric.salePrice1 ?? 0)}
                     </td>
-                    <td className="px-6 py-4 text-right text-sm text-gray-900">
-                      {metric.salePrice1 !== undefined
-                        ? formatCurrency(metric.salePrice1)
-                        : '—'}
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm text-primary-600">
+                    <td className="px-6 py-4 text-right text-sm text-primary-600 font-semibold">
                       {(metric.margin * 100).toFixed(2)}%
                     </td>
                   </tr>
