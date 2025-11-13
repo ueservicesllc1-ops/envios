@@ -48,6 +48,10 @@ const ExitNotes: React.FC = () => {
   const [totalWeight, setTotalWeight] = useState(0);
   const [showChangeSellerModal, setShowChangeSellerModal] = useState(false);
   const [selectedNewSellerId, setSelectedNewSellerId] = useState('');
+  const [showMigrateProductModal, setShowMigrateProductModal] = useState(false);
+  const [selectedProductToMigrate, setSelectedProductToMigrate] = useState<{item: any; note: ExitNote} | null>(null);
+  const [migrateToSellerId, setMigrateToSellerId] = useState('');
+  const [isMigrating, setIsMigrating] = useState(false);
 
   const resetForm = () => {
     setFormData({ sellerId: '', notes: '' });
@@ -853,6 +857,131 @@ const generateExitNotePdf = (note: ExitNote) => {
         console.error('Error changing seller:', error);
         toast.error('Error al cambiar el vendedor');
       }
+    }
+  };
+
+  const handleMigrateProduct = async () => {
+    if (!selectedProductToMigrate || !migrateToSellerId) {
+      toast.error('Por favor selecciona un vendedor destino');
+      return;
+    }
+
+    const { item, note } = selectedProductToMigrate;
+    const newSeller = sellers.find(s => s.id === migrateToSellerId);
+    
+    if (!newSeller) {
+      toast.error('Vendedor destino no encontrado');
+      return;
+    }
+
+    if (newSeller.id === note.sellerId) {
+      toast.error('No puedes migrar el producto al mismo vendedor');
+      return;
+    }
+
+    const confirmMessage = `¿Estás seguro de migrar "${item.product.name}" (Cantidad: ${item.quantity}) de "${note.seller}" a "${newSeller.name}"?\n\nEsto:\n- Removerá el producto del vendedor original (inventario y deuda)\n- Creará una nota de salida complementaria para el nuevo vendedor\n- Agregará el producto al nuevo vendedor (inventario y deuda)`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsMigrating(true);
+    try {
+      // 1. Remover producto del vendedor original
+      await sellerInventoryService.removeFromSellerInventory(
+        note.sellerId,
+        item.productId,
+        item.quantity
+      );
+
+      // 2. Actualizar la nota de salida original (remover el item)
+      // Usar id si existe, sino usar el índice o comparar por productId y cantidad
+      const itemId = item.id || item.productId;
+      const updatedItems = note.items.filter((noteItem, idx) => {
+        if (noteItem.id && item.id) {
+          return noteItem.id !== item.id;
+        }
+        // Si no hay id, comparar por productId, cantidad y tamaño
+        return !(
+          noteItem.productId === item.productId &&
+          noteItem.quantity === item.quantity &&
+          (noteItem.size || '') === (item.size || '')
+        );
+      });
+      const newTotalPrice = updatedItems.reduce((sum, noteItem) => sum + noteItem.totalPrice, 0);
+      
+      await exitNoteService.update(note.id, {
+        items: updatedItems,
+        totalPrice: newTotalPrice,
+        notes: `${note.notes || ''}\n[Migrado] Producto "${item.product.name}" migrado a ${newSeller.name} el ${new Date().toLocaleDateString()}`.trim()
+      });
+
+      // 3. Obtener precio según el tipo de precio del nuevo vendedor
+      const product = products.find(p => p.id === item.productId) || item.product;
+      const unitPrice = newSeller.priceType === 'price2' 
+        ? (product.salePrice2 ?? product.salePrice1 ?? item.unitPrice)
+        : (product.salePrice1 ?? item.unitPrice);
+
+      // 4. Crear nota de salida complementaria para el nuevo vendedor
+      const complementaryNoteData = {
+        number: `NS-COMP-${Date.now()}`,
+        date: new Date(),
+        sellerId: newSeller.id,
+        seller: newSeller.name,
+        customer: newSeller.name,
+        items: [{
+          id: `${Date.now()}-${Math.random()}`,
+          productId: item.productId,
+          product: item.product,
+          quantity: item.quantity,
+          size: item.size,
+          weight: item.weight,
+          unitPrice: unitPrice,
+          totalPrice: unitPrice * item.quantity
+        }],
+        totalPrice: unitPrice * item.quantity,
+        status: 'pending' as const,
+        notes: `Nota complementaria - Producto migrado de "${note.seller}" (Nota original: ${note.number})`,
+        createdAt: new Date(),
+        createdBy: 'admin'
+      };
+
+      const complementaryNoteId = await exitNoteService.create(complementaryNoteData);
+
+      // 5. Agregar producto al nuevo vendedor (inventario)
+      await sellerInventoryService.addToSellerInventory(
+        newSeller.id,
+        item.productId,
+        item.product,
+        item.quantity,
+        unitPrice
+      );
+
+      // 6. Actualizar inventario principal (devolver al stock y luego restar para el nuevo vendedor)
+      await inventoryService.updateStockAfterEntry(
+        item.productId,
+        item.quantity,
+        product.cost ?? 0,
+        unitPrice
+      );
+      await inventoryService.updateStockAfterExit(
+        item.productId,
+        item.quantity,
+        complementaryNoteId,
+        newSeller.id
+      );
+
+      toast.success(`Producto migrado exitosamente a ${newSeller.name}`);
+      setShowMigrateProductModal(false);
+      setSelectedProductToMigrate(null);
+      setMigrateToSellerId('');
+      setViewingNote(null);
+      await loadNotes();
+    } catch (error) {
+      console.error('Error migrating product:', error);
+      toast.error('Error al migrar el producto');
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -1671,6 +1800,9 @@ const handleDownloadPdf = (note: ExitNote) => {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Total
                         </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Acciones
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1744,6 +1876,24 @@ const handleDownloadPdf = (note: ExitNote) => {
                             <span className="text-sm font-medium text-gray-900">
                               ${item.totalPrice.toLocaleString()}
                             </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            {isAdmin && viewingNote.status !== 'cancelled' ? (
+                              <button
+                                onClick={() => {
+                                  setSelectedProductToMigrate({ item, note: viewingNote });
+                                  setMigrateToSellerId('');
+                                  setShowMigrateProductModal(true);
+                                }}
+                                className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1"
+                                title="Migrar producto a otro vendedor"
+                              >
+                                <User className="h-3 w-3" />
+                                Migrar
+                              </button>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1878,6 +2028,96 @@ const handleDownloadPdf = (note: ExitNote) => {
                 disabled={!selectedNewSellerId}
               >
                 Cambiar Vendedor
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para migrar producto */}
+      {showMigrateProductModal && selectedProductToMigrate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Migrar Producto
+              </h3>
+              <button
+                onClick={() => {
+                  setShowMigrateProductModal(false);
+                  setSelectedProductToMigrate(null);
+                  setMigrateToSellerId('');
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-900">
+                <strong>Producto:</strong> {selectedProductToMigrate.item.product.name}
+              </p>
+              <p className="text-sm text-blue-900">
+                <strong>Cantidad:</strong> {selectedProductToMigrate.item.quantity}
+              </p>
+              <p className="text-sm text-blue-900">
+                <strong>Vendedor Actual:</strong> {selectedProductToMigrate.note.seller}
+              </p>
+              <p className="text-sm text-blue-900">
+                <strong>Nota de Salida:</strong> {selectedProductToMigrate.note.number}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Seleccionar Vendedor Destino *
+              </label>
+              <select
+                value={migrateToSellerId}
+                onChange={(e) => setMigrateToSellerId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Seleccionar vendedor...</option>
+                {sellers
+                  .filter(seller => seller.id !== selectedProductToMigrate.note.sellerId)
+                  .map(seller => (
+                    <option key={seller.id} value={seller.id}>
+                      {seller.name} - {seller.email} ({seller.priceType === 'price2' ? 'Precio 2' : 'Precio 1'})
+                    </option>
+                  ))}
+              </select>
+              {migrateToSellerId && (
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                  <p><strong>⚠️ Acciones que se realizarán:</strong></p>
+                  <ul className="list-disc list-inside mt-1 space-y-1">
+                    <li>Se removerá el producto del vendedor original (inventario y deuda)</li>
+                    <li>Se creará una nota de salida complementaria para el nuevo vendedor</li>
+                    <li>Se agregará el producto al nuevo vendedor (inventario y deuda)</li>
+                    <li>Se actualizará la nota de salida original</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowMigrateProductModal(false);
+                  setSelectedProductToMigrate(null);
+                  setMigrateToSellerId('');
+                }}
+                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+                disabled={isMigrating}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleMigrateProduct}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={!migrateToSellerId || isMigrating}
+              >
+                {isMigrating ? 'Migrando...' : 'Migrar Producto'}
               </button>
             </div>
           </div>
