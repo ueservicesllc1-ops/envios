@@ -30,8 +30,17 @@ export const productService = {
   async create(product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const now = new Date();
+      // Filtrar campos undefined (Firestore no los acepta)
+      const productData: any = {};
+      Object.keys(product).forEach(key => {
+        const value = (product as any)[key];
+        if (value !== undefined) {
+          productData[key] = value;
+        }
+      });
+      
       const docRef = await addDoc(collection(db, 'products'), {
-        ...product,
+        ...productData,
         createdAt: convertToTimestamp(now),
         updatedAt: convertToTimestamp(now)
       });
@@ -49,8 +58,17 @@ export const productService = {
   async update(id: string, product: Partial<Product>): Promise<void> {
     try {
       const docRef = doc(db, 'products', id);
+      // Filtrar campos undefined (Firestore no los acepta)
+      const updateData: any = {};
+      Object.keys(product).forEach(key => {
+        const value = (product as any)[key];
+        if (value !== undefined) {
+          updateData[key] = value;
+        }
+      });
+      
       await updateDoc(docRef, {
-        ...product,
+        ...updateData,
         updatedAt: convertToTimestamp(new Date())
       });
       

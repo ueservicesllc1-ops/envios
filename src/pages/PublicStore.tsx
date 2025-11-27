@@ -33,6 +33,7 @@ const PublicStore: React.FC = () => {
     console.log('🚀 PublicStore componente montado');
     console.log('📱 Slug de URL:', slug);
     console.log('🌐 URL completa:', window.location.href);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadStoreData = useCallback(async () => {
@@ -700,18 +701,18 @@ const PublicStore: React.FC = () => {
                   {selectedProduct.description && (
                     <div>
                       <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">Descripción</h4>
-                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                        {selectedProduct.description}
-                      </p>
+                      <div className="text-sm sm:text-base text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                        <div dangerouslySetInnerHTML={{ __html: selectedProduct.description }} />
+                      </div>
                     </div>
                   )}
 
                   {selectedProduct.product?.description && (
                     <div>
                       <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2">Información del Producto</h4>
-                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                        {selectedProduct.product.description}
-                      </p>
+                      <div className="text-sm sm:text-base text-gray-600 leading-relaxed prose prose-sm max-w-none">
+                        <div dangerouslySetInnerHTML={{ __html: selectedProduct.product.description }} />
+                      </div>
                     </div>
                   )}
 

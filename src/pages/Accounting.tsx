@@ -5,6 +5,7 @@ import { shippingAccountingService, ShippingExpense } from '../services/shipping
 import { shippingService, ShippingPackage } from '../services/shippingService';
 import { exitNoteAccountingService, ExitNoteSale } from '../services/exitNoteAccountingService';
 import { entryNoteAccountingService, EntryNoteExpense } from '../services/entryNoteAccountingService';
+import { onlineSaleAccountingService, OnlineSaleAccounting } from '../services/onlineSaleAccountingService';
 import { entryNoteService } from '../services/entryNoteService';
 import { exitNoteService } from '../services/exitNoteService';
 import { productService } from '../services/productService';
@@ -14,6 +15,7 @@ const Accounting: React.FC = () => {
   const [entries, setEntries] = useState<AccountingEntry[]>([]);
   const [shippingExpenses, setShippingExpenses] = useState<ShippingExpense[]>([]);
   const [exitNoteSales, setExitNoteSales] = useState<ExitNoteSale[]>([]);
+  const [onlineSales, setOnlineSales] = useState<OnlineSaleAccounting[]>([]);
   const [, setEntryNoteExpenses] = useState<EntryNoteExpense[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +23,7 @@ const Accounting: React.FC = () => {
   const [, setShowModal] = useState(false);
   const [totalShippingCost, setTotalShippingCost] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
+  const [totalOnlineSales, setTotalOnlineSales] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [totalHistoricalCost, setTotalHistoricalCost] = useState(0);
   const [totalHistoricalProfit, setTotalHistoricalProfit] = useState(0);
@@ -32,6 +35,7 @@ const Accounting: React.FC = () => {
 
   useEffect(() => {
     loadEntries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadEntries = async () => {
@@ -71,11 +75,12 @@ const Accounting: React.FC = () => {
         toast.error('Error al cargar datos de paquetería');
       }
       
-      const [expensesData, entryNotesData, exitNotesData, productsData] = await Promise.all([
+      const [expensesData, entryNotesData, exitNotesData, productsData, onlineSalesData] = await Promise.all([
         entryNoteAccountingService.getAll(),
         entryNoteService.getAll(),
         exitNoteService.getAll(),
-        productService.getAll()
+        productService.getAll(),
+        onlineSaleAccountingService.getAll()
       ]);
       
       setProducts(productsData);
@@ -94,6 +99,7 @@ const Accounting: React.FC = () => {
       
       setShippingExpenses(shippingData);
       setExitNoteSales(salesData);
+      setOnlineSales(onlineSalesData);
       setEntryNoteExpenses(expensesData);
       
       // Calcular gastos de compras = suma de todas las notas de entrada
@@ -140,9 +146,11 @@ const Accounting: React.FC = () => {
       // Calcular totales
       const salesTotal = salesData.reduce((sum, sale) => sum + sale.totalValue, 0);
       const expensesTotal = expensesData.reduce((sum, expense) => sum + expense.totalCost, 0);
+      const onlineSalesTotal = onlineSalesData.reduce((sum, sale) => sum + sale.totalValue, 0);
       
       setTotalShippingCost(shippingTotal);
       setTotalSales(totalSalesToSellers); // Usar datos reales de notas de salida
+      setTotalOnlineSales(onlineSalesTotal); // Ventas en línea
       setTotalExpenses(totalPurchaseExpenses); // Usar datos reales de notas de entrada
       setTotalHistoricalCost(totalHistoricalCostValue);
       setTotalHistoricalProfit(totalHistoricalProfitValue);
@@ -235,7 +243,7 @@ const Accounting: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
             <div className="card">
               <div className="flex items-center">
                 <div className="p-3 bg-green-100 rounded-lg">
@@ -244,6 +252,18 @@ const Accounting: React.FC = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Ventas a Vendedores</p>
                   <p className="text-2xl font-bold text-gray-900">${totalSales.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="flex items-center">
+                <div className="p-3 bg-purple-100 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-purple-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Ventas en Línea</p>
+                  <p className="text-2xl font-bold text-gray-900">${totalOnlineSales.toLocaleString()}</p>
                 </div>
               </div>
             </div>
@@ -266,9 +286,9 @@ const Accounting: React.FC = () => {
               <DollarSign className="h-6 w-6 text-blue-600" />
             </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Balance</p>
-                  <p className={`text-2xl font-bold ${(totalSales - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${(totalSales - totalExpenses).toLocaleString()}
+                  <p className="text-sm font-medium text-gray-600">Balance Total</p>
+                  <p className={`text-2xl font-bold ${(totalSales + totalOnlineSales - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${(totalSales + totalOnlineSales - totalExpenses).toLocaleString()}
                   </p>
                 </div>
           </div>
@@ -397,6 +417,76 @@ const Accounting: React.FC = () => {
                       }`}>
                         {sale.status === 'received' ? 'Recibido' : 
                          sale.status === 'cancelled' ? 'Cancelado' : 'Pendiente'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Ventas en Línea */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Ventas en Línea</h3>
+            <p className="text-sm text-gray-600">Registro de ventas desde la tienda en línea</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">Total vendido</p>
+            <p className="text-2xl font-bold text-purple-600">${totalOnlineSales.toLocaleString()}</p>
+          </div>
+        </div>
+        
+        {onlineSales.length === 0 ? (
+          <div className="text-center py-8">
+            <TrendingUp className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay ventas en línea</h3>
+            <p className="mt-1 text-sm text-gray-500">Las ventas desde la tienda en línea aparecerán aquí.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {onlineSales.map((sale) => (
+                  <tr key={sale.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">#{sale.saleNumber}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">{sale.notes || 'Cliente en línea'}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm font-medium text-gray-900">${sale.totalValue.toLocaleString()}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-sm text-gray-900">{new Date(sale.date).toLocaleDateString()}</span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        sale.status === 'delivered' 
+                          ? 'bg-green-100 text-green-800' 
+                          : sale.status === 'cancelled'
+                          ? 'bg-red-100 text-red-800'
+                          : sale.status === 'confirmed'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {sale.status === 'delivered' ? 'Entregado' : 
+                         sale.status === 'cancelled' ? 'Cancelado' :
+                         sale.status === 'confirmed' ? 'Confirmado' :
+                         sale.status === 'shipped' ? 'Enviado' : 'Pendiente'}
                       </span>
                     </td>
                   </tr>

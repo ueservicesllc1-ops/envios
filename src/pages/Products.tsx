@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, Filter, Package, X, Database, Upload, Image, Scan } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Filter, Package, X, Database, Upload, Image, Scan, Layers, CheckSquare, Square } from 'lucide-react';
 import { Product } from '../types';
 import { productService } from '../services/productService';
 import { addSampleProducts } from '../utils/addSampleProducts';
@@ -25,6 +25,9 @@ const Products: React.FC = () => {
   const [skuSearching, setSkuSearching] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>('');
+  const [showConsolidateSection, setShowConsolidateSection] = useState(false);
+  const [selectedProductsForConsolidation, setSelectedProductsForConsolidation] = useState<Set<string>>(new Set());
+  const [showConsolidateModal, setShowConsolidateModal] = useState(false);
   
   // Estados para filtros
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -43,6 +46,7 @@ const Products: React.FC = () => {
     cost: 0,
     salePrice1: 0,
     salePrice2: 0,
+    originalPrice: 0,
     imageUrl: '',
     // Campos específicos para perfumes
     brand: '',
@@ -115,6 +119,65 @@ const Products: React.FC = () => {
       }
     };
   }, []);
+
+  const handleConsolidateProducts = async () => {
+    if (selectedProductsForConsolidation.size < 2) {
+      toast.error('Debes seleccionar al menos 2 productos para consolidar');
+      return;
+    }
+
+    try {
+      const selectedProducts = products.filter(p => selectedProductsForConsolidation.has(p.id));
+      
+      // Obtener el primer producto como base
+      const baseProduct = selectedProducts[0];
+      
+      // Crear nombre consolidado (usar el nombre base sin variantes)
+      const baseName = baseProduct.name.split(' - ')[0].split(' (')[0].trim();
+      
+      // Crear el producto consolidado
+      const consolidatedProductData: any = {
+        name: baseName,
+        description: baseProduct.description || `Producto consolidado con ${selectedProducts.length} variantes`,
+        category: baseProduct.category,
+        sku: `CONSOL-${Date.now()}`,
+        cost: Math.min(...selectedProducts.map(p => p.cost || 0)),
+        salePrice1: Math.min(...selectedProducts.map(p => p.salePrice1 || 0)),
+        salePrice2: Math.min(...selectedProducts.map(p => p.salePrice2 || 0)),
+        weight: baseProduct.weight || 0,
+        imageUrl: baseProduct.imageUrl,
+        isConsolidated: true,
+        consolidatedProducts: selectedProducts.map(p => p.id)
+      };
+      
+      // Solo agregar originalPrice si tiene un valor definido
+      if (baseProduct.originalPrice !== undefined && baseProduct.originalPrice !== null) {
+        consolidatedProductData.originalPrice = baseProduct.originalPrice;
+      }
+      
+      const consolidatedProduct: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> = consolidatedProductData;
+
+      // Crear el producto consolidado
+      const consolidatedId = await productService.create(consolidatedProduct);
+
+      // Actualizar los productos originales para marcar que pertenecen a un consolidado
+      for (const product of selectedProducts) {
+        await productService.update(product.id, {
+          parentConsolidatedId: consolidatedId
+        });
+      }
+
+      toast.success(`Productos consolidados exitosamente. Se creó el producto: ${baseName}`);
+      
+      // Limpiar selección y recargar
+      setSelectedProductsForConsolidation(new Set());
+      setShowConsolidateModal(false);
+      await loadProducts();
+    } catch (error) {
+      console.error('Error consolidating products:', error);
+      toast.error('Error al consolidar productos');
+    }
+  };
 
   const loadProducts = async () => {
     try {
@@ -320,6 +383,7 @@ const Products: React.FC = () => {
         cost: 0,
         salePrice1: 0,
         salePrice2: 0,
+        originalPrice: 0,
         imageUrl: '',
         brand: '',
         perfumeName: ''
@@ -343,6 +407,7 @@ const Products: React.FC = () => {
       cost: product.cost,
       salePrice1: product.salePrice1,
       salePrice2: product.salePrice2,
+      originalPrice: product.originalPrice || 0,
       imageUrl: product.imageUrl || '',
       brand: product.brand || '',
       perfumeName: product.perfumeName || ''
@@ -368,20 +433,29 @@ const Products: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 px-2 sm:px-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Productos</h1>
-          <p className="text-gray-600">Gestiona tu catálogo de productos</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Productos</h1>
+          <p className="text-sm sm:text-base text-gray-600">Gestiona tu catálogo de productos</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-2 sm:space-x-3">
+          <button
+            onClick={() => setShowConsolidateSection(!showConsolidateSection)}
+            className="btn-secondary flex items-center text-sm sm:text-base"
+          >
+            <Layers className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Consolidar</span>
+            <span className="sm:hidden">Cons.</span>
+          </button>
           <button 
             onClick={() => setShowModal(true)}
-            className="btn-primary flex items-center"
+            className="btn-primary flex items-center text-sm sm:text-base"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Nuevo Producto
+            <span className="hidden sm:inline">Nuevo Producto</span>
+            <span className="sm:hidden">Nuevo</span>
           </button>
           
           {products.length === 0 && (
@@ -440,6 +514,41 @@ const Products: React.FC = () => {
         </div>
       </div>
 
+      {/* Sección de Consolidación */}
+      {showConsolidateSection && (
+        <div className="card bg-blue-50 border-2 border-blue-200">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Consolidar Productos</h2>
+              <p className="text-sm text-gray-600">Selecciona productos similares para agruparlos en uno solo</p>
+            </div>
+            <button
+              onClick={() => {
+                setShowConsolidateSection(false);
+                setSelectedProductsForConsolidation(new Set());
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          
+          {selectedProductsForConsolidation.size > 0 && (
+            <div className="mb-4 p-3 bg-blue-100 rounded-lg">
+              <p className="text-sm font-medium text-gray-900">
+                {selectedProductsForConsolidation.size} producto(s) seleccionado(s)
+              </p>
+              <button
+                onClick={() => setShowConsolidateModal(true)}
+                className="mt-2 btn-primary text-sm"
+              >
+                Consolidar Productos Seleccionados
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Filters and Search */}
       <div className="card">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
@@ -455,12 +564,12 @@ const Products: React.FC = () => {
               />
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:space-x-3 sm:gap-0">
             {/* Filtro por categoría */}
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="input-field"
+              className="input-field text-sm"
             >
               <option value="">Todas las categorías</option>
               <option value="Electrónicos">Electrónicos</option>
@@ -482,7 +591,7 @@ const Products: React.FC = () => {
                 placeholder="Min"
                 value={priceRange.min}
                 onChange={(e) => setPriceRange(prev => ({ ...prev, min: Number(e.target.value) }))}
-                className="input-field w-20"
+                className="input-field w-16 sm:w-20 text-sm"
               />
               <span className="text-gray-500">-</span>
               <input
@@ -490,7 +599,7 @@ const Products: React.FC = () => {
                 placeholder="Max"
                 value={priceRange.max}
                 onChange={(e) => setPriceRange(prev => ({ ...prev, max: Number(e.target.value) }))}
-                className="input-field w-20"
+                className="input-field w-16 sm:w-20 text-sm"
               />
             </div>
 
@@ -502,7 +611,7 @@ const Products: React.FC = () => {
                 setSortBy(field as 'name' | 'price' | 'category');
                 setSortOrder(order as 'asc' | 'desc');
               }}
-              className="input-field"
+              className="input-field text-sm"
             >
               <option value="name-asc">Nombre A-Z</option>
               <option value="name-desc">Nombre Z-A</option>
@@ -512,8 +621,8 @@ const Products: React.FC = () => {
               <option value="category-desc">Categoría Z-A</option>
             </select>
 
-            <span className="text-sm text-gray-500">
-              {filteredProducts.length} productos encontrados
+            <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap">
+              {filteredProducts.length} encontrados
             </span>
 
             {/* Botón para limpiar filtros */}
@@ -525,21 +634,45 @@ const Products: React.FC = () => {
                 setSortBy('name');
                 setSortOrder('asc');
               }}
-              className="btn-secondary flex items-center"
+              className="btn-secondary flex items-center text-sm"
             >
-              <X className="h-4 w-4 mr-2" />
-              Limpiar
+              <X className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Limpiar</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Products Table */}
-        <div className="card">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+      {/* Products Table - Desktop */}
+      <div className="card hidden lg:block">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                {showConsolidateSection && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                    <button
+                      onClick={() => {
+                        const nonConsolidated = filteredProducts.filter(p => !p.isConsolidated && !p.parentConsolidatedId);
+                        if (selectedProductsForConsolidation.size === nonConsolidated.length && nonConsolidated.length > 0) {
+                          setSelectedProductsForConsolidation(new Set());
+                        } else {
+                          setSelectedProductsForConsolidation(new Set(nonConsolidated.map(p => p.id)));
+                        }
+                      }}
+                      className="flex items-center justify-center"
+                    >
+                      {(() => {
+                        const nonConsolidated = filteredProducts.filter(p => !p.isConsolidated && !p.parentConsolidatedId);
+                        return selectedProductsForConsolidation.size === nonConsolidated.length && nonConsolidated.length > 0 ? (
+                          <CheckSquare className="h-5 w-5 text-primary-600" />
+                        ) : (
+                          <Square className="h-5 w-5 text-gray-400" />
+                        );
+                      })()}
+                    </button>
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
@@ -547,7 +680,7 @@ const Products: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo + Envío</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio 1</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio 2</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Tienda</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
@@ -563,8 +696,35 @@ const Products: React.FC = () => {
                   product.weight
                 );
 
+                const isSelected = selectedProductsForConsolidation.has(product.id);
+                const isConsolidated = product.isConsolidated || product.parentConsolidatedId;
+                
                 return (
-                  <tr key={product.id} className="hover:bg-gray-50">
+                  <tr key={product.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''} ${isConsolidated ? 'opacity-60' : ''}`}>
+                    {showConsolidateSection && (
+                      <td className="px-6 py-4">
+                        {!isConsolidated && (
+                          <button
+                            onClick={() => {
+                              const newSelected = new Set(selectedProductsForConsolidation);
+                              if (isSelected) {
+                                newSelected.delete(product.id);
+                              } else {
+                                newSelected.add(product.id);
+                              }
+                              setSelectedProductsForConsolidation(newSelected);
+                            }}
+                            className="flex items-center justify-center"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="h-5 w-5 text-primary-600" />
+                            ) : (
+                              <Square className="h-5 w-5 text-gray-400" />
+                            )}
+                          </button>
+                        )}
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">
@@ -587,7 +747,7 @@ const Products: React.FC = () => {
                             {product.name}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {product.description}
+                            <div dangerouslySetInnerHTML={{ __html: product.description || '' }} />
                           </div>
                         </div>
                       </div>
@@ -674,33 +834,160 @@ const Products: React.FC = () => {
               })}
             </tbody>
           </table>
-          
-          {/* Mensaje cuando no hay resultados */}
-          {filteredProducts.length === 0 && products.length > 0 && (
-            <div className="text-center py-12">
-              <Package className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No se encontraron productos</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Intenta ajustar los filtros de búsqueda
-              </p>
-              <div className="mt-6">
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedCategory('');
-                    setPriceRange({ min: 0, max: 1000 });
-                    setSortBy('name');
-                    setSortOrder('asc');
-                  }}
-                  className="btn-primary"
-                >
-                  Limpiar filtros
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Products Cards - Mobile */}
+      <div className="lg:hidden space-y-3">
+        {filteredProducts.map((product) => {
+          const productCost =
+            typeof product.cost === 'number' && !Number.isNaN(product.cost)
+              ? product.cost
+              : 0;
+          const shippingCost = calculateShippingCost(product.weight);
+          const costPlusShipping = calculateCostPlusShipping(
+            product.cost,
+            product.weight
+          );
+
+          const isSelected = selectedProductsForConsolidation.has(product.id);
+          const isConsolidated = product.isConsolidated || product.parentConsolidatedId;
+
+          return (
+            <div
+              key={product.id}
+              className={`card ${isSelected ? 'ring-2 ring-blue-500' : ''} ${isConsolidated ? 'opacity-60' : ''}`}
+            >
+              <div className="flex items-start space-x-3">
+                {showConsolidateSection && !isConsolidated && (
+                  <button
+                    onClick={() => {
+                      const newSelected = new Set(selectedProductsForConsolidation);
+                      if (isSelected) {
+                        newSelected.delete(product.id);
+                      } else {
+                        newSelected.add(product.id);
+                      }
+                      setSelectedProductsForConsolidation(newSelected);
+                    }}
+                    className="mt-1"
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="h-5 w-5 text-primary-600" />
+                    ) : (
+                      <Square className="h-5 w-5 text-gray-400" />
+                    )}
+                  </button>
+                )}
+                
+                <div className="h-16 w-16 flex-shrink-0">
+                  {product.imageUrl ? (
+                    <img
+                      className="h-16 w-16 rounded-lg object-cover cursor-pointer"
+                      src={product.imageUrl}
+                      alt={product.name}
+                      onClick={() => handleImageClick(product.imageUrl!)}
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-500 text-xs">IMG</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-gray-900 truncate">{product.name}</h3>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        <div dangerouslySetInnerHTML={{ __html: product.description || '' }} />
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-1 ml-2">
+                      <button
+                        onClick={() => handleEdit(product)}
+                        className="p-1 text-gray-400 hover:text-blue-600"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleView(product)}
+                        className="p-1 text-gray-400 hover:text-green-600"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="p-1 text-gray-400 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">SKU:</span>
+                      <span className="text-gray-900 font-medium">{product.sku}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Categoría:</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {product.category}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Peso:</span>
+                      <span className="text-gray-900">{product.weight ? `${product.weight}g` : 'Sin peso'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Costo:</span>
+                      <span className="text-gray-900 font-medium">{formatCurrency(productCost)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Costo + Envío:</span>
+                      <span className="text-gray-900 font-medium">{formatCurrency(costPlusShipping)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Precio 1:</span>
+                      <span className="text-gray-900 font-semibold">{formatCurrency(typeof product.salePrice1 === 'number' ? product.salePrice1 : 0)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-500">Precio Tienda:</span>
+                      <span className="text-gray-900 font-semibold">{formatCurrency(typeof product.salePrice2 === 'number' ? product.salePrice2 : 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Mensaje cuando no hay resultados */}
+      {filteredProducts.length === 0 && products.length > 0 && (
+        <div className="card text-center py-12">
+          <Package className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No se encontraron productos</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Intenta ajustar los filtros de búsqueda
+          </p>
+          <div className="mt-6">
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('');
+                setPriceRange({ min: 0, max: 1000 });
+                setSortBy('name');
+                setSortOrder('asc');
+              }}
+              className="btn-primary"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Empty State */}
       {filteredProducts.length === 0 && (
@@ -726,8 +1013,8 @@ const Products: React.FC = () => {
 
       {/* Modal para crear/editar producto */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">
                 {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
@@ -748,6 +1035,7 @@ const Products: React.FC = () => {
                     cost: 0,
                     salePrice1: 0,
                     salePrice2: 0,
+                    originalPrice: 0,
                     imageUrl: '',
                     brand: '',
                     perfumeName: ''
@@ -896,6 +1184,7 @@ const Products: React.FC = () => {
                         className="input-field"
                       >
                         <option value="">Seleccionar talla</option>
+                        <option value="XXS">XXS</option>
                         <option value="XS">XS</option>
                         <option value="S">S</option>
                         <option value="M">M</option>
@@ -1050,7 +1339,7 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Venta 2 *
+                    Precio Tienda *
                   </label>
                   <input
                     type="number"
@@ -1062,6 +1351,23 @@ const Products: React.FC = () => {
                     className="input-field"
                     placeholder="0.00"
                   />
+                  <p className="mt-1 text-xs text-gray-500">Este precio aparecerá en la tienda en línea</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Precio Original (Opcional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.originalPrice || 0}
+                    onChange={(e) => setFormData({...formData, originalPrice: parseFloat(e.target.value) || 0})}
+                    className="input-field"
+                    placeholder="0.00"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Precio de venta en tiendas físicas (se mostrará tachado en la tienda en línea)</p>
                 </div>
 
                 <div>
@@ -1163,6 +1469,7 @@ const Products: React.FC = () => {
                       cost: 0,
                       salePrice1: 0,
                       salePrice2: 0,
+                      originalPrice: 0,
                       imageUrl: '',
                       brand: '',
                       perfumeName: ''
@@ -1186,8 +1493,8 @@ const Products: React.FC = () => {
 
       {/* Modal para ver detalles del producto */}
       {viewingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">
                 Detalles del Producto
@@ -1310,9 +1617,13 @@ const Products: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Descripción
                 </label>
-                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded min-h-[60px]">
-                  {viewingProduct.description || 'Sin descripción'}
-                </p>
+                <div className="text-sm text-gray-900 bg-gray-50 p-2 rounded min-h-[60px] prose prose-sm max-w-none">
+                  {viewingProduct.description ? (
+                    <div dangerouslySetInnerHTML={{ __html: viewingProduct.description }} />
+                  ) : (
+                    <p>Sin descripción</p>
+                  )}
+                </div>
               </div>
 
               {/* Precios */}
@@ -1360,12 +1671,23 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Precio Venta 2
+                    Precio Tienda
                   </label>
                   <p className="text-lg font-semibold text-blue-600 bg-gray-50 p-2 rounded">
                     {formatCurrency(typeof viewingProduct.salePrice2 === 'number' ? viewingProduct.salePrice2 : 0)}
                   </p>
                 </div>
+
+                {viewingProduct.originalPrice && viewingProduct.originalPrice > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Precio Original
+                    </label>
+                    <p className="text-lg font-semibold text-gray-500 bg-gray-50 p-2 rounded line-through">
+                      {formatCurrency(viewingProduct.originalPrice)}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Fechas */}
@@ -1413,8 +1735,8 @@ const Products: React.FC = () => {
 
       {/* Modal para producto existente */}
       {showExistingProductModal && existingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 Producto Existente
@@ -1503,8 +1825,8 @@ const Products: React.FC = () => {
 
       {/* Modal para ver imagen grande */}
       {showImageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="relative max-w-4xl max-h-[90vh] mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="relative max-w-4xl max-h-[90vh] w-full">
             <button
               onClick={() => {
                 setShowImageModal(false);
@@ -1530,6 +1852,67 @@ const Products: React.FC = () => {
         onScan={handleBarcodeScan}
         title="Escanear Código de Barras del Producto"
       />
+
+      {/* Modal de Consolidación */}
+      {showConsolidateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Confirmar Consolidación</h2>
+                <button
+                  onClick={() => setShowConsolidateModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  Se consolidarán <strong>{selectedProductsForConsolidation.size} productos</strong> en uno solo.
+                  Los productos originales se mantendrán pero se ocultarán en la tienda.
+                </p>
+                
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {products
+                    .filter(p => selectedProductsForConsolidation.has(p.id))
+                    .map(product => (
+                      <div key={product.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded">
+                        {product.imageUrl && (
+                          <img src={product.imageUrl} alt={product.name} className="h-10 w-10 rounded object-cover" />
+                        )}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{product.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {product.size && `Talla: ${product.size}`}
+                            {product.size && product.color && ' • '}
+                            {product.color && `Color: ${product.color}`}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowConsolidateModal(false)}
+                  className="flex-1 btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConsolidateProducts}
+                  className="flex-1 btn-primary"
+                >
+                  Consolidar Productos
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

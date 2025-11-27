@@ -44,11 +44,21 @@ const convertTimestamp = (timestamp: any): Date => {
 export const paymentNoteService = {
   async create(paymentNoteData: Omit<PaymentNote, 'id' | 'createdAt'>): Promise<string> {
     try {
-      const docRef = await addDoc(collection(db, 'paymentNotes'), {
+      // Filtrar campos undefined para evitar errores de Firestore
+      const cleanData: any = {
         ...paymentNoteData,
         sourceType: paymentNoteData.sourceType ?? 'seller',
         createdAt: new Date()
+      };
+      
+      // Remover campos undefined
+      Object.keys(cleanData).forEach(key => {
+        if (cleanData[key] === undefined) {
+          delete cleanData[key];
+        }
       });
+      
+      const docRef = await addDoc(collection(db, 'paymentNotes'), cleanData);
       return docRef.id;
     } catch (error) {
       console.error('Error creating payment note:', error);

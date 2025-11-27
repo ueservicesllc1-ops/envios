@@ -22,7 +22,9 @@ import {
   Store,
   ExternalLink,
   Edit,
-  Save
+  Save,
+  RotateCcw,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { sellerService } from '../services/sellerService';
@@ -36,6 +38,8 @@ import { ExitNote } from '../types';
 import { paymentNoteService } from '../services/paymentNoteService';
 import { shippingService, ShippingPackage } from '../services/shippingService';
 import { sellerStoreService, StoreProduct } from '../services/sellerStoreService';
+import { returnService } from '../services/returnService';
+import { Return, ReturnItem } from '../types';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { storage } from '../firebase/config';
@@ -48,13 +52,21 @@ import toast from 'react-hot-toast';
       console.log(`Sincronizando inventario para vendedor ${sellerId}`);
       console.log(`Notas de salida: ${exitNotes.length}, Ventas realizadas: ${soldProducts.length}`);
       
-      // PASO 1: Eliminar todo el inventario actual
+      // PASO 1: Obtener inventario actual y devoluciones aprobadas
       const currentInventory = await sellerInventoryService.getBySeller(sellerId);
-      console.log(`Eliminando inventario actual: ${currentInventory.length} productos`);
+      const approvedReturns = await returnService.getBySeller(sellerId);
+      const approvedReturnsItems = approvedReturns
+        .filter(r => r.status === 'approved')
+        .flatMap(r => r.items);
       
-      for (const item of currentInventory) {
-        await sellerInventoryService.delete(item.id);
+      // Crear mapa de productos devueltos por productId
+      const returnedMap = new Map<string, number>();
+      for (const returnItem of approvedReturnsItems) {
+        const current = returnedMap.get(returnItem.productId) || 0;
+        returnedMap.set(returnItem.productId, current + returnItem.quantity);
       }
+      
+      console.log(`Productos devueltos encontrados: ${returnedMap.size}`);
       
       // PASO 2: Crear inventario desde las notas de salida
       const inventoryMap = new Map();
@@ -73,6 +85,7 @@ import toast from 'react-hot-toast';
           } else {
             // Crear nuevo producto
             const unitPrice = item.unitPrice || 0;
+            const returnedQty = returnedMap.get(item.productId) || 0;
             inventoryMap.set(item.productId, {
               sellerId: sellerId,
               productId: item.productId,
@@ -80,7 +93,8 @@ import toast from 'react-hot-toast';
               quantity: item.quantity,
               unitPrice: unitPrice,
               totalValue: unitPrice * item.quantity,
-              status: note.status === 'delivered' || note.status === 'received' ? 'stock' : 'in-transit'
+              status: note.status === 'delivered' || note.status === 'received' ? 'stock' : 'in-transit',
+              returnedQuantity: returnedQty // Preservar cantidad devuelta
             });
           }
         }
@@ -97,15 +111,52 @@ import toast from 'react-hot-toast';
         }
       }
       
-      // PASO 4: Crear en la base de datos todos los productos (incluso con cantidad 0)
+      // PASO 4: Actualizar o crear productos en el inventario (sin eliminar todo)
       const inventoryItems = Array.from(inventoryMap.values());
-      for (const item of inventoryItems) {
+      
+      for (const newItem of inventoryItems) {
+        // Buscar si ya existe este producto en el inventario actual
+        const existingItem = currentInventory.find(
+          inv => inv.productId === newItem.productId && inv.sellerId === sellerId
+        );
+        
         // Actualizar el estado basándose en la cantidad final
-        if (item.quantity <= 0) {
-          item.status = 'delivered'; // Cambiar a 'delivered' para productos agotados
+        if (newItem.quantity <= 0) {
+          newItem.status = 'delivered';
         }
-        await sellerInventoryService.create(item);
+        
+        // Asegurar que lastDeliveryDate existe
+        if (!newItem.lastDeliveryDate) {
+          // Buscar la fecha de la última nota de salida para este producto
+          const latestNote = exitNotes
+            .filter(note => note.items.some(i => i.productId === newItem.productId))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          newItem.lastDeliveryDate = latestNote ? new Date(latestNote.date) : new Date();
+        }
+        
+        if (existingItem) {
+          // Actualizar producto existente preservando returnedQuantity
+          // Usar el máximo entre el existente y el calculado desde devoluciones
+          const existingReturnedQty = existingItem.returnedQuantity || 0;
+          const calculatedReturnedQty = newItem.returnedQuantity || 0;
+          const finalReturnedQty = Math.max(existingReturnedQty, calculatedReturnedQty);
+          
+          await sellerInventoryService.update(existingItem.id, {
+            quantity: newItem.quantity,
+            unitPrice: newItem.unitPrice,
+            totalValue: newItem.totalValue,
+            status: newItem.status,
+            product: newItem.product,
+            returnedQuantity: finalReturnedQty
+          });
+        } else {
+          // Crear nuevo producto solo si no existe
+          await sellerInventoryService.create(newItem);
+        }
       }
+      
+      // PASO 5: Eliminar productos que ya no están en las notas de salida (opcional, comentado para evitar problemas)
+      // Solo eliminar si realmente no deberían estar ahí
       
       console.log(`Inventario sincronizado: ${inventoryItems.length} productos únicos`);
     } catch (error) {
@@ -166,6 +217,7 @@ interface SellerInventoryItem {
   status: 'stock' | 'in-transit' | 'delivered';
   lastDeliveryDate: Date;
   exitNoteId?: string;
+  returnedQuantity?: number; // Cantidad devuelta (productos marcados como devueltos)
 }
 
 
@@ -224,6 +276,11 @@ const SellerDashboard: React.FC = () => {
   const [editingStoreProduct, setEditingStoreProduct] = useState<{ productId: string; salePrice: number; description: string } | null>(null);
   const [showStorePreview, setShowStorePreview] = useState(false);
   const [selectedStoreProduct, setSelectedStoreProduct] = useState<StoreProduct | null>(null);
+  const [returns, setReturns] = useState<Return[]>([]);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnItems, setReturnItems] = useState<Array<{ productId: string; product: any; quantity: number; unitPrice: number; reason?: string }>>([]);
+  const [returnNotes, setReturnNotes] = useState('');
+  const [viewingReturn, setViewingReturn] = useState<Return | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -373,6 +430,9 @@ const SellerDashboard: React.FC = () => {
       const sellerPaymentNotes = paymentNotesData.filter(note => note.sellerId === sellerId);
       setPaymentNotes(sellerPaymentNotes);
 
+      const returnsData = await returnService.getBySeller(sellerId);
+      setReturns(returnsData);
+
       await loadSellerOrders(sellerId);
       
       const [inventoryDataAdmin, productsData] = await Promise.all([
@@ -412,7 +472,22 @@ const SellerDashboard: React.FC = () => {
     if (activeSection === 'store' && seller) {
       loadStoreProducts();
     }
+    if (activeSection === 'returns' && seller) {
+      loadReturns();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, seller]);
+
+  const loadReturns = async () => {
+    if (!seller) return;
+    try {
+      const returnsData = await returnService.getBySeller(seller.id);
+      setReturns(returnsData);
+    } catch (error) {
+      console.error('Error loading returns:', error);
+      toast.error('Error al cargar las devoluciones');
+    }
+  };
 
   const loadStoreProducts = async () => {
     if (!seller) return;
@@ -794,8 +869,12 @@ const SellerDashboard: React.FC = () => {
     }
   };
 
-  // Estadísticas
-  const totalInventory = sellerInventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  // Estadísticas (excluyendo productos devueltos)
+  const totalInventory = sellerInventory.reduce((sum, item) => {
+    const returnedQty = item.returnedQuantity || 0;
+    const availableQty = (item.quantity || 0) - returnedQty;
+    return sum + Math.max(0, availableQty);
+  }, 0);
   const totalSales = soldProducts.reduce((sum, sale) => sum + (sale.totalPrice || 0), 0);
   const pendingSales = soldProducts.filter(sale => sale.status === 'pending').length;
   const paidSales = soldProducts.filter(sale => sale.status === 'paid').length;
@@ -808,23 +887,39 @@ const SellerDashboard: React.FC = () => {
   // Paquetería en tránsito
   const inTransitPackages = shippingPackages.filter(pkg => pkg.status === 'in-transit').length;
   
-  // Valor total del inventario del vendedor (todos los productos)
+  // Valor total del inventario del vendedor (todos los productos, excluyendo devueltos)
   const currentInventoryValue = sellerInventory.reduce((sum, item) => {
-    return sum + ((item.unitPrice || 0) * (item.quantity || 0));
+    const returnedQty = item.returnedQuantity || 0;
+    const availableQty = (item.quantity || 0) - returnedQty;
+    if (availableQty > 0) {
+      return sum + ((item.unitPrice || 0) * availableQty);
+    }
+    return sum;
   }, 0);
   
-  // Valor del inventario del vendedor (suma de precios de productos en su inventario)
+  // Valor del inventario del vendedor (suma de precios de productos en su inventario, excluyendo devueltos)
   const availableInventoryValue = sellerInventory
     .reduce((sum, item) => {
+      const returnedQty = item.returnedQuantity || 0;
+      const availableQty = (item.quantity || 0) - returnedQty;
+      if (availableQty <= 0) return sum;
+      
       // Usar el precio de venta del producto del inventario del vendedor
       const productPrice = seller?.priceType === 'price2' 
         ? (item.product.salePrice2 || item.product.salePrice1 || 0)
         : (item.product.salePrice1 || 0);
       
-      const subtotal = (productPrice || 0) * (item.quantity || 0);
+      const subtotal = (productPrice || 0) * availableQty;
       
       return sum + subtotal;
     }, 0);
+
+  // Calcular deuda actual: Valor inventario - Notas de pago aprobadas
+  const approvedPayments = paymentNotes
+    .filter(note => note.status === 'approved')
+    .reduce((sum, note) => sum + (note.totalAmount || 0), 0);
+  
+  const currentDebt = Math.max(0, currentInventoryValue - approvedPayments);
     
   console.log('Valor total del inventario:', availableInventoryValue);
   console.log('Inventario del vendedor:', sellerInventory);
@@ -848,9 +943,9 @@ const SellerDashboard: React.FC = () => {
   }
 
   const renderDashboard = () => (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -982,6 +1077,38 @@ const SellerDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Tarjeta de Deuda Actual */}
+        <div className={`bg-white rounded-lg shadow p-6 border-2 ${
+          currentDebt > 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'
+        }`}>
+          <div className="flex items-center">
+            <div className={`p-2 rounded-lg ${
+              currentDebt > 0 ? 'bg-red-100' : 'bg-green-100'
+            }`}>
+              {currentDebt > 0 ? (
+                <AlertCircle className="h-6 w-6 text-red-600" />
+              ) : (
+                <DollarSign className="h-6 w-6 text-green-600" />
+              )}
+            </div>
+            <div className="ml-4">
+              <p className={`text-sm font-medium ${
+                currentDebt > 0 ? 'text-red-700' : 'text-green-700'
+              }`}>
+                Deuda Actual
+              </p>
+              <p className={`text-2xl font-bold ${
+                currentDebt > 0 ? 'text-red-600' : 'text-green-600'
+              }`}>
+                ${currentDebt.toLocaleString()}
+              </p>
+              {currentDebt > 0 && (
+                <p className="text-xs text-red-600 mt-1">Pendiente de pago</p>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Resumen de ventas recientes */}
@@ -1034,9 +1161,9 @@ const SellerDashboard: React.FC = () => {
 
   const renderGenerateOrder = () => {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-900">Generar Pedido</h2>
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Generar Pedido</h2>
         </div>
 
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
@@ -1366,14 +1493,17 @@ const SellerDashboard: React.FC = () => {
   };
 
   const renderInventory = () => {
-    // Calcular el valor actual del inventario (productos existentes)
+    // Calcular el valor actual del inventario (productos existentes, excluyendo devueltos)
     // Usar el unitPrice del inventario del vendedor, no recalcular desde el producto
     const currentInventoryValue = sellerInventory.reduce((sum, item) => {
       if (!item) return sum;
+      const returnedQty = item.returnedQuantity || 0;
+      const availableQty = (item.quantity || 0) - returnedQty;
+      if (availableQty <= 0) return sum; // No contar productos devueltos
       // Usar unitPrice del inventario del vendedor (precio al que se le entregó)
       // Si no existe unitPrice, usar totalValue / quantity, o calcular desde el producto como fallback
       const price = item.unitPrice || (item.totalValue && item.quantity ? item.totalValue / item.quantity : 0);
-      return sum + (price * (item.quantity || 0));
+      return sum + (price * availableQty);
     }, 0);
 
     // Calcular el valor histórico del inventario (todas las notas de salida recibidas)
@@ -1382,9 +1512,9 @@ const SellerDashboard: React.FC = () => {
     }, 0);
 
     return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Mi Inventario</h2>
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Mi Inventario</h2>
       </div>
 
       {/* Resumen de valores del inventario */}
@@ -1429,58 +1559,85 @@ const SellerDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {sellerInventory.map((item, index) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {index + 1}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-12 w-12">
-                        {item.product.imageUrl ? (
-                          <img 
-                            className="h-12 w-12 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity" 
-                            src={item.product.imageUrl} 
-                            alt={item.product.name}
-                            onClick={() => setViewingProductImage(item.product.imageUrl)}
-                          />
-                        ) : (
-                          <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
-                            <Package className="h-6 w-6 text-gray-400" />
+              {sellerInventory.map((item, index) => {
+                const returnedQty = item.returnedQuantity || 0;
+                const availableQty = item.quantity - returnedQty;
+                const isReturned = returnedQty > 0;
+                const isFullyReturned = returnedQty >= item.quantity;
+                
+                return (
+                  <tr 
+                    key={item.id} 
+                    className={`${isFullyReturned ? 'bg-gray-100 opacity-60' : isReturned ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}`}
+                  >
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                      {index + 1}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-12 w-12">
+                          {item.product.imageUrl ? (
+                            <img 
+                              className={`h-12 w-12 rounded-lg object-cover ${isFullyReturned ? 'opacity-50 grayscale' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
+                              src={item.product.imageUrl} 
+                              alt={item.product.name}
+                              onClick={isFullyReturned ? undefined : () => setViewingProductImage(item.product.imageUrl)}
+                            />
+                          ) : (
+                            <div className={`h-12 w-12 rounded-lg ${isFullyReturned ? 'bg-gray-300' : 'bg-gray-200'} flex items-center justify-center`}>
+                              <Package className={`h-6 w-6 ${isFullyReturned ? 'text-gray-400' : 'text-gray-400'}`} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className={`text-sm font-medium ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                            {item.product.name}
+                            {isFullyReturned && <span className="ml-2 text-xs text-red-600 font-bold">(DEVUELTO)</span>}
+                            {isReturned && !isFullyReturned && <span className="ml-2 text-xs text-orange-600 font-semibold">({returnedQty} devuelto{returnedQty > 1 ? 's' : ''})</span>}
+                          </div>
+                          <div className={`text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>SKU: {item.product.sku}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                      {item.product.size || 'N/A'}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                      {item.product.color || 'N/A'}
+                      {item.product.color2 && (
+                        <div className={`text-xs ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>+ {item.product.color2}</div>
+                      )}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                      ${(isNaN(item.unitPrice) ? 0 : (item.unitPrice || 0)).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                      <div className={isFullyReturned ? 'text-gray-400' : 'text-gray-900'}>
+                        {availableQty > 0 ? availableQty : 0}
+                        {returnedQty > 0 && (
+                          <div className="text-xs text-red-600 font-semibold">
+                            (Devuelto: {returnedQty})
                           </div>
                         )}
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{item.product.name}</div>
-                        <div className="text-sm text-gray-500">SKU: {item.product.sku}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {item.product.size || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {item.product.color || 'N/A'}
-                    {item.product.color2 && (
-                      <div className="text-xs text-gray-500">+ {item.product.color2}</div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${(isNaN(item.unitPrice) ? 0 : (item.unitPrice || 0)).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                    {item.quantity}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getInventoryStatusColor(item.status, item.quantity)}`}>
-                      {getInventoryStatusText(item.status, item.quantity)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(item.lastDeliveryDate).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {isFullyReturned ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                          DEVUELTO
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getInventoryStatusColor(item.status, availableQty)}`}>
+                          {getInventoryStatusText(item.status, availableQty)}
+                        </span>
+                      )}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {new Date(item.lastDeliveryDate).toLocaleDateString()}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1971,6 +2128,510 @@ const SellerDashboard: React.FC = () => {
         toast.error('Error al eliminar producto');
       }
     }
+  };
+
+  const renderReturns = () => {
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'pending':
+          return 'bg-yellow-100 text-yellow-800';
+        case 'approved':
+          return 'bg-green-100 text-green-800';
+        case 'rejected':
+          return 'bg-red-100 text-red-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    const getStatusText = (status: string) => {
+      switch (status) {
+        case 'pending':
+          return 'Pendiente';
+        case 'approved':
+          return 'Aprobada';
+        case 'rejected':
+          return 'Rechazada';
+        default:
+          return status;
+      }
+    };
+
+    const handleAddReturnItem = () => {
+      const availableProducts = sellerInventory.filter(item => item.quantity > 0);
+      if (availableProducts.length === 0) {
+        toast.error('No hay productos disponibles en tu inventario');
+        return;
+      }
+      setShowReturnModal(true);
+    };
+
+    const handleAddProductToReturn = (item: SellerInventoryItem) => {
+      const existingItem = returnItems.find(ri => ri.productId === item.productId);
+      if (existingItem) {
+        toast.error('Este producto ya está en la lista de devolución');
+        return;
+      }
+      setReturnItems([...returnItems, {
+        productId: item.productId,
+        product: item.product,
+        quantity: 1,
+        unitPrice: item.unitPrice,
+        reason: ''
+      }]);
+    };
+
+    const handleRemoveReturnItem = (productId: string) => {
+      setReturnItems(returnItems.filter(item => item.productId !== productId));
+    };
+
+    const handleUpdateReturnItem = (productId: string, field: string, value: any) => {
+      setReturnItems(returnItems.map(item => 
+        item.productId === productId 
+          ? { ...item, [field]: value }
+          : item
+      ));
+    };
+
+    const handleSubmitReturn = async () => {
+      if (returnItems.length === 0) {
+        toast.error('Debe agregar al menos un producto para devolver');
+        return;
+      }
+
+      if (!seller) {
+        toast.error('Error: Información del vendedor no disponible');
+        return;
+      }
+
+      // Validar que las cantidades no excedan el inventario disponible
+      for (const returnItem of returnItems) {
+        const inventoryItem = sellerInventory.find(item => item.productId === returnItem.productId);
+        if (!inventoryItem || inventoryItem.quantity < returnItem.quantity) {
+          toast.error(`La cantidad de ${returnItem.product.name} excede el inventario disponible`);
+          return;
+        }
+      }
+
+      try {
+        const totalValue = returnItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+        const returnItemsData: ReturnItem[] = returnItems.map(item => ({
+          id: `${Date.now()}-${Math.random()}`,
+          productId: item.productId,
+          product: item.product,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.unitPrice * item.quantity,
+          reason: item.reason
+        }));
+
+        const returnData = {
+          number: `DEV-${Date.now()}`,
+          sellerId: seller.id,
+          sellerName: seller.name,
+          items: returnItemsData,
+          totalValue,
+          status: 'pending' as const,
+          notes: returnNotes,
+          createdAt: new Date()
+        };
+
+        await returnService.create(returnData);
+        toast.success('Solicitud de devolución creada exitosamente');
+        setReturnItems([]);
+        setReturnNotes('');
+        setShowReturnModal(false);
+        await loadReturns();
+      } catch (error) {
+        console.error('Error creating return:', error);
+        toast.error('Error al crear la solicitud de devolución');
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Mis Devoluciones</h2>
+          <button
+            onClick={handleAddReturnItem}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Devolución
+          </button>
+        </div>
+
+        {returns.length === 0 ? (
+          <div className="text-center py-12">
+            <RotateCcw className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay devoluciones</h3>
+            <p className="mt-1 text-sm text-gray-500">Crea tu primera solicitud de devolución de productos.</p>
+          </div>
+        ) : (
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productos</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {returns.map((returnItem) => (
+                  <tr key={returnItem.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {returnItem.number}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(returnItem.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {returnItem.items.length} producto(s)
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      ${returnItem.totalValue.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(returnItem.status)}`}>
+                        {getStatusText(returnItem.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => setViewingReturn(returnItem)}
+                        className="text-primary-600 hover:text-primary-900 flex items-center"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Modal para crear devolución */}
+        {showReturnModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Nueva Devolución</h3>
+                <button
+                  onClick={() => {
+                    setShowReturnModal(false);
+                    setReturnItems([]);
+                    setReturnNotes('');
+                  }}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 mb-2">Productos Disponibles</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                    {sellerInventory.filter(item => item.quantity > 0).map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleAddProductToReturn(item)}
+                        className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-left"
+                      >
+                        <div className="font-medium text-sm text-gray-900">{item.product.name}</div>
+                        <div className="text-xs text-gray-500">Stock: {item.quantity}</div>
+                        <div className="text-xs text-gray-500">Precio: ${item.unitPrice.toLocaleString()}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {returnItems.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-medium text-gray-900 mb-2">Productos a Devolver</h4>
+                    <div className="space-y-2">
+                      {returnItems.map((item) => {
+                        const inventoryItem = sellerInventory.find(inv => inv.productId === item.productId);
+                        const maxQuantity = inventoryItem?.quantity || 0;
+                        return (
+                          <div key={item.productId} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm text-gray-900">{item.product.name}</div>
+                              <div className="text-xs text-gray-500">SKU: {item.product.sku}</div>
+                            </div>
+                            <div className="w-24">
+                              <input
+                                type="number"
+                                min="1"
+                                max={maxQuantity}
+                                value={item.quantity}
+                                onChange={(e) => handleUpdateReturnItem(item.productId, 'quantity', parseInt(e.target.value) || 1)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                              <div className="text-xs text-gray-500 mt-1">Max: {maxQuantity}</div>
+                            </div>
+                            <div className="w-32">
+                              <input
+                                type="text"
+                                placeholder="Razón (opcional)"
+                                value={item.reason || ''}
+                                onChange={(e) => handleUpdateReturnItem(item.productId, 'reason', e.target.value)}
+                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                              />
+                            </div>
+                            <div className="w-24 text-right">
+                              <div className="text-sm font-medium text-gray-900">
+                                ${(item.quantity * item.unitPrice).toLocaleString()}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveReturnItem(item.productId)}
+                              className="p-1 text-red-400 hover:text-red-600"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-medium text-gray-900">Total:</span>
+                        <span className="text-xl font-bold text-gray-900">
+                          ${returnItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notas (opcional)
+                  </label>
+                  <textarea
+                    value={returnNotes}
+                    onChange={(e) => setReturnNotes(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="Información adicional sobre la devolución"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowReturnModal(false);
+                      setReturnItems([]);
+                      setReturnNotes('');
+                    }}
+                    className="btn-secondary"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSubmitReturn}
+                    className="btn-primary"
+                    disabled={returnItems.length === 0}
+                  >
+                    Crear Devolución
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para ver detalles de devolución */}
+        {viewingReturn && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Detalles de la Devolución
+                </h3>
+                <button
+                  onClick={() => setViewingReturn(null)}
+                  className="p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Información básica */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número de Devolución
+                    </label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                      {viewingReturn.number}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Fecha
+                    </label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                      {new Date(viewingReturn.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Estado
+                    </label>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(viewingReturn.status)}`}>
+                      {getStatusText(viewingReturn.status)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Productos */}
+                <div>
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Productos</h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Producto
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            SKU
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cantidad
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Precio Unit.
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Razón
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {viewingReturn.items.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-4 py-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.product.name}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm text-gray-900">
+                                {item.product.sku}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-medium text-gray-900">
+                                {item.quantity}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm text-gray-900">
+                                ${item.unitPrice.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm font-medium text-gray-900">
+                                ${item.totalPrice.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4">
+                              <span className="text-sm text-gray-900">
+                                {item.reason || '—'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Total */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-medium text-gray-900">Total de la Devolución:</span>
+                    <span className="text-xl font-bold text-gray-900">
+                      ${viewingReturn.totalValue.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Notas */}
+                {viewingReturn.notes && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Notas
+                    </label>
+                    <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                      {viewingReturn.notes}
+                    </p>
+                  </div>
+                )}
+
+                {/* Razón de rechazo si está rechazada */}
+                {viewingReturn.status === 'rejected' && viewingReturn.rejectionReason && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Razón de Rechazo
+                    </label>
+                    <p className="text-sm text-red-900 bg-red-50 p-2 rounded">
+                      {viewingReturn.rejectionReason}
+                    </p>
+                  </div>
+                )}
+
+                {/* Fechas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {viewingReturn.approvedAt && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Fecha de Aprobación
+                      </label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                        {new Date(viewingReturn.approvedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                  {viewingReturn.rejectedAt && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Fecha de Rechazo
+                      </label>
+                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                        {new Date(viewingReturn.rejectedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-6 mt-6 border-t">
+                <button
+                  onClick={() => setViewingReturn(null)}
+                  className="btn-secondary"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const renderStoreEditor = () => {
@@ -2675,11 +3336,22 @@ const SellerDashboard: React.FC = () => {
             <Store className="h-5 w-5 inline mr-2" />
             Tienda Online
           </button>
+          <button
+            onClick={() => setActiveSection('returns')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeSection === 'returns'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <RotateCcw className="h-5 w-5 inline mr-2" />
+            Devoluciones
+          </button>
         </nav>
       </div>
 
       {/* Content */}
-      <div className="px-6 py-8">
+      <div className="px-2 sm:px-6 py-4 sm:py-8">
         {activeSection === 'dashboard' && renderDashboard()}
         {activeSection === 'inventory' && renderInventory()}
         {activeSection === 'sales' && renderSales()}
@@ -2689,12 +3361,13 @@ const SellerDashboard: React.FC = () => {
         {activeSection === 'generate-order' && renderGenerateOrder()}
         {activeSection === 'my-orders' && renderMyOrders()}
         {activeSection === 'store' && renderStoreEditor()}
+        {activeSection === 'returns' && renderReturns()}
       </div>
 
       {/* Modal de Nueva Venta */}
       {showSaleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Nueva Venta</h3>
               <button
@@ -3110,7 +3783,7 @@ const SellerDashboard: React.FC = () => {
                       }
 
                       // Crear la nota de pago
-                      const paymentNoteData = {
+                      const paymentNoteData: any = {
                         number: `PN-${Date.now()}`, // Generar número único
                         sourceType: 'seller' as const,
                         sellerId: seller.id,
@@ -3122,9 +3795,13 @@ const SellerDashboard: React.FC = () => {
                         totalAmount: paymentAmount,
                         status: 'pending' as const,
                         notes: `Pago ${paymentType === 'full' ? 'total' : 'parcial'} de deuda del inventario - ${paymentMethod === 'cash' ? 'En efectivo' : 'Depósito bancario'}`,
-                        paymentMethod: paymentMethod,
-                        receiptImageUrl: receiptImageUrl || undefined
+                        paymentMethod: paymentMethod
                       };
+                      
+                      // Solo incluir receiptImageUrl si tiene un valor válido
+                      if (receiptImageUrl && receiptImageUrl.trim() !== '') {
+                        paymentNoteData.receiptImageUrl = receiptImageUrl;
+                      }
 
                       await paymentNoteService.create(paymentNoteData);
                       toast.success('Nota de pago creada exitosamente');

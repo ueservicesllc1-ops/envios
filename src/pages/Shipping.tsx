@@ -663,7 +663,7 @@ const Shipping: React.FC = () => {
 
   const openTrackingModal = (pkg: ShippingPackage) => {
     setSelectedPackage(pkg);
-    setTrackingNumber('');
+    setTrackingNumber(pkg.trackingNumber || '');
     setShowTrackingModal(true);
   };
 
@@ -726,7 +726,9 @@ const Shipping: React.FC = () => {
             ? { ...p, trackingNumber: trackingNumber.trim(), status: 'in-transit' as const }
             : p
         ));
-        toast.success('Número de seguimiento agregado y nota de salida actualizada');
+        toast.success(selectedPackage.trackingNumber 
+          ? 'Número de seguimiento actualizado y nota de salida actualizada'
+          : 'Número de seguimiento agregado y nota de salida actualizada');
         setShowTrackingModal(false);
         setSelectedPackage(null);
         setTrackingNumber('');
@@ -981,21 +983,32 @@ const Shipping: React.FC = () => {
                 return (
                   <tr key={pkg.id} className="hover:bg-gray-50">
                     <td className="table-cell">
-                      {pkg.trackingNumber ? (
-                        <span className="text-sm font-medium text-gray-900">
-                          {pkg.trackingNumber}
-                        </span>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm text-gray-500 italic">Pendiente</span>
-                          <button
-                            onClick={() => openTrackingModal(pkg)}
-                            className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                          >
-                            Agregar
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        {pkg.trackingNumber ? (
+                          <>
+                            <span className="text-sm font-medium text-gray-900">
+                              {pkg.trackingNumber}
+                            </span>
+                            <button
+                              onClick={() => openTrackingModal(pkg)}
+                              className="text-xs text-blue-600 hover:text-blue-800"
+                              title="Editar número de tracking"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm text-gray-500 italic">Pendiente</span>
+                            <button
+                              onClick={() => openTrackingModal(pkg)}
+                              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                            >
+                              Agregar
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td className="table-cell">
                       <span className="text-sm text-gray-900">
@@ -1303,7 +1316,7 @@ const Shipping: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <Truck className="h-5 w-5 mr-2" />
-                Agregar Número de Seguimiento
+                {selectedPackage?.trackingNumber ? 'Editar' : 'Agregar'} Número de Seguimiento
               </h3>
               <button
                 onClick={() => setShowTrackingModal(false)}
@@ -1352,7 +1365,7 @@ const Shipping: React.FC = () => {
                 onClick={handleAddTracking}
                 className="btn-primary"
               >
-                Agregar Seguimiento
+                {selectedPackage?.trackingNumber ? 'Actualizar' : 'Agregar'} Seguimiento
               </button>
             </div>
           </div>

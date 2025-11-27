@@ -12,14 +12,18 @@ import {
   Truck,
   CreditCard,
   ShoppingCart,
-  Percent
+  Percent,
+  Flag,
+  RotateCcw,
+  Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Productos', href: '/products', icon: Package },
   { name: 'Bodega', href: '/warehouse', icon: Warehouse },
+  { name: 'Bodega Ecuador', href: '/warehouse-ecuador', icon: Flag },
   { name: 'Inventario', href: '/inventory', icon: TrendingUp },
   { name: 'Notas de Entrada', href: '/entry-notes', icon: FileText },
   { name: 'Notas de Salida', href: '/exit-notes', icon: FileText },
@@ -27,6 +31,8 @@ const navigation = [
   { name: 'Paquetería', href: '/shipping', icon: Truck },
   { name: 'Contabilidad', href: '/accounting', icon: Calculator },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
+  { name: 'Devoluciones', href: '/returns', icon: RotateCcw },
+  { name: 'Perfumes', href: '/perfumes', icon: Sparkles },
   { name: 'Interes Compuesto', href: '/compound-interest', icon: Percent },
   { name: 'Vendedores', href: '/sellers', icon: Users },
   { name: 'Configuración', href: '/settings', icon: Settings },

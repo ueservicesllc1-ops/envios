@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User, Edit, Download } from 'lucide-react';
+import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User, Edit, Download, Flag } from 'lucide-react';
 import { ExitNote, Product, Seller } from '../types';
 import { exitNoteService } from '../services/exitNoteService';
 import { productService } from '../services/productService';
@@ -9,6 +9,7 @@ import { syncService } from '../services/syncService';
 import { shippingService } from '../services/shippingService';
 import { sellerInventoryService } from '../services/sellerInventoryService';
 import { exitNoteAccountingService } from '../services/exitNoteAccountingService';
+import { returnService } from '../services/returnService';
 import { useAuth } from '../hooks/useAuth';
 import SimpleBarcodeScanner from '../components/SimpleBarcodeScanner';
 import toast from 'react-hot-toast';
@@ -45,6 +46,7 @@ const ExitNotes: React.FC = () => {
   const [showTemporaryNotes, setShowTemporaryNotes] = useState(false);
   const [temporaryNotes, setTemporaryNotes] = useState<any[]>([]);
   const [skuSearch, setSkuSearch] = useState('');
+  const [lastScanTime, setLastScanTime] = useState(0);
   const [totalWeight, setTotalWeight] = useState(0);
   const [showChangeSellerModal, setShowChangeSellerModal] = useState(false);
   const [selectedNewSellerId, setSelectedNewSellerId] = useState('');
@@ -52,6 +54,9 @@ const ExitNotes: React.FC = () => {
   const [selectedProductToMigrate, setSelectedProductToMigrate] = useState<{item: any; note: ExitNote} | null>(null);
   const [migrateToSellerId, setMigrateToSellerId] = useState('');
   const [isMigrating, setIsMigrating] = useState(false);
+  const [showRemoveProductModal, setShowRemoveProductModal] = useState(false);
+  const [productToRemove, setProductToRemove] = useState<{index: number; item: any} | null>(null);
+  const [removalReason, setRemovalReason] = useState<'not-sent' | 'damaged'>('not-sent');
 
   const resetForm = () => {
     setFormData({ sellerId: '', notes: '' });
@@ -76,6 +81,30 @@ const ExitNotes: React.FC = () => {
     const newTotalWeight = items.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
     setTotalWeight(newTotalWeight);
   }, [items]);
+
+  // Detectar cuando se escanea un código de barras en el modal de productos
+  useEffect(() => {
+    if (!showProductGrid) return;
+    
+    const trimmedSku = skuSearch.trim();
+    if (trimmedSku.length < 8) return;
+    
+    // Esperar un momento para que termine el escaneo completo
+    const timer = setTimeout(() => {
+      // Verificar que el valor no haya cambiado (escaneo completo)
+      if (skuSearch.trim() === trimmedSku) {
+        const product = products.find(p => p.sku === trimmedSku);
+        
+        // Si encontramos un producto que coincide exactamente con el SKU escaneado
+        if (product) {
+          handleAddProductFromSearch(trimmedSku);
+        }
+      }
+    }, 500); // Esperar 500ms después del último cambio
+    
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skuSearch, showProductGrid]);
 
   const openModal = () => {
     setEditingNote(null);
@@ -395,11 +424,59 @@ const generateExitNotePdf = (note: ExitNote) => {
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const handleAddProductFromSearch = (sku: string) => {
+    const product = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+    if (!product) {
+      toast.error(`No se encontró producto con SKU: ${sku}`);
+      setSkuSearch('');
+      return;
+    }
+
+    // Verificar si el producto ya está en los items
+    const existingItem = items.find(item => item.productId === product.id);
+    if (existingItem) {
+      setItems(items.map(item => 
+        item.productId === product.id 
+          ? { ...item, quantity: item.quantity + 1 }
+          : item
+      ));
+      toast.success(`Cantidad aumentada: ${product.name}`);
+    } else {
+      // Verificar stock disponible
+      const availableStock = getAvailableStock(product.id);
+      if (availableStock === 0) {
+        toast.error(`No hay stock disponible para ${product.name}`);
+        setSkuSearch('');
+        return;
+      }
+
+      const selectedSeller = sellers.find(s => s.id === formData.sellerId);
+      let unitPrice = product.salePrice1;
+      if (selectedSeller) {
+        unitPrice = selectedSeller.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
+      }
+      
+      setItems([...items, {
+        productId: product.id,
+        quantity: 1,
+        size: product.size || '',
+        weight: product.weight || 0,
+        unitPrice: unitPrice
+      }]);
+      toast.success(`Producto agregado: ${product.name}`);
+    }
+    
+    setSkuSearch('');
+    setShowProductGrid(false);
+  };
+
   const handleBarcodeScan = (barcode: string) => {
     // Buscar producto por SKU
     const product = products.find(p => p.sku === barcode);
     if (!product) {
       toast.error(`No se encontró producto con SKU: ${barcode}`);
+      // Limpiar campo de búsqueda para permitir siguiente escaneo
+      setSkuSearch('');
       return;
     }
     
@@ -407,6 +484,17 @@ const generateExitNotePdf = (note: ExitNote) => {
     const existingItem = items.find(item => item.productId === product.id);
     if (existingItem) {
       toast.error('Este producto ya está agregado a la nota');
+      // Limpiar campo de búsqueda para permitir siguiente escaneo
+      setSkuSearch('');
+      return;
+    }
+
+    // Verificar stock disponible
+    const availableStock = getAvailableStock(product.id);
+    if (availableStock === 0) {
+      toast.error(`No hay stock disponible para ${product.name}`);
+      // Limpiar campo de búsqueda para permitir siguiente escaneo
+      setSkuSearch('');
       return;
     }
     
@@ -429,7 +517,11 @@ const generateExitNotePdf = (note: ExitNote) => {
     
     setItems([...items, newItem]);
     toast.success(`Producto agregado: ${product.name}`);
-    setShowScanner(false);
+    
+    // Limpiar campo de búsqueda y mantener el escáner abierto para siguiente escaneo
+    setSkuSearch('');
+    // NO cerrar el escáner para permitir escanear más productos
+    // setShowScanner(false); // Comentado para mantener el escáner abierto
   };
 
 
@@ -473,7 +565,7 @@ const generateExitNotePdf = (note: ExitNote) => {
     }
   };
 
-  const canEditNote = (note: ExitNote) => !['delivered', 'received', 'cancelled'].includes(note.status);
+  const canEditNote = (note: ExitNote) => !['cancelled'].includes(note.status);
 
   const buildExitNoteItems = (selectedSeller: Seller) => {
     const exitNoteItems = items.map(item => {
@@ -676,7 +768,8 @@ const generateExitNotePdf = (note: ExitNote) => {
     }
 
     try {
-      if (items.length === 0) {
+      // Permitir guardar con 0 productos si es una nota ya enviada/recibida (puede que se hayan eliminado todos los productos)
+      if (items.length === 0 && !['delivered', 'received'].includes(editingNote.status)) {
         toast.error('Debe agregar al menos un producto');
         return;
       }
@@ -687,14 +780,24 @@ const generateExitNotePdf = (note: ExitNote) => {
         return;
       }
 
-      const { exitNoteItems, totalPrice, totalWeightInGrams } = buildExitNoteItems(selectedSeller);
+      // Si no hay items, crear una nota vacía
+      let exitNoteItems: any[] = [];
+      let totalPrice = 0;
+      let totalWeightInGrams = 0;
 
-      const totalWeightInPounds = totalWeightInGrams / 453.592;
-      const maxWeight = 8.5;
+      if (items.length > 0) {
+        const result = buildExitNoteItems(selectedSeller);
+        exitNoteItems = result.exitNoteItems;
+        totalPrice = result.totalPrice;
+        totalWeightInGrams = result.totalWeightInGrams;
 
-      if (totalWeightInPounds > maxWeight) {
-        toast.error(`El peso total (${totalWeightInPounds.toFixed(2)} lbs) excede el límite máximo de ${maxWeight} libras.`);
-        return;
+        const totalWeightInPounds = totalWeightInGrams / 453.592;
+        const maxWeight = 8.5;
+
+        if (totalWeightInPounds > maxWeight) {
+          toast.error(`El peso total (${totalWeightInPounds.toFixed(2)} lbs) excede el límite máximo de ${maxWeight} libras.`);
+          return;
+        }
       }
 
       setIsSaving(true);
@@ -807,6 +910,255 @@ const generateExitNotePdf = (note: ExitNote) => {
         console.error('Error deleting exit note:', error);
         toast.error('Error al eliminar la nota de salida');
       }
+    }
+  };
+
+  const handleRemoveProductFromNote = (itemIndex: number) => {
+    if (!editingNote) return;
+    
+    const item = items[itemIndex];
+    if (!item.productId) {
+      // Si no tiene productId, solo remover de la lista
+      removeItem(itemIndex);
+      return;
+    }
+
+    const product = products.find(p => p.id === item.productId) || 
+                    editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
+    
+    if (!product) {
+      toast.error('Producto no encontrado');
+      return;
+    }
+
+    // Mostrar modal para seleccionar razón
+    setProductToRemove({ index: itemIndex, item });
+    setRemovalReason('not-sent');
+    setShowRemoveProductModal(true);
+  };
+
+  const confirmRemoveProduct = async () => {
+    if (!editingNote || !productToRemove) return;
+
+    const item = productToRemove.item;
+    const product = products.find(p => p.id === item.productId) || 
+                    editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
+    
+    if (!product) {
+      toast.error('Producto no encontrado');
+      setShowRemoveProductModal(false);
+      setProductToRemove(null);
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Encontrar el item original en la nota
+      const originalItem = editingNote.items.find(noteItem => noteItem.productId === item.productId);
+      if (!originalItem) {
+        // Si no existe en la nota original, solo remover de la lista
+        removeItem(productToRemove.index);
+        setShowRemoveProductModal(false);
+        setProductToRemove(null);
+        return;
+      }
+
+      // Si la razón es "No enviado", agregar de vuelta al inventario
+      if (removalReason === 'not-sent') {
+        // Revertir el efecto del item original
+        await inventoryService.updateStockAfterEntry(
+          originalItem.productId,
+          originalItem.quantity,
+          product.cost || 0,
+          originalItem.unitPrice
+        );
+
+        await sellerInventoryService.removeFromSellerInventory(
+          editingNote.sellerId,
+          originalItem.productId,
+          originalItem.quantity
+        );
+      }
+      // Si es "Dañado", no hacer nada con el inventario (solo eliminar de la nota)
+
+      // Remover de la lista de items
+      const updatedItems = items.filter((_, i) => i !== productToRemove.index);
+      setItems(updatedItems);
+
+      // Actualizar la nota en la base de datos
+      const selectedSeller = sellers.find(s => s.id === editingNote.sellerId);
+      if (!selectedSeller) {
+        toast.error('Vendedor no encontrado');
+        return;
+      }
+
+      // Construir items de la nota con la lista actualizada
+      const exitNoteItems = updatedItems.map(item => {
+        const prod = products.find(p => p.id === item.productId) 
+          || editingNote.items.find(original => original.productId === item.productId)?.product;
+
+        if (!prod) {
+          throw new Error('Producto no encontrado');
+        }
+
+        const quantity = Number(item.quantity) || 0;
+        const unitPrice = Number(item.unitPrice) || 0;
+        const weight = Number(item.weight) || prod.weight || 0;
+
+        return {
+          id: item.id || `${Date.now()}-${Math.random()}`,
+          productId: item.productId,
+          product: prod,
+          quantity,
+          size: item.size,
+          weight,
+          unitPrice,
+          totalPrice: unitPrice * quantity
+        };
+      });
+
+      const totalPrice = exitNoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
+
+      const reasonText = removalReason === 'not-sent' ? 'No enviado' : 'Dañado';
+      const notesUpdate = `${editingNote.notes || ''}\n[Eliminado] Producto "${product.name}" eliminado - Razón: ${reasonText} (${new Date().toLocaleDateString()})`.trim();
+
+      await exitNoteService.update(editingNote.id, {
+        items: exitNoteItems,
+        totalPrice,
+        notes: notesUpdate
+      });
+
+      toast.success(`Producto eliminado de la nota${removalReason === 'not-sent' ? ' y agregado de vuelta al inventario' : ' (producto dañado, no agregado al inventario)'}`);
+      
+      setShowRemoveProductModal(false);
+      setProductToRemove(null);
+    } catch (error) {
+      console.error('Error removing product from note:', error);
+      toast.error('Error al eliminar el producto de la nota');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReturnProductFromNote = async (itemIndex: number) => {
+    if (!editingNote) return;
+    
+    const item = items[itemIndex];
+    if (!item.productId) {
+      toast.error('Producto no válido');
+      return;
+    }
+
+    const product = products.find(p => p.id === item.productId) || 
+                    editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
+    
+    if (!product) {
+      toast.error('Producto no encontrado');
+      return;
+    }
+
+    // Encontrar el item original en la nota
+    const originalItem = editingNote.items.find(noteItem => noteItem.productId === item.productId);
+    if (!originalItem) {
+      toast.error('Producto no encontrado en la nota original');
+      return;
+    }
+
+    if (!window.confirm(`¿Estás seguro de retornar "${product.name}" (Cantidad: ${item.quantity}) a Bodega Ecuador?\n\nEsto:\n- Marcará el producto como devuelto en el inventario del vendedor\n- Moverá el producto a Bodega Ecuador\n- Creará una nota de devolución aprobada\n- Removerá el producto de esta nota de salida`)) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // 1. Obtener vendedor
+      const selectedSeller = sellers.find(s => s.id === editingNote.sellerId);
+      if (!selectedSeller) {
+        toast.error('Vendedor no encontrado');
+        return;
+      }
+
+      // 2. Crear nota de devolución
+      const returnData = {
+        number: `DEV-${Date.now()}`,
+        sellerId: editingNote.sellerId,
+        sellerName: selectedSeller.name,
+        items: [{
+          id: `${Date.now()}-${Math.random()}`,
+          productId: item.productId,
+          product: product,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.quantity * item.unitPrice,
+          reason: `Retorno desde edición de nota de salida ${editingNote.number}`
+        }],
+        totalValue: item.quantity * item.unitPrice,
+        notes: `Retorno desde edición de nota de salida ${editingNote.number}`,
+        createdAt: new Date()
+      };
+
+      await returnService.createAdminReturn(returnData);
+
+      // 3. Revertir el efecto del item original en inventarios
+      await inventoryService.updateStockAfterEntry(
+        originalItem.productId,
+        originalItem.quantity,
+        product.cost || 0,
+        originalItem.unitPrice
+      );
+
+      await sellerInventoryService.removeFromSellerInventory(
+        editingNote.sellerId,
+        originalItem.productId,
+        originalItem.quantity
+      );
+
+      // 4. Remover de la lista de items
+      const updatedItems = items.filter((_, i) => i !== itemIndex);
+      setItems(updatedItems);
+
+      // 5. Actualizar la nota en la base de datos
+
+      // Construir items de la nota con la lista actualizada
+      const exitNoteItems = updatedItems.map(item => {
+        const prod = products.find(p => p.id === item.productId) 
+          || editingNote.items.find(original => original.productId === item.productId)?.product;
+
+        if (!prod) {
+          throw new Error('Producto no encontrado');
+        }
+
+        const quantity = Number(item.quantity) || 0;
+        const unitPrice = Number(item.unitPrice) || 0;
+        const weight = Number(item.weight) || prod.weight || 0;
+
+        return {
+          id: item.id || `${Date.now()}-${Math.random()}`,
+          productId: item.productId,
+          product: prod,
+          quantity,
+          size: item.size,
+          weight,
+          unitPrice,
+          totalPrice: unitPrice * quantity
+        };
+      });
+
+      const totalPrice = exitNoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
+
+      await exitNoteService.update(editingNote.id, {
+        items: exitNoteItems,
+        totalPrice,
+        notes: `${editingNote.notes || ''}\n[Retornado] Producto "${product.name}" retornado a Bodega Ecuador el ${new Date().toLocaleDateString()}`.trim()
+      });
+
+      toast.success('Producto retornado a Bodega Ecuador exitosamente');
+    } catch (error: any) {
+      console.error('Error returning product from note:', error);
+      toast.error(error.message || 'Error al retornar el producto');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1176,9 +1528,17 @@ const handleDownloadPdf = (note: ExitNote) => {
                     </span>
                   </td>
                   <td className="table-cell">
-                    <span className="text-sm text-gray-900">
-                      {note.number}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-900">
+                        {note.number}
+                      </span>
+                      {note.number && note.number.includes('ECU') && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-yellow-400 text-yellow-900 border border-yellow-500">
+                          <Flag className="h-3.5 w-3.5 mr-1" />
+                          ECUADOR
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="table-cell">
                     <span className="text-sm text-gray-900">{note.seller}</span>
@@ -1236,6 +1596,15 @@ const handleDownloadPdf = (note: ExitNote) => {
                       >
                         <Eye className="h-4 w-4" />
                       </button>
+                      {isAdmin && canEditNote(note) && (
+                        <button
+                          onClick={() => openEditModal(note)}
+                          className="p-1 text-gray-400 hover:text-primary-600"
+                          title="Editar nota de salida"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      )}
                       {note.status === 'pending' && (
                         <button
                           onClick={() => handleStatusChange(note.id, 'delivered')}
@@ -1509,11 +1878,27 @@ const handleDownloadPdf = (note: ExitNote) => {
                         <div className="w-20">
                           <input
                             type="number"
-                            min="1"
-                            max={item.productId ? getAvailableStock(item.productId) : undefined}
-                            required
+                            min={editingNote && ['delivered', 'received'].includes(editingNote.status) ? 0 : 1}
+                            max={item.productId ? (() => {
+                              const availableStock = getAvailableStock(item.productId);
+                              // Si estamos editando una nota ya enviada/recibida y el producto ya estaba en la nota original,
+                              // permitir mantener o reducir la cantidad original incluso si el stock es 0
+                              if (editingNote && ['delivered', 'received'].includes(editingNote.status)) {
+                                const originalItem = editingNote.items.find(noteItem => noteItem.productId === item.productId);
+                                if (originalItem) {
+                                  // Permitir hasta la cantidad original o el stock disponible, el que sea mayor
+                                  return Math.max(originalItem.quantity, availableStock);
+                                }
+                              }
+                              return availableStock;
+                            })() : undefined}
+                            required={!editingNote || !['delivered', 'received'].includes(editingNote.status)}
                             value={item.quantity}
-                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
+                            onChange={(e) => {
+                              const newValue = parseInt(e.target.value) || 0;
+                              const minValue = editingNote && ['delivered', 'received'].includes(editingNote.status) ? 0 : 1;
+                              updateItem(index, 'quantity', Math.max(minValue, newValue));
+                            }}
                             className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                             placeholder="Cant."
                             title={item.productId ? `Stock disponible: ${getAvailableStock(item.productId)}` : ''}
@@ -1553,13 +1938,36 @@ const handleDownloadPdf = (note: ExitNote) => {
                             ${(item.quantity * item.unitPrice).toLocaleString()}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          className="p-1 text-red-400 hover:text-red-600"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                        {editingNote ? (
+                          <div className="flex items-center space-x-1">
+                            <button
+                              type="button"
+                              onClick={() => handleReturnProductFromNote(index)}
+                              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                              title="Retornar producto a Bodega Ecuador"
+                              disabled={isSaving}
+                            >
+                              <Truck className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveProductFromNote(index)}
+                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                              title="Eliminar producto de la nota"
+                              disabled={isSaving}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(index)}
+                            className="p-1 text-red-400 hover:text-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1980,7 +2388,15 @@ const handleDownloadPdf = (note: ExitNote) => {
 
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-900">
-                <strong>Nota de Salida:</strong> {viewingNote.number}
+                <div className="flex items-center space-x-2">
+                  <strong>Nota de Salida:</strong> {viewingNote.number}
+                  {viewingNote.number?.startsWith('NS-ECU-') && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      <Flag className="h-3 w-3 mr-1" />
+                      ECUADOR
+                    </span>
+                  )}
+                </div>
               </p>
               <p className="text-sm text-blue-900">
                 <strong>Vendedor Actual:</strong> {viewingNote.seller}
@@ -2124,6 +2540,82 @@ const handleDownloadPdf = (note: ExitNote) => {
         </div>
       )}
 
+      {/* Modal para eliminar producto con razón */}
+      {showRemoveProductModal && productToRemove && editingNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Eliminar Producto
+              </h3>
+              <button
+                onClick={() => {
+                  setShowRemoveProductModal(false);
+                  setProductToRemove(null);
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-900">
+                <strong>Producto:</strong> {productToRemove.item.productId ? 
+                  (products.find(p => p.id === productToRemove.item.productId)?.name || 
+                   editingNote.items.find(noteItem => noteItem.productId === productToRemove.item.productId)?.product?.name || 
+                   'Producto desconocido') : 
+                  'Producto sin seleccionar'}
+              </p>
+              <p className="text-sm text-blue-900">
+                <strong>Cantidad:</strong> {productToRemove.item.quantity}
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Razón de eliminación *
+              </label>
+              <select
+                value={removalReason}
+                onChange={(e) => setRemovalReason(e.target.value as 'not-sent' | 'damaged')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="not-sent">No enviado (agregar de vuelta al inventario)</option>
+                <option value="damaged">Dañado (no agregar al inventario)</option>
+              </select>
+              <div className="mt-2 p-2 bg-gray-50 rounded text-sm text-gray-600">
+                {removalReason === 'not-sent' ? (
+                  <p><strong>No enviado:</strong> El producto será agregado de vuelta al inventario principal y removido del inventario del vendedor.</p>
+                ) : (
+                  <p><strong>Dañado:</strong> El producto será eliminado de la nota pero NO será agregado al inventario (producto dañado).</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowRemoveProductModal(false);
+                  setProductToRemove(null);
+                }}
+                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
+                disabled={isSaving}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmRemoveProduct}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                disabled={isSaving}
+              >
+                {isSaving ? 'Eliminando...' : 'Eliminar Producto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lector de códigos de barras */}
       <SimpleBarcodeScanner
         isOpen={showScanner}
@@ -2154,13 +2646,32 @@ const handleDownloadPdf = (note: ExitNote) => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Buscar por SKU..."
+                      placeholder="Buscar por SKU o escanear código de barras..."
                       value={skuSearch}
-                      onChange={(e) => setSkuSearch(e.target.value)}
+                      onChange={(e) => {
+                        setSkuSearch(e.target.value);
+                      }}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && skuSearch.trim()) {
+                          handleAddProductFromSearch(skuSearch.trim());
+                        }
+                      }}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      autoFocus
                     />
                   </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowScanner(true);
+                  }}
+                  className="px-3 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center"
+                  title="Abrir escáner de códigos de barras"
+                >
+                  <Scan className="h-4 w-4 mr-1" />
+                  Escanear
+                </button>
                 <button
                   onClick={() => setSkuSearch('')}
                   className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700"

@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
-import { Settings as SettingsIcon, User, Bell, Shield, Database, Globe, Save } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings as SettingsIcon, User, Bell, Shield, Database, Globe, Save, Sparkles } from 'lucide-react';
+import { perfumeSettingsService } from '../services/perfumeSettingsService';
+import { perfumeService } from '../services/perfumeService';
+import { Perfume } from '../types';
+import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -23,11 +27,60 @@ const Settings: React.FC = () => {
 
   const tabs = [
     { id: 'general', name: 'General', icon: SettingsIcon },
+    { id: 'perfumes', name: 'Perfumes', icon: Sparkles },
     { id: 'notifications', name: 'Notificaciones', icon: Bell },
     { id: 'security', name: 'Seguridad', icon: Shield },
     { id: 'database', name: 'Base de Datos', icon: Database },
     { id: 'integrations', name: 'Integraciones', icon: Globe }
   ];
+
+  const [perfumeSettings, setPerfumeSettings] = useState<{ allowedBrands: string[] }>({ allowedBrands: [] });
+  const [allBrands, setAllBrands] = useState<string[]>([]);
+  const [loadingPerfumeSettings, setLoadingPerfumeSettings] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'perfumes') {
+      loadPerfumeSettings();
+    }
+  }, [activeTab]);
+
+  const loadPerfumeSettings = async () => {
+    try {
+      setLoadingPerfumeSettings(true);
+      const settings = await perfumeSettingsService.getSettings();
+      setPerfumeSettings(settings);
+      
+      // Obtener todas las marcas disponibles
+      const perfumes = await perfumeService.getAll();
+      const brands = Array.from(new Set(perfumes.map(p => p.brand).filter(Boolean))).sort();
+      setAllBrands(brands);
+    } catch (error) {
+      console.error('Error loading perfume settings:', error);
+    } finally {
+      setLoadingPerfumeSettings(false);
+    }
+  };
+
+  const handleToggleBrand = (brand: string) => {
+    const isSelected = perfumeSettings.allowedBrands.includes(brand);
+    if (isSelected) {
+      setPerfumeSettings({
+        allowedBrands: perfumeSettings.allowedBrands.filter(b => b !== brand)
+      });
+    } else {
+      setPerfumeSettings({
+        allowedBrands: [...perfumeSettings.allowedBrands, brand]
+      });
+    }
+  };
+
+  const handleSavePerfumeSettings = async () => {
+    try {
+      await perfumeSettingsService.saveSettings(perfumeSettings);
+    } catch (error) {
+      console.error('Error saving perfume settings:', error);
+    }
+  };
 
   const handleSave = () => {
     // Aquí se guardarían los cambios en Firebase
@@ -150,6 +203,78 @@ const Settings: React.FC = () => {
                       <option value="America/New_York">Nueva York (GMT-5)</option>
                       <option value="Europe/Madrid">Madrid (GMT+1)</option>
                     </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'perfumes' && (
+            <div className="card">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">Configuración de Perfumes</h3>
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                    Marcas Permitidas en la Tienda
+                  </h4>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Selecciona las marcas que quieres mostrar en la tienda en línea. Solo los perfumes de estas marcas y que estén publicados aparecerán.
+                  </p>
+                  
+                  {loadingPerfumeSettings ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto border border-gray-200 rounded-lg p-4">
+                      {allBrands.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          No hay marcas disponibles. Importa perfumes primero.
+                        </p>
+                      ) : (
+                        allBrands.map(brand => {
+                          const isSelected = perfumeSettings.allowedBrands.includes(brand);
+                          return (
+                            <label
+                              key={brand}
+                              className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
+                                isSelected
+                                  ? 'bg-primary-50 border-2 border-primary-200'
+                                  : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleBrand(brand)}
+                                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                              />
+                              <span className={`ml-3 text-sm font-medium ${
+                                isSelected ? 'text-primary-900' : 'text-gray-700'
+                              }`}>
+                                {brand}
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium">{perfumeSettings.allowedBrands.length}</span> de{' '}
+                        <span className="font-medium">{allBrands.length}</span> marcas seleccionadas
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleSavePerfumeSettings}
+                      className="btn-primary flex items-center"
+                    >
+                      <Save className="h-4 w-4 mr-2" />
+                      Guardar Marcas
+                    </button>
                   </div>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { auth } from '../../firebase/config';
-import Login from './Login';
 import SellerDashboard from '../../pages/SellerDashboard';
 import AdminSellerMode from '../../pages/AdminSellerMode';
 import { LogOut, User as UserIcon, Shield, Users } from 'lucide-react';
@@ -12,6 +12,7 @@ interface AuthWrapperProps {
 }
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'admin' | 'seller'>('admin');
@@ -23,10 +24,13 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
+      if (!user) {
+        navigate('/login');
+      }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const handleLogout = async () => {
     try {
@@ -50,7 +54,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   }
 
   if (!user) {
-    return <Login />;
+    return null; // La redirección se maneja en el useEffect
   }
 
   // Si es vendedor real, mostrar panel del vendedor

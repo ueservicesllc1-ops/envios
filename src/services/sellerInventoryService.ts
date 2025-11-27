@@ -212,6 +212,36 @@ class SellerInventoryService {
       throw error;
     }
   }
+
+  // Marcar productos como devueltos (en lugar de removerlos)
+  async markAsReturned(sellerId: string, productId: string, quantity: number): Promise<void> {
+    try {
+      let remaining = quantity;
+      const items = await this.getBySeller(sellerId);
+      const relevantItems = items.filter(item => item.productId === productId && (item.quantity - (item.returnedQuantity || 0)) > 0);
+
+      for (const item of relevantItems) {
+        if (remaining <= 0) break;
+
+        const availableQuantity = item.quantity - (item.returnedQuantity || 0);
+        const quantityToMark = Math.min(remaining, availableQuantity);
+        const newReturnedQuantity = (item.returnedQuantity || 0) + quantityToMark;
+
+        await this.update(item.id, {
+          returnedQuantity: newReturnedQuantity
+        });
+
+        remaining -= quantityToMark;
+      }
+
+      if (remaining > 0) {
+        throw new Error('Inventario del vendedor insuficiente para marcar como devuelto la cantidad solicitada');
+      }
+    } catch (error) {
+      console.error('Error marking as returned:', error);
+      throw error;
+    }
+  }
 }
 
 export const sellerInventoryService = new SellerInventoryService();

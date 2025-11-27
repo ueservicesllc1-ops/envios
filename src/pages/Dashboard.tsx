@@ -335,27 +335,29 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Resumen general del sistema</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600">Resumen general del sistema</p>
         </div>
-        <div className="flex space-x-3">
-          <button className="btn-secondary flex items-center">
+        <div className="flex flex-wrap gap-2 sm:space-x-3 sm:gap-0">
+          <button className="btn-secondary flex items-center text-sm sm:text-base">
             <Eye className="h-4 w-4 mr-2" />
-            Ver Reportes
+            <span className="hidden sm:inline">Ver Reportes</span>
+            <span className="sm:hidden">Reportes</span>
           </button>
-          <button className="btn-primary flex items-center">
+          <button className="btn-primary flex items-center text-sm sm:text-base">
             <Plus className="h-4 w-4 mr-2" />
-            Nueva Nota
+            <span className="hidden sm:inline">Nueva Nota</span>
+            <span className="sm:hidden">Nota</span>
           </button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {statCards.map((stat, index) => (
           <div key={index} className="card">
             <div className="flex items-center justify-between">
@@ -384,7 +386,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Charts and Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Revenue vs Expenses */}
         <div className="card">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Ingresos vs Gastos</h3>
@@ -429,8 +431,8 @@ const Dashboard: React.FC = () => {
 
       {/* Quick Actions */}
       <div className="card">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <Package className="h-5 w-5 text-blue-600 mr-3" />
             <div className="text-left">

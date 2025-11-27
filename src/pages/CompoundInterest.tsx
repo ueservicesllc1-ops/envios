@@ -226,6 +226,7 @@ const CompoundInterest: React.FC = () => {
         compoundedProfit,
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryNotes, months, productsById, productsBySku]);
 
   const activeCalculations = useMemo(

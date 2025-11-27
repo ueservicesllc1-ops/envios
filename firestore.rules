@@ -105,6 +105,30 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
+    // Reglas para devoluciones (returns)
+    match /returns/{returnId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para ventas en línea (onlineSales)
+    match /onlineSales/{saleId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para contabilidad de ventas en línea (onlineSaleAccounting)
+    match /onlineSaleAccounting/{entryId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Reglas para perfumes (productos de pedido, no integrados al inventario)
+    match /perfumes/{perfumeId} {
+      // Permitir lectura pública (la aplicación filtrará los activos)
+      // Esto permite consultas con where sin problemas de permisos
+      allow read: if true;
+      // Solo escritura para usuarios autenticados
+      allow write: if request.auth != null;
+    }
+    
     // Regla por defecto - denegar todo lo demás
     match /{document=**} {
       allow read, write: if false;

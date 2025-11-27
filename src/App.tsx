@@ -6,6 +6,7 @@ import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Warehouse from './pages/Warehouse';
+import WarehouseEcuador from './pages/WarehouseEcuador';
 import Inventory from './pages/Inventory';
 import EntryNotes from './pages/EntryNotes';
 import ExitNotes from './pages/ExitNotes';
@@ -21,12 +22,22 @@ import Settings from './pages/Settings';
 import MobileScanner from './pages/MobileScanner';
 import PublicStore from './pages/PublicStore';
 import CompoundInterest from './pages/CompoundInterest';
+import Returns from './pages/Returns';
+import Perfumes from './pages/Perfumes';
+import Home from './pages/Home';
+import Login from './components/Auth/Login';
 
 function App() {
   return (
     <Router>
       <div className="App">
         <Routes>
+          {/* Ruta pública para la página de inicio (tienda en línea) */}
+          <Route path="/" element={<Home />} />
+          
+          {/* Ruta pública para login */}
+          <Route path="/login" element={<Login />} />
+          
           {/* Ruta pública para la tienda del vendedor - sin Layout ni AuthWrapper */}
           <Route path="/store/:slug" element={<PublicStore />} />
           
@@ -37,9 +48,10 @@ function App() {
               <AuthWrapper>
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/products" element={<Products />} />
                     <Route path="/warehouse" element={<Warehouse />} />
+                    <Route path="/warehouse-ecuador" element={<WarehouseEcuador />} />
                     <Route path="/inventory" element={<Inventory />} />
                     <Route path="/entry-notes" element={<EntryNotes />} />
                     <Route path="/exit-notes" element={<ExitNotes />} />
@@ -52,6 +64,8 @@ function App() {
                     <Route path="/seller-dashboard/:id" element={<SellerDashboard />} />
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/compound-interest" element={<CompoundInterest />} />
+                    <Route path="/returns" element={<Returns />} />
+                    <Route path="/perfumes" element={<Perfumes />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/mobile-scanner" element={<MobileScanner />} />
                   </Routes>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Envios Ecuador</string>
+    <string name="title_activity_main">Envios Ecuador</string>
+    <string name="package_name">com.envios.ecuador</string>
+    <string name="custom_url_scheme">com.envios.ecuador</string>
+</resources>

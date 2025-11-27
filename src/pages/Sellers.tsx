@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Edit, Eye, Trash2, Mail, Phone, DollarSign, X, LayoutDashboard } from 'lucide-react';
+import { Users, Plus, Search, Edit, Eye, Trash2, Mail, Phone, DollarSign, X, LayoutDashboard, AlertCircle } from 'lucide-react';
 import { Seller } from '../types';
 import { sellerService } from '../services/sellerService';
+import { sellerInventoryService } from '../services/sellerInventoryService';
+import { paymentNoteService } from '../services/paymentNoteService';
 import toast from 'react-hot-toast';
 
 const Sellers: React.FC = () => {
@@ -12,6 +14,8 @@ const Sellers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingSeller, setEditingSeller] = useState<Seller | null>(null);
+  const [sellerDebts, setSellerDebts] = useState<Record<string, number>>({});
+  const [loadingDebts, setLoadingDebts] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -29,6 +33,13 @@ const Sellers: React.FC = () => {
   useEffect(() => {
     loadSellers();
   }, []);
+
+  useEffect(() => {
+    if (sellers.length > 0) {
+      loadSellerDebts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sellers]);
 
   const loadSellers = async () => {
     try {
@@ -75,6 +86,47 @@ const Sellers: React.FC = () => {
       console.error('Error loading sellers:', error);
       toast.error('Error al cargar vendedores');
       setLoading(false);
+    }
+  };
+
+  const loadSellerDebts = async () => {
+    try {
+      setLoadingDebts(true);
+      const debts: Record<string, number> = {};
+
+      for (const seller of sellers) {
+        try {
+          // Calcular valor del inventario (excluyendo productos devueltos)
+          const inventory = await sellerInventoryService.getBySeller(seller.id);
+          const inventoryValue = inventory.reduce((sum, item) => {
+            const returnedQty = item.returnedQuantity || 0;
+            const availableQty = item.quantity - returnedQty;
+            if (availableQty > 0) {
+              return sum + (item.unitPrice * availableQty);
+            }
+            return sum;
+          }, 0);
+
+          // Calcular total de notas de pago aprobadas
+          const paymentNotes = await paymentNoteService.getBySeller(seller.id);
+          const totalPayments = paymentNotes
+            .filter(note => note.status === 'approved')
+            .reduce((sum, note) => sum + (note.totalAmount || 0), 0);
+
+          // Deuda = Valor inventario - Pagos aprobados
+          const debt = Math.max(0, inventoryValue - totalPayments);
+          debts[seller.id] = debt;
+        } catch (error) {
+          console.error(`Error calculando deuda para vendedor ${seller.id}:`, error);
+          debts[seller.id] = 0;
+        }
+      }
+
+      setSellerDebts(debts);
+      setLoadingDebts(false);
+    } catch (error) {
+      console.error('Error loading seller debts:', error);
+      setLoadingDebts(false);
     }
   };
 
@@ -371,6 +423,47 @@ const Sellers: React.FC = () => {
                 <span className="text-sm text-gray-900">
                   {new Date(seller.createdAt).toLocaleDateString()}
                 </span>
+              </div>
+              
+              {/* Cuadro de Deuda */}
+              <div className={`mt-4 p-3 rounded-lg border-2 ${
+                (sellerDebts[seller.id] || 0) > 0 
+                  ? 'bg-red-50 border-red-200' 
+                  : 'bg-green-50 border-green-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <DollarSign className={`h-5 w-5 mr-2 ${
+                      (sellerDebts[seller.id] || 0) > 0 
+                        ? 'text-red-600' 
+                        : 'text-green-600'
+                    }`} />
+                    <span className={`text-sm font-medium ${
+                      (sellerDebts[seller.id] || 0) > 0 
+                        ? 'text-red-700' 
+                        : 'text-green-700'
+                    }`}>
+                      Deuda:
+                    </span>
+                  </div>
+                  <span className={`text-lg font-bold ${
+                    (sellerDebts[seller.id] || 0) > 0 
+                      ? 'text-red-600' 
+                      : 'text-green-600'
+                  }`}>
+                    {loadingDebts ? (
+                      <span className="text-xs">Calculando...</span>
+                    ) : (
+                      `$${(sellerDebts[seller.id] || 0).toLocaleString()}`
+                    )}
+                  </span>
+                </div>
+                {(sellerDebts[seller.id] || 0) > 0 && (
+                  <div className="mt-2 flex items-center text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    <span>Pendiente de pago</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -18,14 +18,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      {/* Separación de 20px */}
-      <div style={{width: '20px', flexShrink: 0}}></div>
+      {/* Separación de 20px solo en desktop */}
+      <div className="hidden lg:block" style={{width: '20px', flexShrink: 0}}></div>
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onMenuClick={toggleSidebar} />
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <div className="w-full py-6">
+          <div className="w-full py-3 px-2 sm:py-6 sm:px-4 lg:px-6">
             {children || <Outlet />}
           </div>
         </main>

@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import { Package, Mail, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { sellerService } from '../../services/sellerService';
+import DestinationModal from './DestinationModal';
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showDestinationModal, setShowDestinationModal] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<{ name: string; email: string } | null>(null);
 
   const handleGoogleLogin = async () => {
     try {
@@ -17,8 +23,40 @@ const Login: React.FC = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      toast.success(`¡Bienvenido ${user.displayName}!`);
       console.log('Usuario autenticado:', user);
+      
+      // Verificar si es admin
+      const isAdmin = user.email === 'ueservicesllc1@gmail.com';
+      
+      if (isAdmin) {
+        // Admin va directamente al dashboard
+        toast.success(`¡Bienvenido ${user.displayName}!`);
+        navigate('/dashboard');
+      } else {
+        // Verificar si es vendedor
+        try {
+          const sellers = await sellerService.getAll();
+          const isSeller = sellers.some(seller => seller.email === user.email);
+          
+          if (isSeller) {
+            // Mostrar modal de selección para vendedores
+            setLoggedInUser({
+              name: user.displayName || user.email || 'Usuario',
+              email: user.email || ''
+            });
+            setShowDestinationModal(true);
+          } else {
+            // Usuario no reconocido, redirigir a la tienda
+            toast.success(`¡Bienvenido ${user.displayName}!`);
+            navigate('/');
+          }
+        } catch (error) {
+          console.error('Error verificando vendedores:', error);
+          // En caso de error, redirigir a la tienda
+          toast.success(`¡Bienvenido ${user.displayName}!`);
+          navigate('/');
+        }
+      }
     } catch (error: any) {
       console.error('Error en autenticación:', error);
       toast.error('Error al iniciar sesión. Intenta de nuevo.');
@@ -34,11 +72,19 @@ const Login: React.FC = () => {
           <Package className="h-12 w-12 text-primary-600" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-          Envíos Ecuador
+          Iniciar Sesión
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Sistema de Gestión de Inventario
+          Accede a tu cuenta para gestionar el inventario
         </p>
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => navigate('/')}
+            className="text-sm text-primary-600 hover:text-primary-700"
+          >
+            ← Volver a la tienda
+          </button>
+        </div>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -133,6 +179,19 @@ const Login: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de selección de destino para vendedores */}
+      {loggedInUser && (
+        <DestinationModal
+          isOpen={showDestinationModal}
+          userName={loggedInUser.name}
+          onClose={() => {
+            setShowDestinationModal(false);
+            // Si cierra sin seleccionar, redirigir al panel de vendedor por defecto
+            navigate('/dashboard');
+          }}
+        />
+      )}
     </div>
   );
 };

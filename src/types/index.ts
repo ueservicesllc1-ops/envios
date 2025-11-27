@@ -12,11 +12,16 @@ export interface Product {
   cost: number;
   salePrice1: number;
   salePrice2: number;
+  originalPrice?: number; // Precio original de venta en tiendas físicas
   barcode?: string;
   imageUrl?: string;
   // Campos específicos para perfumes
   brand?: string; // Marca del perfume
   perfumeName?: string; // Nombre específico del perfume
+  // Campos para productos consolidados
+  isConsolidated?: boolean; // Si es un producto consolidado
+  consolidatedProducts?: string[]; // IDs de los productos que forman este consolidado
+  parentConsolidatedId?: string; // ID del producto consolidado padre (si este es parte de uno)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -189,6 +194,7 @@ export interface SellerInventoryItem {
   status: 'stock' | 'in-transit' | 'delivered';
   lastDeliveryDate: Date;
   exitNoteId?: string; // ID de la nota de salida que generó este inventario
+  returnedQuantity?: number; // Cantidad devuelta (productos marcados como devueltos)
 }
 
 // Tipos para Notas de Pago
@@ -213,4 +219,53 @@ export interface PaymentNoteItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+}
+
+// Tipos para Devoluciones
+export interface Return {
+  id: string;
+  number: string;
+  sellerId: string;
+  sellerName: string;
+  items: ReturnItem[];
+  totalValue: number;
+  status: 'pending' | 'approved' | 'rejected';
+  notes?: string;
+  createdAt: Date;
+  approvedAt?: Date;
+  approvedBy?: string;
+  rejectedAt?: Date;
+  rejectedBy?: string;
+  rejectionReason?: string;
+}
+
+export interface ReturnItem {
+  id: string;
+  productId: string;
+  product: Product;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  reason?: string; // Razón de la devolución
+}
+
+// Tipos para Perfumes (productos de pedido, no integrados al inventario)
+export interface Perfume {
+  id: string;
+  name: string;
+  description?: string;
+  descriptionEs?: string; // Descripción en español
+  descriptionEn?: string; // Descripción en inglés
+  brand: string; // Marca del perfume (ej: Arabiyat, Lattafa, Armaf)
+  collection?: string; // Colección dentro de la marca (ej: Sugar, Prestige)
+  sku: string;
+  price: number; // Precio de venta
+  originalPrice?: number; // Precio original si hay descuento
+  discountPercentage?: number; // Porcentaje de descuento (0-99), por defecto 30%
+  imageUrl?: string;
+  shopifyProductId?: string; // ID del producto en Shopify
+  shopifyVariantId?: string; // ID de la variante en Shopify
+  isActive: boolean; // Si está visible en la tienda
+  createdAt: Date;
+  updatedAt: Date;
 }
