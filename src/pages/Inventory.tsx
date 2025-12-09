@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, AlertTriangle, Package, Search, Filter, Plus, Edit, Eye, X } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Package, Search, Filter, Plus, Edit, Eye, X, Trash2 } from 'lucide-react';
 import { InventoryItem, Product } from '../types';
 import { inventoryService } from '../services/inventoryService';
 import { productService } from '../services/productService';
@@ -27,6 +27,11 @@ const Inventory: React.FC = () => {
   // Estados para modal de imagen
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>('');
+  
+  // Estados para modal de eliminación
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [deleteReason, setDeleteReason] = useState<'error' | 'permanent'>('error');
 
   useEffect(() => {
     loadData();
@@ -149,6 +154,44 @@ const Inventory: React.FC = () => {
   const handleImageClick = (imageUrl: string) => {
     setSelectedImage(imageUrl);
     setShowImageModal(true);
+  };
+
+  const handleDeleteClick = (item: InventoryItem) => {
+    setItemToDelete(item);
+    setShowDeleteModal(true);
+    setDeleteReason('error'); // Por defecto "eliminado por error"
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      if (deleteReason === 'error') {
+        // Eliminar por error: solo eliminar el registro de inventario sin afectar contabilidad
+        await inventoryService.delete(itemToDelete.id);
+        toast.success('Producto eliminado del inventario (marcado como eliminado por error)');
+      } else {
+        // Eliminación permanente: eliminar y podría afectar contabilidad
+        // Por ahora, también solo eliminamos el registro
+        // En el futuro se podría agregar lógica para afectar contabilidad si es necesario
+        await inventoryService.delete(itemToDelete.id);
+        toast.success('Producto eliminado permanentemente del inventario');
+      }
+
+      // Recargar datos
+      await loadData();
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+    } catch (error) {
+      console.error('Error deleting inventory item:', error);
+      toast.error('Error al eliminar el producto del inventario');
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
+    setDeleteReason('error');
   };
 
   const handleRegenerateInventory = async () => {
@@ -471,6 +514,13 @@ const Inventory: React.FC = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
+                        <button
+                          onClick={() => handleDeleteClick(item)}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -641,6 +691,108 @@ const Inventory: React.FC = () => {
               alt="Imagen del producto"
               className="max-w-full max-h-full object-contain rounded-lg"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Eliminación */}
+      {showDeleteModal && itemToDelete && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Eliminar Producto del Inventario
+                </h3>
+                <button
+                  onClick={handleCancelDelete}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Información del producto */}
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h4 className="font-medium text-gray-900">{itemToDelete.product.name}</h4>
+                  <p className="text-sm text-gray-600">SKU: {itemToDelete.product.sku}</p>
+                  <p className="text-sm text-gray-600">Cantidad: {itemToDelete.quantity}</p>
+                  <p className="text-sm text-gray-600">Ubicación: {itemToDelete.location}</p>
+                </div>
+
+                {/* Opciones de eliminación */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de eliminación:
+                  </label>
+                  
+                  <div className="space-y-2">
+                    <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="deleteReason"
+                        value="error"
+                        checked={deleteReason === 'error'}
+                        onChange={() => setDeleteReason('error')}
+                        className="mt-1 mr-3"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Eliminado por Error</div>
+                        <div className="text-sm text-gray-600">
+                          El producto se eliminará del inventario pero NO afectará presupuestos ni contabilidad. 
+                          Útil cuando el producto fue agregado por error o no debería estar en inventario.
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="deleteReason"
+                        value="permanent"
+                        checked={deleteReason === 'permanent'}
+                        onChange={() => setDeleteReason('permanent')}
+                        className="mt-1 mr-3"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Eliminación Permanente</div>
+                        <div className="text-sm text-gray-600">
+                          El producto se eliminará permanentemente del inventario. 
+                          Esta acción no se puede deshacer.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Advertencia */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Advertencia:</strong> Esta acción eliminará el producto del inventario. 
+                    {deleteReason === 'error' 
+                      ? ' No se afectarán presupuestos ni contabilidad.' 
+                      : ' Esta acción es permanente.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={handleCancelDelete}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

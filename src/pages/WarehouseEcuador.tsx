@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Package, MapPin, Search, Filter, Plus, Eye, Edit, Flag, X, Users, Truck } from 'lucide-react';
+import { Package, MapPin, Search, Filter, Plus, Eye, Edit, Flag, X, Users, Truck, Trash2 } from 'lucide-react';
 import { Product, InventoryItem, SellerInventoryItem, Seller, ExitNote } from '../types';
 import { productService } from '../services/productService';
 import { inventoryService } from '../services/inventoryService';
@@ -31,6 +31,21 @@ const WarehouseEcuador: React.FC = () => {
   }>>([]);
   const [exitNoteSkuSearch, setExitNoteSkuSearch] = useState('');
   const [isCreatingExitNote, setIsCreatingExitNote] = useState(false);
+  
+  // Estados para edición y eliminación
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    quantity: 0,
+    cost: 0,
+    unitPrice: 0,
+    location: '',
+    status: 'stock' as 'stock' | 'in-transit' | 'delivered'
+  });
+  
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+  const [deleteReason, setDeleteReason] = useState<'error' | 'permanent'>('error');
 
   const locations = ['ecuador', 'all'];
 
@@ -207,6 +222,97 @@ const WarehouseEcuador: React.FC = () => {
     setExitNoteItems(newItems);
   };
 
+  const handleEdit = (item: InventoryItem) => {
+    setEditingItem(item);
+    setEditFormData({
+      quantity: item.quantity,
+      cost: item.cost,
+      unitPrice: item.unitPrice,
+      location: item.location,
+      status: item.status
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+
+    try {
+      // Calcular nuevos totales
+      const newTotalCost = editFormData.cost * editFormData.quantity;
+      const newTotalPrice = editFormData.unitPrice * editFormData.quantity;
+      const newTotalValue = newTotalCost;
+
+      await inventoryService.update(editingItem.id, {
+        quantity: editFormData.quantity,
+        cost: editFormData.cost,
+        unitPrice: editFormData.unitPrice,
+        totalCost: newTotalCost,
+        totalPrice: newTotalPrice,
+        totalValue: newTotalValue,
+        location: editFormData.location,
+        status: editFormData.status
+      });
+
+      // Recargar datos
+      await loadData();
+      toast.success('Inventario actualizado correctamente');
+      setShowEditModal(false);
+      setEditingItem(null);
+    } catch (error) {
+      console.error('Error updating inventory:', error);
+      toast.error('Error al actualizar inventario');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingItem(null);
+    setEditFormData({
+      quantity: 0,
+      cost: 0,
+      unitPrice: 0,
+      location: '',
+      status: 'stock'
+    });
+  };
+
+  const handleDeleteClick = (item: InventoryItem) => {
+    setItemToDelete(item);
+    setShowDeleteModal(true);
+    setDeleteReason('error'); // Por defecto "eliminado por error"
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      if (deleteReason === 'error') {
+        // Eliminar por error: solo eliminar el registro de inventario sin afectar contabilidad
+        await inventoryService.delete(itemToDelete.id);
+        toast.success('Producto eliminado del inventario (marcado como eliminado por error)');
+      } else {
+        // Eliminación permanente
+        await inventoryService.delete(itemToDelete.id);
+        toast.success('Producto eliminado permanentemente del inventario');
+      }
+
+      // Recargar datos
+      await loadData();
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+    } catch (error) {
+      console.error('Error deleting inventory item:', error);
+      toast.error('Error al eliminar el producto del inventario');
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
+    setDeleteReason('error');
+  };
+
   const handleCreateEcuadorExitNote = async () => {
     try {
       if (exitNoteItems.length === 0) {
@@ -220,9 +326,18 @@ const WarehouseEcuador: React.FC = () => {
         return;
       }
 
-      // Validar stock disponible
+      // Recargar inventario actualizado ANTES de validar
+      const currentInventory = await inventoryService.getAll();
+      
+      // Validar stock disponible con datos actualizados de la base de datos
       for (const item of exitNoteItems) {
-        const availableStock = getEcuadorStock(item.productId);
+        const ecuadorInventoryItem = currentInventory.find(inv => 
+          inv.productId === item.productId && 
+          (inv.location?.toLowerCase().includes('ecuador') || inv.location === 'Ecuador')
+        );
+        
+        const availableStock = ecuadorInventoryItem?.quantity || 0;
+        
         if (availableStock < item.quantity) {
           const product = products.find(p => p.id === item.productId);
           toast.error(`Stock insuficiente para ${product?.name}. Disponible: ${availableStock}, Solicitado: ${item.quantity}`);
@@ -231,6 +346,9 @@ const WarehouseEcuador: React.FC = () => {
       }
 
       setIsCreatingExitNote(true);
+      
+      // Actualizar el estado local con el inventario actualizado
+      setInventory(currentInventory);
 
       // Construir items de la nota de salida
       const exitNoteItemsData = await Promise.all(exitNoteItems.map(async (item) => {
@@ -271,26 +389,32 @@ const WarehouseEcuador: React.FC = () => {
       const createdExitNoteId = await exitNoteService.create(exitNoteData);
 
       // Reducir stock de Bodega Ecuador y agregar al inventario del vendedor
+      // Usar el inventario actualizado que recargamos antes de validar
       for (const item of exitNoteItemsData) {
-        // 1. Reducir stock de Bodega Ecuador
-        const ecuadorInventoryItem = inventory.find(inv => 
+        // 1. Obtener el item de inventario actualizado de la base de datos
+        const currentInventoryUpdated = await inventoryService.getAll();
+        const ecuadorInventoryItem = currentInventoryUpdated.find(inv => 
           inv.productId === item.productId && 
           (inv.location?.toLowerCase().includes('ecuador') || inv.location === 'Ecuador')
         );
 
-        if (ecuadorInventoryItem) {
-          const newQuantity = ecuadorInventoryItem.quantity - item.quantity;
-          if (newQuantity < 0) {
-            throw new Error(`Stock insuficiente para ${item.product.name}`);
-          }
-          
-          await inventoryService.update(ecuadorInventoryItem.id, {
-            quantity: newQuantity,
-            totalCost: ecuadorInventoryItem.cost * newQuantity,
-            totalPrice: ecuadorInventoryItem.unitPrice * newQuantity,
-            totalValue: ecuadorInventoryItem.cost * newQuantity
-          });
+        if (!ecuadorInventoryItem) {
+          throw new Error(`Producto ${item.product.name} no encontrado en Bodega Ecuador`);
         }
+
+        // Validar stock ANTES de restar
+        if (ecuadorInventoryItem.quantity < item.quantity) {
+          throw new Error(`Stock insuficiente para ${item.product.name}. Disponible: ${ecuadorInventoryItem.quantity}, Solicitado: ${item.quantity}`);
+        }
+
+        const newQuantity = ecuadorInventoryItem.quantity - item.quantity;
+        
+        await inventoryService.update(ecuadorInventoryItem.id, {
+          quantity: newQuantity,
+          totalCost: ecuadorInventoryItem.cost * newQuantity,
+          totalPrice: ecuadorInventoryItem.unitPrice * newQuantity,
+          totalValue: ecuadorInventoryItem.cost * newQuantity
+        });
 
         // 2. Agregar al inventario del vendedor con status 'delivered' directamente
         const existingItems = await sellerInventoryService.getBySeller(selectedSeller.id);
@@ -538,6 +662,11 @@ const WarehouseEcuador: React.FC = () => {
                   return null;
                 }
                 
+                // Solo mostrar productos que tienen un item de inventario válido
+                if (!inventoryItem) {
+                  return null;
+                }
+                
                 return (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -565,12 +694,12 @@ const WarehouseEcuador: React.FC = () => {
                       <div className="text-sm text-gray-900">{product.sku}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{inventoryItem?.quantity || 0} unidades</div>
+                      <div className="text-sm text-gray-900">{inventoryItem.quantity} unidades</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <Flag className="h-4 w-4 text-yellow-400 mr-2" />
-                        <div className="text-sm text-gray-900">{inventoryItem?.location || 'Sin ubicación'}</div>
+                        <div className="text-sm text-gray-900">{inventoryItem.location || 'Sin ubicación'}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -580,16 +709,24 @@ const WarehouseEcuador: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {inventoryItem ? `$${inventoryItem.totalValue.toLocaleString()}` : 'N/A'}
+                        ${inventoryItem.totalValue.toLocaleString()}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="text-green-600 hover:text-green-900">
+                        <button 
+                          onClick={() => handleEdit(inventoryItem)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Editar"
+                        >
                           <Edit className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteClick(inventoryItem)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -1055,6 +1192,242 @@ const WarehouseEcuador: React.FC = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Edición */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Editar Inventario Bodega Ecuador
+                </h3>
+                <button
+                  onClick={handleCancelEdit}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Información del producto */}
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h4 className="font-medium text-gray-900">{editingItem.product?.name || 'Producto'}</h4>
+                  <p className="text-sm text-gray-600">SKU: {editingItem.product?.sku || 'N/A'}</p>
+                </div>
+
+                {/* Formulario de edición */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cantidad
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={editFormData.quantity}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Ubicación
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.location}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, location: e.target.value }))}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Costo Unitario
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editFormData.cost}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, cost: Number(e.target.value) }))}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Precio Unitario
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editFormData.unitPrice}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, unitPrice: Number(e.target.value) }))}
+                      className="input-field"
+                    />
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Estado
+                    </label>
+                    <select
+                      value={editFormData.status}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value as 'stock' | 'in-transit' | 'delivered' }))}
+                      className="input-field"
+                    >
+                      <option value="stock">En Stock</option>
+                      <option value="in-transit">En Tránsito</option>
+                      <option value="delivered">Entregado</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Totales calculados */}
+                <div className="bg-blue-50 p-3 rounded-lg">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Costo Total:</span>
+                      <p className="font-medium">${(editFormData.cost * editFormData.quantity).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Precio Total:</span>
+                      <p className="font-medium">${(editFormData.unitPrice * editFormData.quantity).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Valor Total:</span>
+                      <p className="font-medium">${(editFormData.cost * editFormData.quantity).toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={handleCancelEdit}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="btn-primary"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Eliminación */}
+      {showDeleteModal && itemToDelete && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Eliminar Producto del Inventario
+                </h3>
+                <button
+                  onClick={handleCancelDelete}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Información del producto */}
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h4 className="font-medium text-gray-900">{itemToDelete.product?.name || 'Producto'}</h4>
+                  <p className="text-sm text-gray-600">SKU: {itemToDelete.product?.sku || 'N/A'}</p>
+                  <p className="text-sm text-gray-600">Cantidad: {itemToDelete.quantity}</p>
+                  <p className="text-sm text-gray-600">Ubicación: {itemToDelete.location}</p>
+                </div>
+
+                {/* Opciones de eliminación */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de eliminación:
+                  </label>
+                  
+                  <div className="space-y-2">
+                    <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="deleteReason"
+                        value="error"
+                        checked={deleteReason === 'error'}
+                        onChange={() => setDeleteReason('error')}
+                        className="mt-1 mr-3"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Eliminado por Error</div>
+                        <div className="text-sm text-gray-600">
+                          El producto se eliminará del inventario pero NO afectará presupuestos ni contabilidad. 
+                          Útil cuando el producto fue agregado por error o no debería estar en inventario.
+                        </div>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="deleteReason"
+                        value="permanent"
+                        checked={deleteReason === 'permanent'}
+                        onChange={() => setDeleteReason('permanent')}
+                        className="mt-1 mr-3"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Eliminación Permanente</div>
+                        <div className="text-sm text-gray-600">
+                          El producto se eliminará permanentemente del inventario. 
+                          Esta acción no se puede deshacer.
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Advertencia */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Advertencia:</strong> Esta acción eliminará el producto del inventario. 
+                    {deleteReason === 'error' 
+                      ? ' No se afectarán presupuestos ni contabilidad.' 
+                      : ' Esta acción es permanente.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={handleCancelDelete}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Eliminar
+                </button>
               </div>
             </div>
           </div>

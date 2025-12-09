@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Package, Store, X, ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
+import { Package, Store, X, ShoppingCart, Plus, Minus, Trash2, Flag } from 'lucide-react';
 import { sellerStoreService } from '../services/sellerStoreService';
 import { sellerService } from '../services/sellerService';
+import { inventoryService } from '../services/inventoryService';
+import { productService } from '../services/productService';
 import toast from 'react-hot-toast';
 
 interface CartItem {
@@ -143,23 +145,71 @@ const PublicStore: React.FC = () => {
       });
       
       // Cargar productos de la tienda usando el ID del vendedor
-      console.log('Buscando productos de la tienda para sellerId:', sellerData.id);
+      console.log('========================================');
+      console.log('📦 CARGANDO PRODUCTOS DE LA TIENDA');
+      console.log('========================================');
+      console.log('Vendedor ID:', sellerData.id);
+      console.log('Vendedor nombre:', sellerData.name);
       const products = await sellerStoreService.getActiveStoreProducts(sellerData.id);
+      console.log('✅ Productos cargados de la tienda:', products.length);
       
-      console.log('Productos obtenidos:', products.length);
-      if (products.length > 0) {
-        console.log('Primeros productos:', products.slice(0, 3).map(p => ({
+      // Cargar productos de Bodega Ecuador
+      console.log('Buscando productos de Bodega Ecuador...');
+      const allInventory = await inventoryService.getAll();
+      const ecuadorInventory = allInventory.filter(inv => {
+        const location = inv.location?.toLowerCase() || '';
+        return (location.includes('ecuador') || inv.location === 'Ecuador') && inv.quantity > 0;
+      });
+      
+      console.log('Productos de Bodega Ecuador encontrados:', ecuadorInventory.length);
+      
+      // Obtener todos los productos para mapear
+      const allProducts = await productService.getAll();
+      const productMap = new Map(allProducts.map(p => [p.id, p]));
+      
+      // Guardar el tipo de precio del vendedor para usar en el map
+      const sellerPriceType = sellerData.priceType;
+      
+      // Crear productos de Ecuador para la tienda
+      const ecuadorStoreProducts = ecuadorInventory.map(inv => {
+        const product = productMap.get(inv.productId);
+        if (!product) return null;
+        
+        // Determinar precio según el tipo de precio del vendedor
+        const unitPrice = sellerPriceType === 'price2' ? product.salePrice2 : product.salePrice1;
+        
+        return {
+          id: `ecuador-${inv.id}`,
+          productId: inv.productId,
+          product: product,
+          salePrice: unitPrice,
+          availableStock: inv.quantity,
+          isActive: true,
+          isFromEcuador: true, // Marcar como producto de Ecuador
+          description: `Disponible en Bodega Ecuador`
+        };
+      }).filter((p): p is NonNullable<typeof p> => p !== null);
+      
+      console.log('Productos de Ecuador procesados:', ecuadorStoreProducts.length);
+      
+      // Combinar productos de la tienda con productos de Ecuador
+      const allStoreProducts = [...products, ...ecuadorStoreProducts];
+      
+      console.log('Total productos obtenidos:', allStoreProducts.length);
+      if (allStoreProducts.length > 0) {
+        console.log('Primeros productos:', allStoreProducts.slice(0, 3).map(p => ({
           id: p.id,
           productName: p.product?.name,
           isActive: p.isActive,
-          salePrice: p.salePrice
+          salePrice: p.salePrice,
+          isFromEcuador: (p as any).isFromEcuador || false
         })));
       } else {
         console.log('⚠️ No se encontraron productos activos para este vendedor');
         console.log('Verifica que el vendedor tenga productos agregados a la tienda y marcados como activos');
       }
       
-      setStoreProducts(products);
+      setStoreProducts(allStoreProducts);
       setSeller(sellerData);
       console.log('✅ Tienda cargada exitosamente');
     } catch (error: any) {
@@ -200,12 +250,15 @@ const PublicStore: React.FC = () => {
   }, [slug]);
 
   useEffect(() => {
+    console.log('========================================');
+    console.log('🚀 PUBLICSTORE COMPONENT MOUNTED');
+    console.log('========================================');
     if (slug) {
-      console.log('PublicStore mounted with slug:', slug);
+      console.log('✅ Slug encontrado:', slug);
       console.log('User Agent:', navigator.userAgent);
       loadStoreData();
     } else {
-      console.error('No slug provided in URL');
+      console.error('❌ No slug provided in URL');
     }
   }, [slug, loadStoreData]);
 
@@ -463,9 +516,17 @@ const PublicStore: React.FC = () => {
                   )}
                 </div>
                 <div className="p-2 flex flex-col flex-grow">
-                  <h3 className="font-medium text-xs text-gray-900 mb-0.5 line-clamp-2 leading-tight min-h-[2rem]">
-                    {storeProduct.product?.name || 'Producto'}
-                  </h3>
+                  <div className="flex items-start justify-between mb-0.5">
+                    <h3 className="font-medium text-xs text-gray-900 line-clamp-2 leading-tight min-h-[2rem] flex-1">
+                      {storeProduct.product?.name || 'Producto'}
+                    </h3>
+                    {storeProduct.isFromEcuador && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-yellow-400 text-yellow-900 ml-1 flex-shrink-0" title="Disponible en Bodega Ecuador">
+                        <Flag className="h-2.5 w-2.5 mr-0.5" />
+                        EC
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 mb-1">
                     {storeProduct.product?.sku && (
                       <p className="text-xs text-gray-500 leading-tight">SKU: {storeProduct.product.sku}</p>
@@ -474,9 +535,17 @@ const PublicStore: React.FC = () => {
                       <p className="text-xs text-gray-700 font-semibold leading-tight">Talla: {storeProduct.product.size}</p>
                     )}
                   </div>
+                  {storeProduct.isFromEcuador && (
+                    <p className="text-[9px] text-yellow-700 mb-1 font-medium">Stock Ecuador: {storeProduct.availableStock || 0}</p>
+                  )}
                   <div className="flex items-center justify-between mb-1 mt-auto">
                     <span className="text-sm font-bold text-blue-600">
                       ${storeProduct.salePrice.toLocaleString()}
+                    </span>
+                    <span className={`text-[9px] font-medium ${
+                      (storeProduct.availableStock || 0) > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      Stock: {storeProduct.availableStock ?? 'N/A'}
                     </span>
                   </div>
                   <button
@@ -484,10 +553,15 @@ const PublicStore: React.FC = () => {
                       e.stopPropagation();
                       addToCart(storeProduct);
                     }}
-                    className="w-full mt-1 px-2 py-1.5 bg-blue-600 text-white text-[10px] font-semibold rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center shadow-sm"
+                    disabled={!storeProduct.availableStock || storeProduct.availableStock <= 0}
+                    className={`w-full mt-1 px-2 py-1.5 text-white text-[10px] font-semibold rounded-md transition-colors flex items-center justify-center shadow-sm ${
+                      (!storeProduct.availableStock || storeProduct.availableStock <= 0)
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
                   >
                     <Plus className="h-3 w-3 mr-1" />
-                    Agregar al pedido
+                    {(!storeProduct.availableStock || storeProduct.availableStock <= 0) ? 'Fuera de stock' : 'Agregar al pedido'}
                   </button>
                 </div>
               </div>
@@ -717,20 +791,41 @@ const PublicStore: React.FC = () => {
                   )}
 
                   <div className="pt-3 sm:pt-4 border-t">
-                    <div className="flex items-baseline justify-between mb-3 sm:mb-4">
+                    <div className="flex items-baseline justify-between mb-2">
                       <span className="text-2xl sm:text-3xl font-bold text-blue-600">
                         ${selectedProduct.salePrice.toLocaleString()}
                       </span>
+                      {selectedProduct.isFromEcuador && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-yellow-400 text-yellow-900">
+                          <Flag className="h-3 w-3 mr-1" />
+                          ECUADOR
+                        </span>
+                      )}
+                    </div>
+                    <div className="mb-3 sm:mb-4">
+                      <p className={`text-sm font-medium ${
+                        (selectedProduct.availableStock || 0) > 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        Stock disponible: {selectedProduct.availableStock ?? 'N/A'}
+                      </p>
+                      {selectedProduct.isFromEcuador && (
+                        <p className="text-xs text-yellow-700 mt-1">Disponible en Bodega Ecuador</p>
+                      )}
                     </div>
                     <button
                       onClick={() => {
                         addToCart(selectedProduct);
                         setSelectedProduct(null);
                       }}
-                      className="w-full bg-blue-600 text-white py-2.5 sm:py-3 px-4 rounded-lg text-sm sm:text-base font-medium hover:bg-blue-700 transition-colors flex items-center justify-center shadow-md"
+                      disabled={!selectedProduct.availableStock || selectedProduct.availableStock <= 0}
+                      className={`w-full text-white py-2.5 sm:py-3 px-4 rounded-lg text-sm sm:text-base font-medium transition-colors flex items-center justify-center shadow-md ${
+                        (!selectedProduct.availableStock || selectedProduct.availableStock <= 0)
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
                     >
                       <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                      Agregar al pedido
+                      {(!selectedProduct.availableStock || selectedProduct.availableStock <= 0) ? 'Fuera de stock' : 'Agregar al pedido'}
                     </button>
                   </div>
 

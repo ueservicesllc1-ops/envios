@@ -920,10 +920,36 @@ const SellerDashboard: React.FC = () => {
     .reduce((sum, note) => sum + (note.totalAmount || 0), 0);
   
   const currentDebt = Math.max(0, currentInventoryValue - approvedPayments);
+  
+  // Calcular deuda de productos entregados menos devoluciones y pagos
+  // 1. Valor de productos de notas de salida entregadas (status 'delivered' o 'received')
+  const deliveredExitNotesList = exitNotes.filter(note => 
+    note.status === 'delivered' || note.status === 'received'
+  );
+  
+  const deliveredInventoryValue = deliveredExitNotesList.reduce((sum: number, note: ExitNote) => {
+    return sum + (note.totalPrice || 0);
+  }, 0);
+  
+  // 2. Monto total de devoluciones aprobadas
+  const approvedReturnsTotal = returns
+    .filter(r => r.status === 'approved')
+    .reduce((sum, r) => sum + (r.totalValue || 0), 0);
+  
+  // 3. Monto total de notas de pago aprobadas
+  const approvedPaymentsTotal = paymentNotes
+    .filter(note => note.status === 'approved')
+    .reduce((sum, note) => sum + (note.totalAmount || 0), 0);
+  
+  // 4. Deuda = Valor productos entregados - Devoluciones - Pagos
+  const deliveredProductsDebt = Math.max(0, deliveredInventoryValue - approvedReturnsTotal - approvedPaymentsTotal);
     
   console.log('Valor total del inventario:', availableInventoryValue);
   console.log('Inventario del vendedor:', sellerInventory);
   console.log('Vendedor:', seller);
+  console.log('Valor productos entregados:', deliveredInventoryValue);
+  console.log('Total devoluciones:', approvedReturnsTotal);
+  console.log('Deuda productos entregados:', deliveredProductsDebt);
 
   if (authLoading || loading) {
     return (
@@ -1105,6 +1131,38 @@ const SellerDashboard: React.FC = () => {
               </p>
               {currentDebt > 0 && (
                 <p className="text-xs text-red-600 mt-1">Pendiente de pago</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tarjeta de Deuda Productos Entregados */}
+        <div className={`bg-white rounded-lg shadow p-6 border-2 ${
+          deliveredProductsDebt > 0 ? 'border-orange-200 bg-orange-50' : 'border-green-200 bg-green-50'
+        }`}>
+          <div className="flex items-center">
+            <div className={`p-2 rounded-lg ${
+              deliveredProductsDebt > 0 ? 'bg-orange-100' : 'bg-green-100'
+            }`}>
+              {deliveredProductsDebt > 0 ? (
+                <AlertCircle className="h-6 w-6 text-orange-600" />
+              ) : (
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              )}
+            </div>
+            <div className="ml-4">
+              <p className={`text-sm font-medium ${
+                deliveredProductsDebt > 0 ? 'text-orange-700' : 'text-green-700'
+              }`}>
+                Deuda Productos Entregados
+              </p>
+              <p className={`text-2xl font-bold ${
+                deliveredProductsDebt > 0 ? 'text-orange-600' : 'text-green-600'
+              }`}>
+                ${deliveredProductsDebt.toLocaleString()}
+              </p>
+              {deliveredProductsDebt > 0 && (
+                <p className="text-xs text-orange-600 mt-1">Entregados - Devoluciones</p>
               )}
             </div>
           </div>

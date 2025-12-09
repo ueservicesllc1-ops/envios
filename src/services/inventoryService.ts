@@ -94,6 +94,33 @@ export const inventoryService = {
     }
   },
 
+  // Obtener inventario por producto y ubicación
+  async getByProductIdAndLocation(productId: string, location: string): Promise<InventoryItem | null> {
+    try {
+      const q = query(
+        collection(db, 'inventory'), 
+        where('productId', '==', productId),
+        where('location', '==', location)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          lastUpdated: convertTimestamp(data.lastUpdated)
+        } as InventoryItem;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting inventory by product and location:', error);
+      toast.error('Error al obtener el inventario');
+      throw error;
+    }
+  },
+
   // Obtener todo el inventario
   async getAll(): Promise<InventoryItem[]> {
     try {
@@ -162,9 +189,22 @@ export const inventoryService = {
   },
 
   // Actualizar stock después de salida (pasa a estado in-transit)
-  async updateStockAfterExit(productId: string, quantity: number, exitNoteId?: string, sellerId?: string): Promise<void> {
+  async updateStockAfterExit(productId: string, quantity: number, exitNoteId?: string, sellerId?: string, location?: string): Promise<void> {
     try {
-      const existingItem = await this.getByProductId(productId);
+      // Si se especifica una ubicación, buscar específicamente en esa ubicación
+      // Si no, buscar en cualquier ubicación (comportamiento anterior)
+      let existingItem: InventoryItem | null = null;
+      
+      if (location) {
+        existingItem = await this.getByProductIdAndLocation(productId, location);
+        // Si no se encuentra en la ubicación especificada, buscar en todas las ubicaciones como fallback
+        if (!existingItem) {
+          existingItem = await this.getByProductId(productId);
+          console.warn(`Producto ${productId} no encontrado en ${location}, usando primera ubicación disponible`);
+        }
+      } else {
+        existingItem = await this.getByProductId(productId);
+      }
       
       if (existingItem && existingItem.quantity >= quantity) {
         const newQuantity = existingItem.quantity - quantity;

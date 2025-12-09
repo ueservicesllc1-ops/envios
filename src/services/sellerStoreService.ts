@@ -132,60 +132,190 @@ export const sellerStoreService = {
     try {
       console.log('Obteniendo productos activos para vendedor:', sellerId);
       
-      // Obtener inventario del vendedor para verificar stock
-      const { sellerInventoryService } = await import('./sellerInventoryService');
-      const sellerInventory = await sellerInventoryService.getBySeller(sellerId);
+      // Obtener solo el inventario principal (Bodega Principal) y Bodega Ecuador
+      const { inventoryService } = await import('./inventoryService');
+      const allInventory = await inventoryService.getAll();
       
       // Crear un mapa de stock disponible por productId
+      // Solo considerar inventario principal y Bodega Ecuador
       const stockMap = new Map<string, number>();
-      sellerInventory
-        .filter(item => item.status === 'stock' && item.quantity > 0)
-        .forEach(item => {
-          const currentStock = stockMap.get(item.productId) || 0;
-          stockMap.set(item.productId, currentStock + item.quantity);
+      
+      // Incluir TODOS los items del inventario con status 'stock' o 'in-transit' (disponibles para venta)
+      // Incluir Bodega Principal y cualquier otra ubicación que NO sea Ecuador
+      // También incluir Bodega Ecuador
+      allInventory
+        .filter(inv => {
+          // Considerar items con status 'stock' o 'in-transit' (disponibles para venta)
+          return inv.status === 'stock' || inv.status === 'in-transit';
+        })
+        .forEach(inv => {
+          const productId = inv.productId;
+          const quantity = inv.quantity || 0;
+          
+          if (!productId) {
+            console.warn('⚠️ Item de inventario sin productId:', {
+              id: inv.id,
+              location: inv.location,
+              quantity: quantity
+            });
+            return;
+          }
+          
+          const currentStock = stockMap.get(productId) || 0;
+          stockMap.set(productId, currentStock + quantity);
+          
+          // Debug específico para productos con nombre que contenga "KIT KISS"
+          if (inv.product?.name && inv.product.name.toUpperCase().includes('KIT KISS')) {
+            console.log('🔍 DEBUG KIT KISS EN INVENTARIO:', {
+              productId: productId,
+              productSku: inv.product?.sku,
+              productName: inv.product.name,
+              location: inv.location,
+              status: inv.status,
+              quantity: quantity,
+              stockAnterior: currentStock,
+              stockAcumulado: currentStock + quantity
+            });
+          }
         });
       
-      console.log('Stock disponible:', Array.from(stockMap.entries()).map(([id, qty]) => ({ productId: id, quantity: qty })));
+      console.log('📦 INVENTARIO PRINCIPAL (collection "inventory"):');
+      console.log(`   Total items: ${allInventory.length}`);
+      console.log(`   Items con status 'stock': ${allInventory.filter(inv => inv.status === 'stock').length}`);
+      console.log(`   Items de Bodega Principal: ${allInventory.filter(inv => {
+        const location = inv.location?.toLowerCase() || '';
+        return (location.includes('principal') || inv.location === 'Bodega Principal') && inv.status === 'stock';
+      }).length}`);
+      console.log(`   Items de Bodega Ecuador: ${allInventory.filter(inv => {
+        const location = inv.location?.toLowerCase() || '';
+        return (location.includes('ecuador') || inv.location === 'Ecuador') && inv.status === 'stock';
+      }).length}`);
+      console.log('📊 STOCK DISPONIBLE POR PRODUCTO (suma de Bodega Principal + Ecuador):');
+      const stockEntries = Array.from(stockMap.entries()).slice(0, 10); // Mostrar primeros 10
+      stockEntries.forEach(([id, qty]) => {
+        console.log(`   ProductId: ${id} → Stock: ${qty}`);
+      });
+      if (stockMap.size > 10) {
+        console.log(`   ... y ${stockMap.size - 10} productos más`);
+      }
       
-      // Primero obtener todos los productos del vendedor
+      // Debug específico: buscar productos con "KIT KISS" en el nombre
+      const kitKissProducts = allInventory.filter(inv => 
+        inv.product?.name && inv.product.name.toUpperCase().includes('KIT KISS')
+      );
+      if (kitKissProducts.length > 0) {
+        console.log('🔍 PRODUCTOS KIT KISS EN INVENTARIO:', kitKissProducts.map(inv => ({
+          productId: inv.productId,
+          productName: inv.product?.name,
+          location: inv.location,
+          status: inv.status,
+          quantity: inv.quantity,
+          stockEnMapa: stockMap.get(inv.productId) || 0
+        })));
+      } else {
+        console.log('⚠️ No se encontraron productos KIT KISS en el inventario');
+      }
+      
+      // Obtener todos los productos del vendedor en la tienda
       const q = query(
         collection(db, 'sellerStore'),
         where('sellerId', '==', sellerId)
       );
       const querySnapshot = await getDocs(q);
       
-      console.log('Total productos encontrados en tienda:', querySnapshot.docs.length);
+      console.log('🛒 PRODUCTOS EN LA TIENDA DEL VENDEDOR (collection "sellerStore"):');
+      console.log(`   Total productos: ${querySnapshot.docs.length}`);
       
-      // Filtrar productos activos que tengan stock disponible
+      // Filtrar productos activos y asignar stock disponible
       const products = querySnapshot.docs
         .map(doc => {
           const data = doc.data();
-          const availableStock = stockMap.get(data.productId) || 0;
+          const productId = data.productId;
+          let availableStock = stockMap.get(productId) || 0;
           
-          console.log('Producto encontrado:', {
-            id: doc.id,
-            productId: data.productId,
-            productName: data.product?.name,
-            salePrice: data.salePrice,
-            isActive: data.isActive,
-            stockDisponible: availableStock
-          });
+          // Si no se encontró stock por productId, intentar buscar por SKU del producto
+          if (availableStock === 0 && data.product?.sku) {
+            const inventoryBySku = allInventory.filter(inv => 
+              inv.product?.sku === data.product.sku && (inv.status === 'stock' || inv.status === 'in-transit')
+            );
+            if (inventoryBySku.length > 0) {
+              availableStock = inventoryBySku.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+              console.log(`⚠️ Stock encontrado por SKU para ${data.product?.name}:`, {
+                productIdEnTienda: productId,
+                productIdEnInventario: inventoryBySku[0].productId,
+                sku: data.product.sku,
+                stock: availableStock
+              });
+            }
+          }
+          
+          // Debug: verificar si el producto está en el inventario
+          const inventoryItems = allInventory.filter(inv => 
+            inv.productId === productId || (data.product?.sku && inv.product?.sku === data.product.sku)
+          );
+          const inventoryStock = inventoryItems
+            .filter(inv => inv.status === 'stock' || inv.status === 'in-transit')
+            .reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+          
+          // Si el stock calculado es diferente al del mapa, usar el calculado
+          if (inventoryStock > 0 && availableStock === 0) {
+            availableStock = inventoryStock;
+            console.log(`✅ Stock corregido para ${data.product?.name}:`, {
+              productId: productId,
+              stockCalculado: inventoryStock,
+              itemsEnInventario: inventoryItems.length
+            });
+          }
+          
+          // Debug específico para productos con nombre que contenga "KIT KISS"
+          const isKitKiss = data.product?.name && data.product.name.toUpperCase().includes('KIT KISS');
+          if (isKitKiss) {
+            console.log('🔍 ===== DEBUG KIT KISS EN TIENDA =====');
+            console.log('   Producto en sellerStore:', {
+              id: doc.id,
+              productId: productId,
+              productSku: data.product?.sku,
+              productName: data.product?.name,
+              isActive: data.isActive
+            });
+            console.log('   Stock disponible calculado:', availableStock);
+            console.log('   Items encontrados en inventario principal:', inventoryItems.length);
+            if (inventoryItems.length > 0) {
+              console.log('   Detalle de items en inventario:');
+              inventoryItems.forEach((inv, idx) => {
+                console.log(`     ${idx + 1}. ProductId: ${inv.productId}, SKU: ${inv.product?.sku}, Ubicación: ${inv.location}, Status: ${inv.status}, Cantidad: ${inv.quantity}`);
+              });
+            } else {
+              console.log('   ⚠️ NO SE ENCONTRARON ITEMS EN INVENTARIO PRINCIPAL');
+              console.log('   Buscando por SKU...');
+              const bySku = allInventory.filter(inv => inv.product?.sku === data.product?.sku);
+              console.log(`   Items encontrados por SKU: ${bySku.length}`);
+              bySku.forEach((inv, idx) => {
+                console.log(`     ${idx + 1}. ProductId: ${inv.productId}, SKU: ${inv.product?.sku}, Ubicación: ${inv.location}, Status: ${inv.status}, Cantidad: ${inv.quantity}`);
+              });
+            }
+            console.log('   Stock en mapa:', stockMap.has(productId) ? stockMap.get(productId) : 'NO ENCONTRADO');
+            console.log('   Stock calculado manualmente:', inventoryStock);
+            console.log('   Stock final asignado:', availableStock);
+            console.log('🔍 ====================================');
+          }
           
           return {
             id: doc.id,
             ...data,
-            availableStock, // Agregar stock disponible
+            availableStock: availableStock, // Agregar stock disponible del inventario principal/Ecuador
             createdAt: convertTimestamp(data.createdAt),
             updatedAt: convertTimestamp(data.updatedAt)
           };
         }) as (StoreProduct & { availableStock: number })[];
       
-      // Filtrar solo los activos que tengan stock disponible y ordenar por updatedAt
+      // Filtrar solo los activos (mostrar todos, incluso con stock 0) y ordenar por updatedAt
       const activeProducts = products
-        .filter(p => p.isActive === true && p.availableStock > 0)
+        .filter(p => p.isActive === true)
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       
-      console.log('Productos activos con stock:', activeProducts.length);
+      console.log('Productos activos encontrados:', activeProducts.length);
+      console.log('Productos con stock > 0:', activeProducts.filter(p => p.availableStock > 0).length);
       return activeProducts as StoreProduct[];
     } catch (error) {
       console.error('Error getting active store products:', error);

@@ -28,6 +28,7 @@ const Products: React.FC = () => {
   const [showConsolidateSection, setShowConsolidateSection] = useState(false);
   const [selectedProductsForConsolidation, setSelectedProductsForConsolidation] = useState<Set<string>>(new Set());
   const [showConsolidateModal, setShowConsolidateModal] = useState(false);
+  const [weightUnit, setWeightUnit] = useState<'grams' | 'kilos' | 'pounds'>('grams');
   
   // Estados para filtros
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -352,17 +353,41 @@ const Products: React.FC = () => {
     }
   };
 
+  // Función para convertir peso a gramos según la unidad seleccionada
+  const convertToGrams = (weight: number, unit: 'grams' | 'kilos' | 'pounds'): number => {
+    if (!weight || weight <= 0) return 0;
+    
+    switch (unit) {
+      case 'pounds':
+        // 1 libra = 453.592 gramos
+        return weight * 453.592;
+      case 'kilos':
+        // 1 kilo = 1000 gramos
+        return weight * 1000;
+      case 'grams':
+      default:
+        return weight;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Convertir el peso a gramos antes de guardar
+      const weightInGrams = convertToGrams(formData.weight, weightUnit);
+      const productData = {
+        ...formData,
+        weight: weightInGrams
+      };
+
       if (editingProduct) {
-        await productService.update(editingProduct.id, formData);
-        setProducts(products.map(p => p.id === editingProduct.id ? { ...p, ...formData } : p));
+        await productService.update(editingProduct.id, productData);
+        setProducts(products.map(p => p.id === editingProduct.id ? { ...p, ...productData } : p));
       } else {
-        const id = await productService.create(formData);
+        const id = await productService.create(productData);
         const newProduct: Product = {
           id,
-          ...formData,
+          ...productData,
           createdAt: new Date(),
           updatedAt: new Date()
         };
@@ -371,6 +396,7 @@ const Products: React.FC = () => {
       
       setShowModal(false);
       setEditingProduct(null);
+      setWeightUnit('grams');
       setFormData({
         name: '',
         description: '',
@@ -393,8 +419,28 @@ const Products: React.FC = () => {
     }
   };
 
+  // Función para convertir de gramos a otra unidad
+  const convertFromGrams = (weightInGrams: number, unit: 'grams' | 'kilos' | 'pounds'): number => {
+    if (!weightInGrams || weightInGrams <= 0) return 0;
+    
+    switch (unit) {
+      case 'pounds':
+        // 1 libra = 453.592 gramos
+        return weightInGrams / 453.592;
+      case 'kilos':
+        // 1 kilo = 1000 gramos
+        return weightInGrams / 1000;
+      case 'grams':
+      default:
+        return weightInGrams;
+    }
+  };
+
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    // El peso se guarda en gramos, así que mostramos en gramos por defecto
+    setWeightUnit('grams');
+    const weightInGrams = product.weight || 0;
     setFormData({
       name: product.name,
       description: product.description,
@@ -402,7 +448,7 @@ const Products: React.FC = () => {
       size: product.size || '',
       color: product.color || '',
       color2: product.color2 || '',
-      weight: product.weight || 0,
+      weight: weightInGrams, // Mostrar en gramos por defecto
       sku: product.sku,
       cost: product.cost,
       salePrice1: product.salePrice1,
@@ -1023,6 +1069,7 @@ const Products: React.FC = () => {
                 onClick={() => {
                   setShowModal(false);
                   setEditingProduct(null);
+                  setWeightUnit('grams');
                   setFormData({
                     name: '',
                     description: '',
@@ -1291,17 +1338,47 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Peso (gramos)
+                    Peso
                   </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({...formData, weight: parseInt(e.target.value) || 0})}
-                    className="input-field"
-                    placeholder="0"
-                  />
+                  <div className="flex space-x-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step={weightUnit === 'grams' ? '1' : '0.01'}
+                      value={formData.weight}
+                      onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})}
+                      className="input-field flex-1"
+                      placeholder="0"
+                    />
+                    <select
+                      value={weightUnit}
+                      onChange={(e) => {
+                        const newUnit = e.target.value as 'grams' | 'kilos' | 'pounds';
+                        // Si estamos editando, el peso está en gramos en la BD
+                        // Si es nuevo producto, el peso está en la unidad anterior
+                        if (editingProduct && formData.weight > 0) {
+                          // Estamos editando: el peso en formData está en gramos
+                          const weightInGrams = formData.weight;
+                          const newWeight = convertFromGrams(weightInGrams, newUnit);
+                          setFormData({...formData, weight: newWeight});
+                        } else if (!editingProduct && formData.weight > 0) {
+                          // Es nuevo producto: convertir de la unidad anterior a la nueva
+                          const currentGrams = convertToGrams(formData.weight, weightUnit);
+                          const newWeight = convertFromGrams(currentGrams, newUnit);
+                          setFormData({...formData, weight: newWeight});
+                        }
+                        setWeightUnit(newUnit);
+                      }}
+                      className="input-field w-32"
+                    >
+                      <option value="grams">Gramos</option>
+                      <option value="kilos">Kilos</option>
+                      <option value="pounds">Libras</option>
+                    </select>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    El sistema convertirá automáticamente a gramos al guardar
+                  </p>
                 </div>
 
 
@@ -1457,6 +1534,7 @@ const Products: React.FC = () => {
                   onClick={() => {
                     setShowModal(false);
                     setEditingProduct(null);
+                    setWeightUnit('grams');
                     setFormData({
                       name: '',
                       description: '',

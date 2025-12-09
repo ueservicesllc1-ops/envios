@@ -80,12 +80,48 @@ const Home: React.FC = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
+      console.log('========================================');
+      console.log('🛒 CARGANDO TIENDA PRINCIPAL (HOME)');
+      console.log('========================================');
+      
       const [productsData, perfumesData, inventoryData, settings] = await Promise.all([
         productService.getAll(),
         perfumeService.getActive(),
         inventoryService.getAll(),
         perfumeSettingsService.getSettings()
       ]);
+      
+      console.log('📦 Inventario cargado:', inventoryData.length, 'items');
+      console.log('📦 Productos cargados:', productsData.length);
+      
+      // Buscar producto KIT KISS
+      const kitKissProduct = productsData.find(p => 
+        p.name && p.name.toUpperCase().includes('KIT KISS') && p.name.toUpperCase().includes('STIKERS')
+      );
+      
+      if (kitKissProduct) {
+        console.log('🔍 PRODUCTO KIT KISS ENCONTRADO:', {
+          id: kitKissProduct.id,
+          name: kitKissProduct.name,
+          sku: kitKissProduct.sku
+        });
+        
+        // Buscar en inventario
+        const kitKissInventory = inventoryData.filter(inv => 
+          inv.productId === kitKissProduct.id || (inv.product?.sku === kitKissProduct.sku)
+        );
+        
+        console.log('🔍 ITEMS EN INVENTARIO PARA KIT KISS:', kitKissInventory.length);
+        kitKissInventory.forEach((inv, idx) => {
+          console.log(`   ${idx + 1}. ProductId: ${inv.productId}, SKU: ${inv.product?.sku}, Ubicación: ${inv.location}, Status: ${inv.status}, Cantidad: ${inv.quantity}`);
+        });
+        
+        const stockItems = kitKissInventory.filter(inv => inv.status === 'stock');
+        const totalStock = stockItems.reduce((sum, inv) => sum + (inv.quantity || 0), 0);
+        console.log('🔍 STOCK TOTAL DISPONIBLE:', totalStock);
+      } else {
+        console.log('⚠️ No se encontró producto KIT KISS STIKERS UNAS');
+      }
       
       // Mezclar productos aleatoriamente cada vez que se cargan
       const shuffledProducts = shuffleArray(productsData);
@@ -98,6 +134,8 @@ const Home: React.FC = () => {
       setCouponCode(settings.couponCode || '');
       setCouponDiscount(settings.couponDiscountPercentage || 0);
       setCouponActive(settings.couponActive || false);
+      
+      console.log('✅ Tienda principal cargada');
     } catch (error) {
       console.error('Error loading products:', error);
       toast.error('Error al cargar productos');
@@ -122,9 +160,11 @@ const Home: React.FC = () => {
 
   const getAvailableQuantity = (productId: string): number => {
     const inventoryItem = getInventoryForProduct(productId);
-    if (!inventoryItem) return 0;
-    // Solo mostrar stock disponible (no in-transit)
-    if (inventoryItem.status === 'stock') {
+    if (!inventoryItem) {
+      return 0;
+    }
+    // Mostrar stock disponible si está en 'stock' o 'in-transit' (disponible para venta)
+    if (inventoryItem.status === 'stock' || inventoryItem.status === 'in-transit') {
       return inventoryItem.quantity;
     }
     return 0;
@@ -133,7 +173,8 @@ const Home: React.FC = () => {
   const getProductLocation = (productId: string): string | null => {
     const inventoryItem = getInventoryForProduct(productId);
     if (!inventoryItem || inventoryItem.quantity === 0) return null;
-    if (inventoryItem.status !== 'stock') return null;
+    // Incluir productos con status 'stock' o 'in-transit'
+    if (inventoryItem.status !== 'stock' && inventoryItem.status !== 'in-transit') return null;
     
     const location = inventoryItem.location?.toLowerCase() || '';
     if (location.includes('ecuador') || location === 'bodega ecuador') {

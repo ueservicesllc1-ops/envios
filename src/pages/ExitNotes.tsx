@@ -265,6 +265,27 @@ const ExitNotes: React.FC = () => {
     return inventoryItem ? inventoryItem.quantity : 0;
   };
 
+  // Obtener stock disponible considerando la nota que se está editando
+  const getAvailableStockForEdit = (productId: string, editingNote: ExitNote | null): number => {
+    const baseStock = getAvailableStock(productId);
+    
+    // Si no hay nota en edición, retornar stock base
+    if (!editingNote) {
+      return baseStock;
+    }
+    
+    // Buscar si el producto ya está en la nota original
+    const originalItem = editingNote.items.find(item => item.productId === productId);
+    
+    // Si el producto ya está en la nota original, agregar su cantidad al stock disponible
+    // porque esa cantidad ya está "reservada" y se puede usar
+    if (originalItem) {
+      return baseStock + originalItem.quantity;
+    }
+    
+    return baseStock;
+  };
+
 const calculateItemTotal = (item: ExitNote['items'][number]): number => {
   const quantity = item.quantity ?? 0;
   const unitPrice = item.unitPrice ?? 0;
@@ -346,17 +367,11 @@ const generateExitNotePdf = (note: ExitNote) => {
     (sum, item) => sum + calculateItemTotal(item),
     0
   );
-  const shippingCost = 28;
-  const total = note.totalPrice ?? subtotal + shippingCost;
+  const total = note.totalPrice ?? subtotal;
 
   doc.setFontSize(11);
   doc.text(`Subtotal: ${formatCurrency(subtotal)}`, marginLeft, finalY + 10);
-  doc.text(
-    `Costo de envío: ${formatCurrency(shippingCost)}`,
-    marginLeft,
-    finalY + 16
-  );
-  doc.text(`Total: ${formatCurrency(total)}`, marginLeft, finalY + 22);
+  doc.text(`Total: ${formatCurrency(total)}`, marginLeft, finalY + 16);
 
   doc.setFontSize(9);
   doc.text(
@@ -735,8 +750,13 @@ const generateExitNotePdf = (note: ExitNote) => {
         notes: `${formData.notes || ''} - Envío: ${shippingId}`.trim()
       });
  
+      // Determinar si la nota es de Ecuador basándose en el número de nota
+      // Si el número contiene "ECU" o empieza con "NS-ECU-", es de Ecuador
+      const isEcuadorNote = exitNoteData.number?.includes('ECU') || exitNoteData.number?.startsWith('NS-ECU-');
+      const location = isEcuadorNote ? 'Bodega Ecuador' : undefined;
+      
       for (const item of exitNoteItems) {
-        await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id);
+        await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id, location);
       }
  
       for (const item of exitNoteItems) {
@@ -802,51 +822,189 @@ const generateExitNotePdf = (note: ExitNote) => {
 
       setIsSaving(true);
 
-      // Revertir el efecto de la nota original
+      // Crear mapas para comparar items originales vs nuevos
+      const originalItemsMap = new Map<string, { quantity: number; item: any }>();
+      const newItemsMap = new Map<string, { quantity: number; item: any }>();
+
+      // Mapear items originales
       for (const originalItem of editingNote.items) {
-        let product: Product | null = products.find(p => p.id === originalItem.productId) || originalItem.product || null;
-        if (!product) {
-          try {
-            product = await productService.getById(originalItem.productId);
-          } catch (fetchError) {
-            console.warn('No fue posible recuperar el producto', originalItem.productId, fetchError);
-          }
-        }
-        if (!product) continue;
-
-        const cost = product.cost || 0;
-        const unitPrice = product.salePrice1 || originalItem.unitPrice || 0;
-
-        await inventoryService.updateStockAfterEntry(
-          originalItem.productId,
-          originalItem.quantity,
-          cost,
-          unitPrice
-        );
-
-        await sellerInventoryService.removeFromSellerInventory(
-          editingNote.sellerId,
-          originalItem.productId,
-          originalItem.quantity
-        );
+        originalItemsMap.set(originalItem.productId, {
+          quantity: originalItem.quantity,
+          item: originalItem
+        });
       }
 
-      // Aplicar los nuevos items
+      // Mapear items nuevos
       for (const newItem of exitNoteItems) {
-        await inventoryService.updateStockAfterExit(
-          newItem.productId,
-          newItem.quantity,
-          editingNote.id,
-          editingNote.sellerId
-        );
+        newItemsMap.set(newItem.productId, {
+          quantity: newItem.quantity,
+          item: newItem
+        });
+      }
 
-        await sellerInventoryService.addToSellerInventory(
-          editingNote.sellerId,
-          newItem.productId,
-          newItem.product,
-          newItem.quantity,
-          newItem.unitPrice
-        );
+      // Determinar si la nota es de Ecuador basándose en el número de nota
+      const isEcuadorNote = editingNote.number?.includes('ECU') || editingNote.number?.startsWith('NS-ECU-');
+      const location = isEcuadorNote ? 'Bodega Ecuador' : undefined;
+
+      // Procesar items que fueron eliminados o cuya cantidad disminuyó
+      const originalProductIds = Array.from(originalItemsMap.keys());
+      for (const productId of originalProductIds) {
+        const originalData = originalItemsMap.get(productId)!;
+        const newData = newItemsMap.get(productId);
+        
+        if (!newData) {
+          // Item fue eliminado completamente - revertir todo
+          let product: Product | null = products.find(p => p.id === productId) || originalData.item.product || null;
+          if (!product) {
+            try {
+              product = await productService.getById(productId);
+            } catch (fetchError) {
+              console.warn('No fue posible recuperar el producto', productId, fetchError);
+            }
+          }
+          if (!product) continue;
+
+          const cost = product.cost || 0;
+          const unitPrice = product.salePrice1 || originalData.item.unitPrice || 0;
+
+          // Verificar cuánto stock tiene realmente el vendedor antes de remover
+          const sellerInventory = await sellerInventoryService.getBySeller(editingNote.sellerId);
+          const sellerItem = sellerInventory.find(item => item.productId === productId);
+          const availableSellerQuantity = sellerItem ? sellerItem.quantity : 0;
+
+          // Solo remover lo que realmente tiene disponible
+          const quantityToRemove = Math.min(originalData.quantity, availableSellerQuantity);
+          
+          // Restaurar al inventario principal solo lo que se puede remover del vendedor
+          if (quantityToRemove > 0) {
+            await inventoryService.updateStockAfterEntry(
+              productId,
+              quantityToRemove,
+              cost,
+              unitPrice
+            );
+
+            await sellerInventoryService.removeFromSellerInventory(
+              editingNote.sellerId,
+              productId,
+              quantityToRemove
+            );
+          }
+
+          // Si el vendedor ya vendió parte del producto, no se puede revertir esa cantidad
+          // pero el inventario principal ya se ajustó cuando se creó la nota original
+        } else if (newData.quantity < originalData.quantity) {
+          // Cantidad disminuyó - revertir la diferencia
+          const difference = originalData.quantity - newData.quantity;
+          let product: Product | null = products.find(p => p.id === productId) || originalData.item.product || null;
+          if (!product) {
+            try {
+              product = await productService.getById(productId);
+            } catch (fetchError) {
+              console.warn('No fue posible recuperar el producto', productId, fetchError);
+            }
+          }
+          if (!product) continue;
+
+          const cost = product.cost || 0;
+          const unitPrice = product.salePrice1 || originalData.item.unitPrice || 0;
+
+          // Verificar cuánto stock tiene realmente el vendedor antes de remover
+          const sellerInventory = await sellerInventoryService.getBySeller(editingNote.sellerId);
+          const sellerItem = sellerInventory.find(item => item.productId === productId);
+          const availableSellerQuantity = sellerItem ? sellerItem.quantity : 0;
+
+          // Solo remover la diferencia que realmente está disponible
+          const quantityToRemove = Math.min(difference, availableSellerQuantity);
+          
+          if (quantityToRemove > 0) {
+            await inventoryService.updateStockAfterEntry(
+              productId,
+              quantityToRemove,
+              cost,
+              unitPrice
+            );
+
+            await sellerInventoryService.removeFromSellerInventory(
+              editingNote.sellerId,
+              productId,
+              quantityToRemove
+            );
+          }
+        }
+        // Si la cantidad es igual o mayor, no revertir nada
+      }
+
+      // Procesar items nuevos o cuya cantidad aumentó
+      const newProductIds = Array.from(newItemsMap.keys());
+      for (const productId of newProductIds) {
+        const newData = newItemsMap.get(productId)!;
+        const originalData = originalItemsMap.get(productId);
+        
+        if (!originalData) {
+          // Item completamente nuevo - validar stock y aplicar
+          // No usar getAvailableStockForEdit aquí porque es un item completamente nuevo
+          const availableStock = getAvailableStock(productId);
+          if (availableStock < newData.quantity) {
+            const product = products.find(p => p.id === productId);
+            toast.error(`Stock insuficiente para ${product?.name}. Disponible: ${availableStock}, Solicitado: ${newData.quantity}`);
+            setIsSaving(false);
+            return;
+          }
+          if (availableStock === 0) {
+            const product = products.find(p => p.id === productId);
+            toast.error(`${product?.name} no tiene stock disponible.`);
+            setIsSaving(false);
+            return;
+          }
+
+          // Aplicar el nuevo item
+          await inventoryService.updateStockAfterExit(
+            productId,
+            newData.quantity,
+            editingNote.id,
+            editingNote.sellerId,
+            location
+          );
+
+          await sellerInventoryService.addToSellerInventory(
+            editingNote.sellerId,
+            productId,
+            newData.item.product,
+            newData.quantity,
+            newData.item.unitPrice
+          );
+        } else if (newData.quantity > originalData.quantity) {
+          // Cantidad aumentó - validar stock y aplicar solo la diferencia
+          // Usar getAvailableStockForEdit porque el producto ya está en la nota original
+          const difference = newData.quantity - originalData.quantity;
+          const availableStock = getAvailableStockForEdit(productId, editingNote);
+          if (availableStock < newData.quantity) {
+            const product = products.find(p => p.id === productId);
+            toast.error(`Stock insuficiente para ${product?.name}. Disponible: ${availableStock}, Solicitado: ${newData.quantity}`);
+            setIsSaving(false);
+            return;
+          }
+          // No validar si availableStock === 0 porque puede ser que el stock esté en la nota original
+
+          // Aplicar solo la diferencia
+          await inventoryService.updateStockAfterExit(
+            productId,
+            difference,
+            editingNote.id,
+            editingNote.sellerId,
+            location
+          );
+
+          await sellerInventoryService.addToSellerInventory(
+            editingNote.sellerId,
+            productId,
+            newData.item.product,
+            difference,
+            newData.item.unitPrice
+          );
+        }
+        // Si la cantidad es igual, no hacer nada (ya está descontado)
       }
 
       await exitNoteService.update(editingNote.id, {
@@ -1825,7 +1983,10 @@ const handleDownloadPdf = (note: ExitNote) => {
                           >
                             <option value="">Seleccionar producto</option>
                             {products.map(product => {
-                              const availableStock = getAvailableStock(product.id);
+                              // Usar getAvailableStockForEdit cuando se está editando para considerar el stock ya reservado
+                              const availableStock = editingNote 
+                                ? getAvailableStockForEdit(product.id, editingNote)
+                                : getAvailableStock(product.id);
                               const isExistingItem = Boolean(editingNote && editingNote.items.some(noteItem => noteItem.productId === product.id));
                               const disableOption = !isExistingItem && availableStock === 0;
                               return (
@@ -1880,7 +2041,10 @@ const handleDownloadPdf = (note: ExitNote) => {
                             type="number"
                             min={editingNote && ['delivered', 'received'].includes(editingNote.status) ? 0 : 1}
                             max={item.productId ? (() => {
-                              const availableStock = getAvailableStock(item.productId);
+                              // Usar getAvailableStockForEdit cuando se está editando para considerar el stock ya reservado
+                              const availableStock = editingNote 
+                                ? getAvailableStockForEdit(item.productId, editingNote)
+                                : getAvailableStock(item.productId);
                               // Si estamos editando una nota ya enviada/recibida y el producto ya estaba en la nota original,
                               // permitir mantener o reducir la cantidad original incluso si el stock es 0
                               if (editingNote && ['delivered', 'received'].includes(editingNote.status)) {
@@ -1901,11 +2065,11 @@ const handleDownloadPdf = (note: ExitNote) => {
                             }}
                             className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                             placeholder="Cant."
-                            title={item.productId ? `Stock disponible: ${getAvailableStock(item.productId)}` : ''}
+                            title={item.productId ? `Stock disponible: ${editingNote ? getAvailableStockForEdit(item.productId, editingNote) : getAvailableStock(item.productId)}` : ''}
                           />
                           {item.productId && (
                             <div className="text-xs text-gray-500 mt-1">
-                              Stock: {getAvailableStock(item.productId)}
+                              Stock: {editingNote ? getAvailableStockForEdit(item.productId, editingNote) : getAvailableStock(item.productId)}
                             </div>
                           )}
                         </div>
