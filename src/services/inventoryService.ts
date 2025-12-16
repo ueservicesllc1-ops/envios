@@ -1,14 +1,14 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
   deleteDoc,
-  getDocs, 
-  query, 
+  getDocs,
+  query,
   where,
   orderBy,
-  Timestamp 
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { InventoryItem, Product } from '../types';
@@ -33,7 +33,7 @@ export const inventoryService = {
         ...item,
         lastUpdated: convertToTimestamp(now)
       });
-      
+
       toast.success('Item de inventario creado exitosamente');
       return docRef.id;
     } catch (error) {
@@ -47,22 +47,22 @@ export const inventoryService = {
   async update(id: string, item: Partial<InventoryItem>): Promise<void> {
     try {
       const docRef = doc(db, 'inventory', id);
-      
+
       // Filtrar campos undefined para evitar errores de Firebase
       const cleanItem = Object.fromEntries(
         Object.entries(item).filter(([_, value]) => value !== undefined)
       );
-      
+
       // Asegurar que status tenga un valor por defecto si no está definido
       if (!cleanItem.status) {
         cleanItem.status = 'stock';
       }
-      
+
       await updateDoc(docRef, {
         ...cleanItem,
         lastUpdated: convertToTimestamp(new Date())
       });
-      
+
       toast.success('Inventario actualizado exitosamente');
     } catch (error) {
       console.error('Error updating inventory item:', error);
@@ -76,7 +76,7 @@ export const inventoryService = {
     try {
       const q = query(collection(db, 'inventory'), where('productId', '==', productId));
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const doc = querySnapshot.docs[0];
         const data = doc.data();
@@ -98,12 +98,12 @@ export const inventoryService = {
   async getByProductIdAndLocation(productId: string, location: string): Promise<InventoryItem | null> {
     try {
       const q = query(
-        collection(db, 'inventory'), 
+        collection(db, 'inventory'),
         where('productId', '==', productId),
         where('location', '==', location)
       );
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const doc = querySnapshot.docs[0];
         const data = doc.data();
@@ -126,7 +126,7 @@ export const inventoryService = {
     try {
       const q = query(collection(db, 'inventory'), orderBy('lastUpdated', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -146,16 +146,16 @@ export const inventoryService = {
       const { productService } = await import('./productService');
       const product = await productService.getById(productId);
       const actualUnitPrice = product?.salePrice1 || unitPrice; // Usar salePrice1 del producto
-      
+
       const existingItem = await this.getByProductId(productId);
-      
+
       if (existingItem) {
         // Actualizar stock existente
         const newQuantity = existingItem.quantity + quantity;
         const newTotalCost = existingItem.totalCost + (cost * quantity);
         const newTotalPrice = existingItem.totalPrice + (actualUnitPrice * quantity);
         const newTotalValue = newTotalCost; // Valor total basado en costo
-        
+
         await this.update(existingItem.id, {
           quantity: newQuantity,
           totalCost: newTotalCost,
@@ -179,7 +179,7 @@ export const inventoryService = {
           status: 'stock' // Estado inicial
         });
       }
-      
+
       toast.success('Stock actualizado exitosamente');
     } catch (error) {
       console.error('Error updating stock:', error);
@@ -194,7 +194,7 @@ export const inventoryService = {
       // Si se especifica una ubicación, buscar específicamente en esa ubicación
       // Si no, buscar en cualquier ubicación (comportamiento anterior)
       let existingItem: InventoryItem | null = null;
-      
+
       if (location) {
         existingItem = await this.getByProductIdAndLocation(productId, location);
         // Si no se encuentra en la ubicación especificada, buscar en todas las ubicaciones como fallback
@@ -205,13 +205,13 @@ export const inventoryService = {
       } else {
         existingItem = await this.getByProductId(productId);
       }
-      
+
       if (existingItem && existingItem.quantity >= quantity) {
         const newQuantity = existingItem.quantity - quantity;
         const newTotalCost = (existingItem.totalCost / existingItem.quantity) * newQuantity;
         const newTotalPrice = (existingItem.totalPrice / existingItem.quantity) * newQuantity;
         const newTotalValue = newTotalCost;
-        
+
         await this.update(existingItem.id, {
           quantity: newQuantity,
           totalCost: newTotalCost,
@@ -221,7 +221,7 @@ export const inventoryService = {
           sellerId: sellerId,
           exitNoteId: exitNoteId
         });
-        
+
         toast.success('Stock actualizado exitosamente');
       } else {
         throw new Error('Stock insuficiente');
@@ -241,10 +241,10 @@ export const inventoryService = {
         where('exitNoteId', '==', exitNoteId)
       );
       const inventorySnapshot = await getDocs(inventoryQuery);
-      
+
       if (!inventorySnapshot.empty) {
         const inventoryDoc = inventorySnapshot.docs[0];
-        
+
         await updateDoc(doc(db, 'inventory', inventoryDoc.id), {
           status: 'delivered',
           lastUpdated: convertToTimestamp(new Date())
@@ -265,20 +265,20 @@ export const inventoryService = {
   async removeStock(productId: string, quantity: number): Promise<void> {
     try {
       const existingItem = await this.getByProductId(productId);
-      
+
       if (existingItem && existingItem.quantity >= quantity) {
         const newQuantity = existingItem.quantity - quantity;
         const newTotalCost = (existingItem.totalCost / existingItem.quantity) * newQuantity;
         const newTotalPrice = (existingItem.totalPrice / existingItem.quantity) * newQuantity;
         const newTotalValue = newTotalCost;
-        
+
         await this.update(existingItem.id, {
           quantity: newQuantity,
           totalCost: newTotalCost,
           totalPrice: newTotalPrice,
           totalValue: newTotalValue
         });
-        
+
         toast.success('Stock removido exitosamente');
       } else {
         throw new Error('Stock insuficiente para remover');
@@ -288,6 +288,11 @@ export const inventoryService = {
       toast.error('Error al remover stock');
       throw error;
     }
+  },
+
+  // Reducir stock (alias para removeStock)
+  async reduceStock(productId: string, quantity: number): Promise<void> {
+    return this.removeStock(productId, quantity);
   },
 
   // Eliminar item de inventario
@@ -305,12 +310,12 @@ export const inventoryService = {
   async cleanInvalidInventoryItems(): Promise<void> {
     try {
       console.log('Iniciando limpieza de productos sin datos válidos...');
-      
+
       const allInventory = await this.getAll();
       console.log(`Total items en inventario: ${allInventory.length}`);
-      
+
       let invalidItemsRemoved = 0;
-      
+
       // Identificar items sin datos válidos
       for (const item of allInventory) {
         const product = item.product || {};
@@ -320,7 +325,7 @@ export const inventoryService = {
         const hasNoTotalCost = !item.totalCost || item.totalCost === 0;
         const hasNoTotalPrice = !item.totalPrice || item.totalPrice === 0;
         const hasNoQuantity = !item.quantity || item.quantity === 0;
-        
+
         // Si no tiene peso Y no tiene costos/precios válidos, es un item inválido
         if (hasNoWeight && hasNoCost && hasNoPrice && hasNoTotalCost && hasNoTotalPrice) {
           console.log(`Eliminando item inválido: ${product.name || 'Sin nombre'} (ID: ${item.id})`);
@@ -328,12 +333,12 @@ export const inventoryService = {
           console.log(`  - Costo: ${item.cost || 'N/A'}`);
           console.log(`  - Precio: ${item.unitPrice || 'N/A'}`);
           console.log(`  - Cantidad: ${item.quantity || 'N/A'}`);
-          
+
           await this.delete(item.id);
           invalidItemsRemoved++;
         }
       }
-      
+
       console.log(`Limpieza completada. ${invalidItemsRemoved} items inválidos eliminados`);
       if (invalidItemsRemoved > 0) {
         toast.success(`Limpieza completada. ${invalidItemsRemoved} items sin datos válidos eliminados`);
@@ -349,10 +354,10 @@ export const inventoryService = {
   async cleanDuplicateInventory(): Promise<void> {
     try {
       console.log('Iniciando limpieza de inventario duplicado...');
-      
+
       const allInventory = await this.getAll();
       console.log(`Total items en inventario: ${allInventory.length}`);
-      
+
       // Agrupar por productId
       const groupedByProduct = allInventory.reduce((acc, item) => {
         if (!acc[item.productId]) {
@@ -361,21 +366,21 @@ export const inventoryService = {
         acc[item.productId].push(item);
         return acc;
       }, {} as Record<string, InventoryItem[]>);
-      
+
       let duplicatesRemoved = 0;
-      
+
       // Procesar cada grupo de productos
       for (const [productId, items] of Object.entries(groupedByProduct)) {
         if (items.length > 1) {
           console.log(`Producto ${productId} tiene ${items.length} entradas duplicadas`);
-          
+
           // Calcular totales combinados
           const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
           const totalCost = items.reduce((sum, item) => sum + item.totalCost, 0);
           const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
           const averageCost = totalCost / totalQuantity;
           const averageUnitPrice = totalPrice / totalQuantity;
-          
+
           // Mantener el primer item y actualizar sus valores
           const firstItem = items[0];
           await this.update(firstItem.id, {
@@ -386,17 +391,17 @@ export const inventoryService = {
             unitPrice: averageUnitPrice,
             totalValue: totalCost
           });
-          
+
           // Eliminar los items duplicados
           for (let i = 1; i < items.length; i++) {
             await this.delete(items[i].id);
             duplicatesRemoved++;
           }
-          
+
           console.log(`Consolidado producto ${productId}: ${totalQuantity} unidades`);
         }
       }
-      
+
       console.log(`Limpieza completada. ${duplicatesRemoved} items duplicados eliminados`);
       toast.success(`Limpieza completada. ${duplicatesRemoved} items duplicados eliminados`);
     } catch (error) {
@@ -410,21 +415,21 @@ export const inventoryService = {
   async regenerateInventory(): Promise<void> {
     try {
       console.log('Iniciando regeneración del inventario...');
-      
+
       // Limpiar inventario actual
       const currentInventory = await this.getAll();
       console.log(`Eliminando ${currentInventory.length} items del inventario actual`);
-      
+
       // Eliminar todos los items del inventario actual
       for (const item of currentInventory) {
         await this.delete(item.id);
       }
-      
+
       // Obtener todas las notas de entrada
       const { entryNoteService } = await import('./entryNoteService');
       const entryNotes = await entryNoteService.getAll();
       console.log(`Procesando ${entryNotes.length} notas de entrada`);
-      
+
       // Procesar cada nota de entrada
       for (const note of entryNotes) {
         console.log(`Procesando nota de entrada: ${note.number}`);
@@ -445,12 +450,12 @@ export const inventoryService = {
           );
         }
       }
-      
+
       // Obtener todas las notas de salida válidas (no eliminadas)
       const { exitNoteService } = await import('./exitNoteService');
       const exitNotes = await exitNoteService.getAll();
       console.log(`Procesando ${exitNotes.length} notas de salida`);
-      
+
       // Restar stock de las notas de salida
       for (const note of exitNotes) {
         console.log(`Procesando nota de salida: ${note.number}`);
@@ -463,7 +468,7 @@ export const inventoryService = {
           await this.removeStock(item.productId, quantity);
         }
       }
-      
+
       console.log('Inventario regenerado exitosamente');
       toast.success('Inventario regenerado exitosamente desde las notas de entrada');
     } catch (error) {

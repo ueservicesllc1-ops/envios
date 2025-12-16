@@ -1,14 +1,14 @@
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
   orderBy,
-  Timestamp 
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { SellerInventoryItem } from '../types';
@@ -42,7 +42,7 @@ class SellerInventoryService {
         ...doc.data(),
         lastDeliveryDate: doc.data().lastDeliveryDate?.toDate() || new Date()
       })) as SellerInventoryItem[];
-      
+
       // Ordenar por fecha de entrega en el cliente
       return items.sort((a, b) => b.lastDeliveryDate.getTime() - a.lastDeliveryDate.getTime());
     } catch (error) {
@@ -119,11 +119,11 @@ class SellerInventoryService {
         where('productId', '==', productId)
       );
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const itemDoc = querySnapshot.docs[0];
         const itemData = itemDoc.data();
-        
+
         // Verificar que la cantidad coincida (para evitar actualizar items incorrectos)
         if (itemData.quantity >= quantity) {
           await updateDoc(doc(db, this.collectionName, itemDoc.id), {
@@ -140,9 +140,9 @@ class SellerInventoryService {
 
   // Método para agregar productos al inventario del vendedor cuando se entrega
   async addToSellerInventory(
-    sellerId: string, 
-    productId: string, 
-    product: any, 
+    sellerId: string,
+    productId: string,
+    product: any,
     quantity: number,
     unitPrice?: number // Precio unitario opcional (si no se proporciona, usa salePrice1)
   ): Promise<void> {
@@ -239,6 +239,36 @@ class SellerInventoryService {
       }
     } catch (error) {
       console.error('Error marking as returned:', error);
+      throw error;
+    }
+  }
+
+  // Desmarcar productos como devueltos (revertir markAsReturned)
+  async unmarkAsReturned(sellerId: string, productId: string, quantity: number): Promise<void> {
+    try {
+      let remaining = quantity;
+      const items = await this.getBySeller(sellerId);
+      const relevantItems = items.filter(item => item.productId === productId && (item.returnedQuantity || 0) > 0);
+
+      for (const item of relevantItems) {
+        if (remaining <= 0) break;
+
+        const returnedQuantity = item.returnedQuantity || 0;
+        const quantityToUnmark = Math.min(remaining, returnedQuantity);
+        const newReturnedQuantity = returnedQuantity - quantityToUnmark;
+
+        await this.update(item.id, {
+          returnedQuantity: newReturnedQuantity
+        });
+
+        remaining -= quantityToUnmark;
+      }
+
+      if (remaining > 0) {
+        throw new Error('No hay suficientes productos marcados como devueltos para desmarcar la cantidad solicitada');
+      }
+    } catch (error) {
+      console.error('Error unmarking as returned:', error);
       throw error;
     }
   }

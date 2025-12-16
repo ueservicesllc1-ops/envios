@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Search, Eye, CheckCircle, XCircle, X, Package, User, Plus } from 'lucide-react';
+import { RotateCcw, Search, Eye, CheckCircle, XCircle, X, Package, User, Plus, Undo2 } from 'lucide-react';
 import { Return, ReturnItem, Seller, SellerInventoryItem } from '../types';
 import { returnService } from '../services/returnService';
 import { sellerService } from '../services/sellerService';
@@ -17,7 +17,7 @@ const Returns: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [viewingReturn, setViewingReturn] = useState<Return | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
-  
+
   // Estados para crear nota de devolución
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -84,7 +84,7 @@ const Returns: React.FC = () => {
     try {
       const notes = await exitNoteService.getBySeller(sellerId);
       // Solo mostrar notas que estén entregadas o recibidas
-      const deliveredNotes = notes.filter(note => 
+      const deliveredNotes = notes.filter(note =>
         note.status === 'delivered' || note.status === 'received'
       );
       setExitNotes(deliveredNotes);
@@ -106,13 +106,13 @@ const Returns: React.FC = () => {
 
       // Obtener inventario actual del vendedor para verificar cantidades disponibles
       const currentInventory = await sellerInventoryService.getBySeller(selectedSellerId);
-      
+
       // Crear lista de productos de la nota con sus cantidades disponibles
       const productsList = note.items.map(item => {
         // Buscar en el inventario actual cuánto stock hay disponible de este producto
         const inventoryItem = currentInventory.find(inv => inv.productId === item.productId);
         const availableQuantity = inventoryItem?.quantity || 0;
-        
+
         return {
           productId: item.productId,
           product: item.product,
@@ -179,7 +179,7 @@ const Returns: React.FC = () => {
       toast.error('Este producto ya está en la lista de devolución');
       return;
     }
-    
+
     // Verificar cantidad disponible
     const availableQty = 'availableQuantity' in item ? (item.availableQuantity ?? 0) : item.quantity;
     if (availableQty <= 0) {
@@ -201,7 +201,7 @@ const Returns: React.FC = () => {
   };
 
   const handleUpdateReturnItem = (productId: string, field: string, value: any) => {
-    setReturnItems(returnItems.map(item => 
+    setReturnItems(returnItems.map(item =>
       item.productId === productId ? { ...item, [field]: value } : item
     ));
   };
@@ -271,7 +271,7 @@ const Returns: React.FC = () => {
       setReturnNotes('');
       setProductSearchTerm('');
       setShowCreateModal(false);
-      
+
       // Recargar devoluciones
       await loadReturns();
     } catch (error: any) {
@@ -330,6 +330,26 @@ const Returns: React.FC = () => {
     }
   };
 
+  const handleRestore = async (returnId: string) => {
+    if (!isAdmin) {
+      toast.error('No tienes permisos para restaurar devoluciones');
+      return;
+    }
+
+    if (!window.confirm('¿Estás seguro de restaurar esta devolución? Los productos volverán al inventario del vendedor, se reducirá el stock de Bodega Ecuador y se incrementará la deuda del vendedor.')) {
+      return;
+    }
+
+    try {
+      await returnService.restoreReturn(returnId);
+      await loadReturns();
+      setViewingReturn(null);
+    } catch (error) {
+      console.error('Error restoring return:', error);
+      toast.error('Error al restaurar la devolución');
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -357,14 +377,14 @@ const Returns: React.FC = () => {
   };
 
   const filteredReturns = returns.filter(returnItem => {
-    const matchesSearch = 
+    const matchesSearch =
       returnItem.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       returnItem.sellerName.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     if (statusFilter === 'all') {
       return matchesSearch;
     }
-    
+
     return matchesSearch && returnItem.status === statusFilter;
   });
 
@@ -430,7 +450,7 @@ const Returns: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 rounded-lg">
@@ -454,7 +474,7 @@ const Returns: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-purple-100 rounded-lg">
@@ -582,6 +602,15 @@ const Returns: React.FC = () => {
                           </button>
                         </>
                       )}
+                      {returnItem.status === 'approved' && isAdmin && (
+                        <button
+                          onClick={() => handleRestore(returnItem.id)}
+                          className="p-1 text-gray-400 hover:text-orange-600"
+                          title="Restaurar devolución (revertir cambios)"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -597,8 +626,8 @@ const Returns: React.FC = () => {
           <RotateCcw className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No hay devoluciones</h3>
           <p className="mt-1 text-sm text-gray-500">
-            {searchTerm || statusFilter !== 'all' 
-              ? 'No se encontraron devoluciones con ese criterio.' 
+            {searchTerm || statusFilter !== 'all'
+              ? 'No se encontraron devoluciones con ese criterio.'
               : 'No hay devoluciones registradas.'}
           </p>
         </div>
@@ -637,6 +666,15 @@ const Returns: React.FC = () => {
                       Rechazar
                     </button>
                   </>
+                )}
+                {viewingReturn.status === 'approved' && isAdmin && (
+                  <button
+                    onClick={() => handleRestore(viewingReturn.id)}
+                    className="px-3 py-2 bg-orange-600 text-white text-sm rounded-md hover:bg-orange-700 transition-colors flex items-center"
+                  >
+                    <Undo2 className="h-4 w-4 mr-1" />
+                    Restaurar Devolución
+                  </button>
                 )}
                 <button
                   onClick={() => {
@@ -948,55 +986,53 @@ const Returns: React.FC = () => {
                     ) : (
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {filteredProductsFromNote.map((item) => (
-                        <button
-                          key={item.productId}
-                          type="button"
-                          onClick={() => handleAddProductToReturn(item)}
-                          disabled={item.availableQuantity <= 0}
-                          className={`text-left p-3 border-2 rounded-lg transition-all hover:shadow-md bg-white ${
-                            item.availableQuantity <= 0
+                          <button
+                            key={item.productId}
+                            type="button"
+                            onClick={() => handleAddProductToReturn(item)}
+                            disabled={item.availableQuantity <= 0}
+                            className={`text-left p-3 border-2 rounded-lg transition-all hover:shadow-md bg-white ${item.availableQuantity <= 0
                               ? 'border-gray-200 opacity-50 cursor-not-allowed'
                               : 'border-gray-200 hover:bg-gray-50 hover:border-primary-500'
-                          }`}
-                        >
-                          {/* Imagen del producto */}
-                          <div className="w-full h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-                            {item.product.imageUrl ? (
-                              <img
-                                src={item.product.imageUrl}
-                                alt={item.product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <Package className="h-12 w-12 text-gray-400" />
-                            )}
-                          </div>
-                          
-                          {/* Información del producto */}
-                          <div className="space-y-1">
-                            <p className="text-xs font-medium text-gray-900 line-clamp-2 min-h-[2.5rem]">
-                              {item.product.name}
-                            </p>
-                            <p className="text-xs text-gray-500">SKU: {item.product.sku}</p>
-                            <div className="flex items-center justify-between mt-2">
-                              <div>
-                                <p className={`text-xs font-semibold ${
-                                  item.availableQuantity > 0 ? 'text-primary-600' : 'text-red-600'
-                                }`}>
-                                  Disponible: {item.availableQuantity} / En nota: {item.quantity}
-                                </p>
-                                <p className="text-xs text-gray-600">
-                                  ${item.unitPrice.toLocaleString()}
-                                </p>
-                              </div>
-                              {item.availableQuantity > 0 && (
-                                <div className="bg-primary-100 rounded-full p-1.5">
-                                  <Plus className="h-4 w-4 text-primary-600" />
-                                </div>
+                              }`}
+                          >
+                            {/* Imagen del producto */}
+                            <div className="w-full h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                              {item.product.imageUrl ? (
+                                <img
+                                  src={item.product.imageUrl}
+                                  alt={item.product.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Package className="h-12 w-12 text-gray-400" />
                               )}
                             </div>
-                          </div>
-                        </button>
+
+                            {/* Información del producto */}
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-gray-900 line-clamp-2 min-h-[2.5rem]">
+                                {item.product.name}
+                              </p>
+                              <p className="text-xs text-gray-500">SKU: {item.product.sku}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <div>
+                                  <p className={`text-xs font-semibold ${item.availableQuantity > 0 ? 'text-primary-600' : 'text-red-600'
+                                    }`}>
+                                    Disponible: {item.availableQuantity} / En nota: {item.quantity}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    ${item.unitPrice.toLocaleString()}
+                                  </p>
+                                </div>
+                                {item.availableQuantity > 0 && (
+                                  <div className="bg-primary-100 rounded-full p-1.5">
+                                    <Plus className="h-4 w-4 text-primary-600" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -1034,46 +1070,46 @@ const Returns: React.FC = () => {
                     ) : (
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {filteredInventoryBySearch.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => handleAddProductToReturn(item)}
-                          className="text-left p-3 border-2 border-gray-200 rounded-lg hover:bg-gray-50 hover:border-primary-500 transition-all hover:shadow-md bg-white"
-                        >
-                          {/* Imagen del producto */}
-                          <div className="w-full h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-                            {item.product.imageUrl ? (
-                              <img
-                                src={item.product.imageUrl}
-                                alt={item.product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <Package className="h-12 w-12 text-gray-400" />
-                            )}
-                          </div>
-                          
-                          {/* Información del producto */}
-                          <div className="space-y-1">
-                            <p className="text-xs font-medium text-gray-900 line-clamp-2 min-h-[2.5rem]">
-                              {item.product.name}
-                            </p>
-                            <p className="text-xs text-gray-500">SKU: {item.product.sku}</p>
-                            <div className="flex items-center justify-between mt-2">
-                              <div>
-                                <p className="text-xs font-semibold text-primary-600">
-                                  Stock: {item.quantity}
-                                </p>
-                                <p className="text-xs text-gray-600">
-                                  ${item.unitPrice.toLocaleString()}
-                                </p>
-                              </div>
-                              <div className="bg-primary-100 rounded-full p-1.5">
-                                <Plus className="h-4 w-4 text-primary-600" />
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleAddProductToReturn(item)}
+                            className="text-left p-3 border-2 border-gray-200 rounded-lg hover:bg-gray-50 hover:border-primary-500 transition-all hover:shadow-md bg-white"
+                          >
+                            {/* Imagen del producto */}
+                            <div className="w-full h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                              {item.product.imageUrl ? (
+                                <img
+                                  src={item.product.imageUrl}
+                                  alt={item.product.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <Package className="h-12 w-12 text-gray-400" />
+                              )}
+                            </div>
+
+                            {/* Información del producto */}
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-gray-900 line-clamp-2 min-h-[2.5rem]">
+                                {item.product.name}
+                              </p>
+                              <p className="text-xs text-gray-500">SKU: {item.product.sku}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <div>
+                                  <p className="text-xs font-semibold text-primary-600">
+                                    Stock: {item.quantity}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    ${item.unitPrice.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div className="bg-primary-100 rounded-full p-1.5">
+                                  <Plus className="h-4 w-4 text-primary-600" />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </button>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -1116,7 +1152,7 @@ const Returns: React.FC = () => {
                     {returnItems.map((item) => {
                       const inventoryItem = sellerInventory.find(inv => inv.productId === item.productId);
                       const maxQuantity = inventoryItem?.quantity || 0;
-                      
+
                       return (
                         <div key={item.productId} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex items-start justify-between mb-3">

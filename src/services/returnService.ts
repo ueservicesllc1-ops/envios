@@ -336,6 +336,58 @@ export const returnService = {
       toast.error(error.message || 'Error al crear la nota de devolución');
       throw error;
     }
+  },
+
+  // Restaurar/Revertir una nota de devolución (deshacer todos los cambios)
+  async restoreReturn(id: string): Promise<void> {
+    try {
+      // 1. Obtener la nota de devolución
+      const returnDoc = await this.getById(id);
+      if (!returnDoc) {
+        throw new Error('Nota de devolución no encontrada');
+      }
+
+      // Solo se pueden restaurar devoluciones aprobadas
+      if (returnDoc.status !== 'approved') {
+        throw new Error('Solo se pueden restaurar devoluciones aprobadas');
+      }
+
+      // 2. Desmarcar productos como devueltos en el inventario del vendedor
+      for (const item of returnDoc.items) {
+        await sellerInventoryService.unmarkAsReturned(
+          returnDoc.sellerId,
+          item.productId,
+          item.quantity
+        );
+      }
+
+      // 3. Remover productos de la bodega Ecuador
+      for (const item of returnDoc.items) {
+        await inventoryService.reduceStock(
+          item.productId,
+          item.quantity
+        );
+      }
+
+      // 4. Incrementar la deuda del vendedor (revertir la reducción)
+      const seller = await sellerService.getById(returnDoc.sellerId);
+      if (seller) {
+        const currentDebt = seller.totalDebt || 0;
+        const newDebt = currentDebt + returnDoc.totalValue;
+        await sellerService.update(returnDoc.sellerId, {
+          totalDebt: newDebt
+        });
+      }
+
+      // 5. Eliminar la nota de devolución
+      await this.delete(id);
+
+      toast.success('Nota de devolución restaurada exitosamente. Todos los cambios han sido revertidos.');
+    } catch (error: any) {
+      console.error('Error restoring return:', error);
+      toast.error(error.message || 'Error al restaurar la nota de devolución');
+      throw error;
+    }
   }
 };
 
