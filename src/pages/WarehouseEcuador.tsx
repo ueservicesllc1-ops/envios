@@ -31,7 +31,7 @@ const WarehouseEcuador: React.FC = () => {
   }>>([]);
   const [exitNoteSkuSearch, setExitNoteSkuSearch] = useState('');
   const [isCreatingExitNote, setIsCreatingExitNote] = useState(false);
-  
+
   // Estados para edición y eliminación
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -42,7 +42,7 @@ const WarehouseEcuador: React.FC = () => {
     location: '',
     status: 'stock' as 'stock' | 'in-transit' | 'delivered'
   });
-  
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
   const [deleteReason, setDeleteReason] = useState<'error' | 'permanent'>('error');
@@ -56,10 +56,10 @@ const WarehouseEcuador: React.FC = () => {
   // Detectar cuando se escanea un código de barras en el modal de nota de salida
   useEffect(() => {
     if (!showExitNoteModal) return;
-    
+
     const trimmedSku = exitNoteSkuSearch.trim();
     if (trimmedSku.length < 8) return;
-    
+
     // Esperar un momento para que termine el escaneo completo
     const timer = setTimeout(() => {
       // Verificar que el valor no haya cambiado (escaneo completo)
@@ -67,7 +67,7 @@ const WarehouseEcuador: React.FC = () => {
         handleBarcodeScanExitNote(trimmedSku);
       }
     }, 500); // Esperar 500ms después del último cambio
-    
+
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exitNoteSkuSearch, showExitNoteModal]);
@@ -95,15 +95,15 @@ const WarehouseEcuador: React.FC = () => {
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+
     if (selectedLocation === 'all') {
       return matchesSearch;
     }
-    
+
     const inventoryItem = getInventoryForProduct(product.id);
     return matchesSearch && (
-      inventoryItem?.location?.toLowerCase().includes('ecuador') || 
+      inventoryItem?.location?.toLowerCase().includes('ecuador') ||
       inventoryItem?.location === 'Ecuador'
     );
   });
@@ -147,8 +147,8 @@ const WarehouseEcuador: React.FC = () => {
   };
 
   const getEcuadorStock = (productId: string): number => {
-    const inventoryItem = inventory.find(item => 
-      item.productId === productId && 
+    const inventoryItem = inventory.find(item =>
+      item.productId === productId &&
       (item.location?.toLowerCase().includes('ecuador') || item.location === 'Ecuador')
     );
     return inventoryItem?.quantity || 0;
@@ -207,17 +207,17 @@ const WarehouseEcuador: React.FC = () => {
     const newItems = [...exitNoteItems];
     const productId = newItems[index].productId;
     const availableStock = getEcuadorStock(productId);
-    
+
     if (quantity > availableStock) {
       toast.error(`Stock insuficiente. Disponible: ${availableStock}`);
       return;
     }
-    
+
     if (quantity < 1) {
       toast.error('La cantidad debe ser al menos 1');
       return;
     }
-    
+
     newItems[index].quantity = quantity;
     setExitNoteItems(newItems);
   };
@@ -328,16 +328,16 @@ const WarehouseEcuador: React.FC = () => {
 
       // Recargar inventario actualizado ANTES de validar
       const currentInventory = await inventoryService.getAll();
-      
+
       // Validar stock disponible con datos actualizados de la base de datos
       for (const item of exitNoteItems) {
-        const ecuadorInventoryItem = currentInventory.find(inv => 
-          inv.productId === item.productId && 
+        const ecuadorInventoryItem = currentInventory.find(inv =>
+          inv.productId === item.productId &&
           (inv.location?.toLowerCase().includes('ecuador') || inv.location === 'Ecuador')
         );
-        
+
         const availableStock = ecuadorInventoryItem?.quantity || 0;
-        
+
         if (availableStock < item.quantity) {
           const product = products.find(p => p.id === item.productId);
           toast.error(`Stock insuficiente para ${product?.name}. Disponible: ${availableStock}, Solicitado: ${item.quantity}`);
@@ -346,7 +346,7 @@ const WarehouseEcuador: React.FC = () => {
       }
 
       setIsCreatingExitNote(true);
-      
+
       // Actualizar el estado local con el inventario actualizado
       setInventory(currentInventory);
 
@@ -393,8 +393,8 @@ const WarehouseEcuador: React.FC = () => {
       for (const item of exitNoteItemsData) {
         // 1. Obtener el item de inventario actualizado de la base de datos
         const currentInventoryUpdated = await inventoryService.getAll();
-        const ecuadorInventoryItem = currentInventoryUpdated.find(inv => 
-          inv.productId === item.productId && 
+        const ecuadorInventoryItem = currentInventoryUpdated.find(inv =>
+          inv.productId === item.productId &&
           (inv.location?.toLowerCase().includes('ecuador') || inv.location === 'Ecuador')
         );
 
@@ -408,7 +408,7 @@ const WarehouseEcuador: React.FC = () => {
         }
 
         const newQuantity = ecuadorInventoryItem.quantity - item.quantity;
-        
+
         await inventoryService.update(ecuadorInventoryItem.id, {
           quantity: newQuantity,
           totalCost: ecuadorInventoryItem.cost * newQuantity,
@@ -445,10 +445,10 @@ const WarehouseEcuador: React.FC = () => {
       }
 
       toast.success(`Nota de salida Ecuador creada exitosamente. Inventario del vendedor actualizado.`);
-      
+
       // Recargar datos
       await loadData();
-      
+
       // Cerrar modal y limpiar formulario
       setShowExitNoteModal(false);
       setExitNoteFormData({ sellerId: '', notes: '' });
@@ -475,7 +475,7 @@ const WarehouseEcuador: React.FC = () => {
   const groupedProducts = useMemo(() => {
     // Crear mapa de vendedores para búsqueda rápida
     const sellersMap = new Map(sellers.map(s => [s.id, s.name]));
-    
+
     return sellerInventory.reduce((acc, item) => {
       const productId = item.productId;
       if (!acc[productId]) {
@@ -500,8 +500,8 @@ const WarehouseEcuador: React.FC = () => {
     return Object.entries(groupedProducts).filter(([productId, data]) => {
       const product = data.product;
       const matchesSearch = product.name?.toLowerCase().includes(modalSearchTerm.toLowerCase()) ||
-                           product.sku?.toLowerCase().includes(modalSearchTerm.toLowerCase()) ||
-                           product.category?.toLowerCase().includes(modalSearchTerm.toLowerCase());
+        product.sku?.toLowerCase().includes(modalSearchTerm.toLowerCase()) ||
+        product.category?.toLowerCase().includes(modalSearchTerm.toLowerCase());
       return matchesSearch;
     });
   }, [groupedProducts, modalSearchTerm]);
@@ -535,14 +535,14 @@ const WarehouseEcuador: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          <button 
+          <button
             onClick={() => handleOpenModal()}
             className="btn-secondary flex items-center"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Producto
           </button>
-          <button 
+          <button
             onClick={() => handleOpenExitNoteModal()}
             className="btn-primary flex items-center"
           >
@@ -565,7 +565,7 @@ const WarehouseEcuador: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-green-100 rounded-lg">
@@ -577,7 +577,7 @@ const WarehouseEcuador: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 rounded-lg">
@@ -589,7 +589,7 @@ const WarehouseEcuador: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-red-100 rounded-lg">
@@ -654,19 +654,19 @@ const WarehouseEcuador: React.FC = () => {
               {filteredProducts.map((product) => {
                 const inventoryItem = getInventoryForProduct(product.id);
                 const stockStatus = getStockStatus(inventoryItem?.quantity || 0);
-                
+
                 // Solo mostrar productos que están en Ecuador o si se seleccionó "all"
-                if (selectedLocation === 'ecuador' && inventoryItem && 
-                    !inventoryItem.location?.toLowerCase().includes('ecuador') && 
-                    inventoryItem.location !== 'Ecuador') {
+                if (selectedLocation === 'ecuador' && inventoryItem &&
+                  !inventoryItem.location?.toLowerCase().includes('ecuador') &&
+                  inventoryItem.location !== 'Ecuador') {
                   return null;
                 }
-                
+
                 // Solo mostrar productos que tienen un item de inventario válido
                 if (!inventoryItem) {
                   return null;
                 }
-                
+
                 return (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -714,14 +714,14 @@ const WarehouseEcuador: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <button 
+                        <button
                           onClick={() => handleEdit(inventoryItem)}
                           className="text-green-600 hover:text-green-900"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeleteClick(inventoryItem)}
                           className="text-red-600 hover:text-red-900"
                           title="Eliminar"
@@ -754,7 +754,7 @@ const WarehouseEcuador: React.FC = () => {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             {/* Overlay */}
-            <div 
+            <div
               className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
               onClick={() => setShowModal(false)}
             ></div>
@@ -818,7 +818,7 @@ const WarehouseEcuador: React.FC = () => {
                       const product = data.product;
                       const totalQuantity = data.sellers.reduce((sum, s) => sum + s.quantity, 0);
                       const totalValue = data.sellers.reduce((sum, s) => sum + s.totalValue, 0);
-                      
+
                       return (
                         <div key={productId} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
                           {/* Product Image */}
@@ -871,14 +871,13 @@ const WarehouseEcuador: React.FC = () => {
                                       {seller.quantity} unidades - ${seller.totalValue.toLocaleString()}
                                     </p>
                                   </div>
-                                  <span className={`px-2 py-1 rounded text-xs ${
-                                    seller.status === 'stock' ? 'bg-green-100 text-green-700' :
-                                    seller.status === 'in-transit' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-blue-100 text-blue-700'
-                                  }`}>
+                                  <span className={`px-2 py-1 rounded text-xs ${seller.status === 'stock' ? 'bg-green-100 text-green-700' :
+                                      seller.status === 'in-transit' ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-blue-100 text-blue-700'
+                                    }`}>
                                     {seller.status === 'stock' ? 'En Stock' :
-                                     seller.status === 'in-transit' ? 'En Tránsito' :
-                                     'Entregado'}
+                                      seller.status === 'in-transit' ? 'En Tránsito' :
+                                        'Entregado'}
                                   </span>
                                 </div>
                               ))}
@@ -915,7 +914,7 @@ const WarehouseEcuador: React.FC = () => {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             {/* Overlay */}
-            <div 
+            <div
               className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
               onClick={() => setShowExitNoteModal(false)}
             ></div>
@@ -1035,11 +1034,10 @@ const WarehouseEcuador: React.FC = () => {
                                 type="button"
                                 onClick={() => handleAddProductToExitNote(product)}
                                 disabled={stock === 0}
-                                className={`text-left p-3 border-2 rounded-lg transition-all hover:shadow-md bg-white ${
-                                  stock === 0
+                                className={`text-left p-3 border-2 rounded-lg transition-all hover:shadow-md bg-white ${stock === 0
                                     ? 'border-gray-200 opacity-50 cursor-not-allowed'
                                     : 'border-gray-200 hover:bg-gray-50 hover:border-primary-500'
-                                }`}
+                                  }`}
                               >
                                 {/* Imagen del producto */}
                                 <div className="w-full h-32 mb-2 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
@@ -1053,18 +1051,22 @@ const WarehouseEcuador: React.FC = () => {
                                     <Package className="h-12 w-12 text-gray-400" />
                                   )}
                                 </div>
-                                
+
                                 {/* Información del producto */}
                                 <div className="space-y-1">
                                   <p className="text-xs font-medium text-gray-900 line-clamp-2 min-h-[2.5rem]">
                                     {product.name}
                                   </p>
                                   <p className="text-xs text-gray-500">SKU: {product.sku}</p>
+                                  {product.size && (
+                                    <p className="text-xs text-gray-600 font-medium">
+                                      <span className="text-gray-500">Talla:</span> {product.size}
+                                    </p>
+                                  )}
                                   <div className="flex items-center justify-between mt-2">
                                     <div>
-                                      <p className={`text-xs font-semibold ${
-                                        stock > 0 ? 'text-primary-600' : 'text-red-600'
-                                      }`}>
+                                      <p className={`text-xs font-semibold ${stock > 0 ? 'text-primary-600' : 'text-red-600'
+                                        }`}>
                                         Stock: {stock}
                                       </p>
                                     </div>
@@ -1094,6 +1096,7 @@ const WarehouseEcuador: React.FC = () => {
                           <thead className="bg-gray-50">
                             <tr>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Producto</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Talla</th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cantidad</th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Precio Unit.</th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
@@ -1108,6 +1111,9 @@ const WarehouseEcuador: React.FC = () => {
                                 <tr key={index}>
                                   <td className="px-4 py-2 text-sm text-gray-900">
                                     {product?.name || 'Producto no encontrado'}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-gray-600">
+                                    {product?.size || '-'}
                                   </td>
                                   <td className="px-4 py-2">
                                     <input
@@ -1139,7 +1145,7 @@ const WarehouseEcuador: React.FC = () => {
                           </tbody>
                           <tfoot className="bg-gray-50">
                             <tr>
-                              <td colSpan={3} className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
+                              <td colSpan={4} className="px-4 py-2 text-sm font-medium text-gray-900 text-right">
                                 Total:
                               </td>
                               <td className="px-4 py-2 text-sm font-bold text-gray-900">
@@ -1214,7 +1220,7 @@ const WarehouseEcuador: React.FC = () => {
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {/* Información del producto */}
                 <div className="bg-gray-50 p-3 rounded-lg">
@@ -1236,7 +1242,7 @@ const WarehouseEcuador: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Ubicación
@@ -1248,7 +1254,7 @@ const WarehouseEcuador: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Costo Unitario
@@ -1262,7 +1268,7 @@ const WarehouseEcuador: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Precio Unitario
@@ -1276,7 +1282,7 @@ const WarehouseEcuador: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Estado
@@ -1348,7 +1354,7 @@ const WarehouseEcuador: React.FC = () => {
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {/* Información del producto */}
                 <div className="bg-gray-50 p-3 rounded-lg">
@@ -1363,7 +1369,7 @@ const WarehouseEcuador: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tipo de eliminación:
                   </label>
-                  
+
                   <div className="space-y-2">
                     <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                       <input
@@ -1377,12 +1383,12 @@ const WarehouseEcuador: React.FC = () => {
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">Eliminado por Error</div>
                         <div className="text-sm text-gray-600">
-                          El producto se eliminará del inventario pero NO afectará presupuestos ni contabilidad. 
+                          El producto se eliminará del inventario pero NO afectará presupuestos ni contabilidad.
                           Útil cuando el producto fue agregado por error o no debería estar en inventario.
                         </div>
                       </div>
                     </label>
-                    
+
                     <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                       <input
                         type="radio"
@@ -1395,7 +1401,7 @@ const WarehouseEcuador: React.FC = () => {
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">Eliminación Permanente</div>
                         <div className="text-sm text-gray-600">
-                          El producto se eliminará permanentemente del inventario. 
+                          El producto se eliminará permanentemente del inventario.
                           Esta acción no se puede deshacer.
                         </div>
                       </div>
@@ -1406,9 +1412,9 @@ const WarehouseEcuador: React.FC = () => {
                 {/* Advertencia */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <p className="text-sm text-yellow-800">
-                    <strong>Advertencia:</strong> Esta acción eliminará el producto del inventario. 
-                    {deleteReason === 'error' 
-                      ? ' No se afectarán presupuestos ni contabilidad.' 
+                    <strong>Advertencia:</strong> Esta acción eliminará el producto del inventario.
+                    {deleteReason === 'error'
+                      ? ' No se afectarán presupuestos ni contabilidad.'
                       : ' Esta acción es permanente.'}
                   </p>
                 </div>
