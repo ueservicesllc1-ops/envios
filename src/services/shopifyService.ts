@@ -104,7 +104,7 @@ export const shopifyService = {
   }> {
     try {
       const response = await fetch(getApiUrl('/api/shopify/stats'));
-      
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
@@ -124,6 +124,31 @@ export const shopifyService = {
     // El backend ya procesa todo, solo retornamos el objeto sin los IDs de Shopify
     const { shopifyProductId, shopifyVariantId, ...perfume } = processedPerfume;
     return perfume;
+  },
+
+  /**
+   * Sube una imagen desde una URL a B2 a través del backend
+   */
+  async uploadImageFromUrl(url: string, brand: string, name: string): Promise<string> {
+    try {
+      const response = await fetch(getApiUrl('/api/b2/upload-from-url'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url, brand, name }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    }
   }
 };
 

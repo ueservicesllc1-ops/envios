@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, MapPin, Search, Filter, Plus, Eye, Edit } from 'lucide-react';
+import { Package, MapPin, Search, Filter, Plus, Eye, Edit, X } from 'lucide-react';
 import { Product, InventoryItem } from '../types';
 import { productService } from '../services/productService';
 import { inventoryService } from '../services/inventoryService';
@@ -11,6 +11,17 @@ const Warehouse: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('all');
+
+  // Estados para edición
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    quantity: 0,
+    cost: 0,
+    unitPrice: 0,
+    location: '',
+    status: 'stock' as 'stock' | 'in-transit' | 'delivered'
+  });
 
   const locations = ['all'];
 
@@ -40,12 +51,12 @@ const Warehouse: React.FC = () => {
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase());
+
     if (selectedLocation === 'all') {
       return matchesSearch;
     }
-    
+
     const inventoryItem = getInventoryForProduct(product.id);
     return matchesSearch && inventoryItem?.location === selectedLocation;
   });
@@ -54,6 +65,61 @@ const Warehouse: React.FC = () => {
     if (quantity === 0) return { color: 'text-red-600', bg: 'bg-red-100', text: 'Sin Stock' };
     if (quantity < 10) return { color: 'text-yellow-600', bg: 'bg-yellow-100', text: 'Bajo Stock' };
     return { color: 'text-green-600', bg: 'bg-green-100', text: 'En Stock' };
+  };
+
+  const handleEdit = (item: InventoryItem) => {
+    setEditingItem(item);
+    setEditFormData({
+      quantity: item.quantity,
+      cost: item.cost,
+      unitPrice: item.unitPrice,
+      location: item.location,
+      status: item.status
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+
+    try {
+      // Calcular nuevos totales
+      const newTotalCost = editFormData.cost * editFormData.quantity;
+      const newTotalPrice = editFormData.unitPrice * editFormData.quantity;
+      const newTotalValue = newTotalCost;
+
+      await inventoryService.update(editingItem.id, {
+        quantity: editFormData.quantity,
+        cost: editFormData.cost,
+        unitPrice: editFormData.unitPrice,
+        totalCost: newTotalCost,
+        totalPrice: newTotalPrice,
+        totalValue: newTotalValue,
+        location: editFormData.location,
+        status: editFormData.status
+      });
+
+      // Recargar datos
+      await loadData();
+      toast.success('Inventario actualizado correctamente');
+      setShowEditModal(false);
+      setEditingItem(null);
+    } catch (error) {
+      console.error('Error updating inventory:', error);
+      toast.error('Error al actualizar inventario');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditModal(false);
+    setEditingItem(null);
+    setEditFormData({
+      quantity: 0,
+      cost: 0,
+      unitPrice: 0,
+      location: '',
+      status: 'stock'
+    });
   };
 
   if (loading) {
@@ -69,13 +135,9 @@ const Warehouse: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Bodega</h1>
-          <p className="text-gray-600">Gestiona la ubicación y stock de productos</p>
+          <h1 className="text-3xl font-bold text-gray-900">Bodega Principal</h1>
+          <p className="text-gray-600">Gestiona la ubicación y stock de productos en Bodega USA</p>
         </div>
-        <button className="btn-primary flex items-center">
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Ubicación
-        </button>
       </div>
 
       {/* Stats Cards */}
@@ -91,19 +153,21 @@ const Warehouse: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-green-100 rounded-lg">
               <MapPin className="h-6 w-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Ubicaciones</p>
-              <p className="text-2xl font-bold text-gray-900">0</p>
+              <p className="text-sm font-medium text-gray-600">Valor Total</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ${inventory.reduce((sum, item) => sum + (item.totalValue || 0), 0).toLocaleString()}
+              </p>
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 rounded-lg">
@@ -117,7 +181,7 @@ const Warehouse: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-red-100 rounded-lg">
@@ -160,10 +224,6 @@ const Warehouse: React.FC = () => {
                 </option>
               ))}
             </select>
-            <button className="btn-secondary flex items-center">
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
-            </button>
           </div>
         </div>
       </div>
@@ -187,7 +247,9 @@ const Warehouse: React.FC = () => {
               {filteredProducts.map((product) => {
                 const inventoryItem = getInventoryForProduct(product.id);
                 const stockStatus = getStockStatus(inventoryItem?.quantity || 0);
-                
+
+                if (!inventoryItem) return null;
+
                 return (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -215,10 +277,10 @@ const Warehouse: React.FC = () => {
                       <div className="text-sm text-gray-900">{product.sku}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{inventoryItem?.quantity || 0} unidades</div>
+                      <div className="text-sm text-gray-900">{inventoryItem.quantity} unidades</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{inventoryItem?.location || 'Sin ubicación'}</div>
+                      <div className="text-sm text-gray-900">{inventoryItem.location || 'Sin ubicación'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${stockStatus.bg} ${stockStatus.color}`}>
@@ -227,15 +289,16 @@ const Warehouse: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {inventoryItem ? `$${inventoryItem.totalValue.toLocaleString()}` : 'N/A'}
+                        ${inventoryItem.totalValue.toLocaleString()}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="text-green-600 hover:text-green-900">
+                        <button
+                          onClick={() => handleEdit(inventoryItem)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Editar"
+                        >
                           <Edit className="h-4 w-4" />
                         </button>
                       </div>
@@ -256,6 +319,140 @@ const Warehouse: React.FC = () => {
           <p className="mt-1 text-sm text-gray-500">
             {searchTerm ? 'No se encontraron productos con ese criterio.' : 'No hay productos en esta ubicación.'}
           </p>
+        </div>
+      )}
+
+      {/* Modal de Edición */}
+      {showEditModal && editingItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Editar Inventario - {products.find(p => p.id === editingItem.productId)?.name}
+              </h3>
+              <button
+                onClick={handleCancelEdit}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cantidad
+                  </label>
+                  <input
+                    type="number"
+                    value={editFormData.quantity}
+                    onChange={(e) => setEditFormData({ ...editFormData, quantity: parseInt(e.target.value) || 0 })}
+                    className="input-field"
+                    min="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Costo Unitario
+                  </label>
+                  <input
+                    type="number"
+                    value={editFormData.cost}
+                    onChange={(e) => setEditFormData({ ...editFormData, cost: parseFloat(e.target.value) || 0 })}
+                    className="input-field"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Precio Unitario
+                  </label>
+                  <input
+                    type="number"
+                    value={editFormData.unitPrice}
+                    onChange={(e) => setEditFormData({ ...editFormData, unitPrice: parseFloat(e.target.value) || 0 })}
+                    className="input-field"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ubicación / Bodega
+                  </label>
+                  <select
+                    value={editFormData.location}
+                    onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                    className="input-field"
+                  >
+                    <option value="">Seleccionar ubicación</option>
+                    <option value="Bodega Principal">Bodega Principal (USA)</option>
+                    <option value="Bodega Ecuador">Bodega Ecuador</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Estado
+                  </label>
+                  <select
+                    value={editFormData.status}
+                    onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as any })}
+                    className="input-field"
+                  >
+                    <option value="stock">En Stock</option>
+                    <option value="in-transit">En Tránsito</option>
+                    <option value="delivered">Entregado</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Preview de totales */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Vista Previa</h4>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-600">Costo Total:</p>
+                    <p className="font-semibold text-gray-900">
+                      ${(editFormData.cost * editFormData.quantity).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Precio Total:</p>
+                    <p className="font-semibold text-gray-900">
+                      ${(editFormData.unitPrice * editFormData.quantity).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Margen Potencial:</p>
+                    <p className="font-semibold text-green-600">
+                      ${((editFormData.unitPrice - editFormData.cost) * editFormData.quantity).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={handleCancelEdit}
+                className="btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="btn-primary"
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

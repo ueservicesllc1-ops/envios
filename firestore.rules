@@ -137,6 +137,21 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
     
+    // Reglas para POS Sales
+    match /pos_sales/{saleId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Reglas para POS Accounting
+    match /pos_accounting/{entryId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Reglas para POS Customers
+    match /pos_customers/{customerId} {
+      allow read, write: if request.auth != null;
+    }
+
     // Regla por defecto - denegar todo lo demás
     match /{document=**} {
       allow read, write: if false;

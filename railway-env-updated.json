@@ -1,0 +1,19 @@
+{
+    "CI": "false",
+    "GENERATE_SOURCEMAP": "false",
+    "NODE_ENV": "production",
+    "PORT": "3000",
+    "REACT_APP_FIREBASE_API_KEY": "AIzaSyCn5b43XaNvTg56ErYYazHaCLc8Ntbx2tw",
+    "REACT_APP_FIREBASE_AUTH_DOMAIN": "envios-aaf94.firebaseapp.com",
+    "REACT_APP_FIREBASE_PROJECT_ID": "envios-aaf94",
+    "REACT_APP_FIREBASE_STORAGE_BUCKET": "envios-aaf94.firebasestorage.app",
+    "REACT_APP_FIREBASE_MESSAGING_SENDER_ID": "301889994673",
+    "REACT_APP_FIREBASE_APP_ID": "1:301889994673:web:4bf140b88c095b54890790",
+    "REACT_APP_FIREBASE_MEASUREMENT_ID": "G-QCM8ZVYE36",
+    "REACT_APP_RAILWAY_URL": "https://web-production-4cbab.up.railway.app",
+    "REACT_APP_BASE_URL": "https://web-production-4cbab.up.railway.app",
+    "REACT_APP_DOMAIN_PRODUCTION": "https://enviosec.store",
+    "ALLOWED_DOMAINS": "comprasexpress.us,enviosec.store,web-production-4cbab.up.railway.app",
+    "PRIMARY_DOMAIN": "comprasexpress.us",
+    "REACT_APP_NEW_DOMAIN": "https://comprasexpress.us"
+}

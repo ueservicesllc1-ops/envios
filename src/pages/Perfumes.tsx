@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Filter, Package, X, Upload, Download, RefreshCw, Globe, EyeOff, Percent, Save } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Filter, Package, X, Upload, Download, RefreshCw, Globe, EyeOff, Percent, Save, Wrench } from 'lucide-react';
 import { Perfume } from '../types';
 import { perfumeService } from '../services/perfumeService';
 import { shopifyService } from '../services/shopifyService';
@@ -23,6 +23,7 @@ const Perfumes: React.FC = () => {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponActive, setCouponActive] = useState(false);
   const [savingDiscount, setSavingDiscount] = useState(false);
+  const [fixingImages, setFixingImages] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -78,7 +79,7 @@ const Perfumes: React.FC = () => {
     try {
       // Verificar si ya hay perfumes importados para evitar duplicados
       const existingPerfumes = await perfumeService.getAll();
-      
+
       // Si ya hay perfumes, no importar automáticamente (solo la primera vez)
       if (existingPerfumes.length > 0) {
         console.log('Ya hay perfumes en la base de datos, omitiendo importación automática');
@@ -91,7 +92,7 @@ const Perfumes: React.FC = () => {
 
       // Obtener productos de la colección "all" (con upload de imágenes a B2)
       const processedPerfumes = await shopifyService.getProductsFromCollection('all', true);
-      
+
       if (processedPerfumes.length === 0) {
         toast.error('No se encontraron productos en Shopify', { id: 'auto-import' });
         setImporting(false);
@@ -108,7 +109,7 @@ const Perfumes: React.FC = () => {
 
       // Crear perfumes en batch
       await perfumeService.createBatch(perfumesToImport);
-      
+
       toast.success(`${perfumesToImport.length} perfumes importados automáticamente`, { id: 'auto-import' });
       await loadPerfumes();
     } catch (error) {
@@ -200,7 +201,7 @@ const Perfumes: React.FC = () => {
   const handleTogglePublish = async (perfume: Perfume) => {
     try {
       await perfumeService.update(perfume.id, { isActive: !perfume.isActive });
-      setPerfumes(perfumes.map(p => 
+      setPerfumes(perfumes.map(p =>
         p.id === perfume.id ? { ...p, isActive: !p.isActive } : p
       ));
       toast.success(perfume.isActive ? 'Perfume despublicado' : 'Perfume publicado');
@@ -223,13 +224,13 @@ const Perfumes: React.FC = () => {
       await Promise.all(updatePromises);
 
       // Actualizar el estado local
-      setPerfumes(perfumes.map(p => 
+      setPerfumes(perfumes.map(p =>
         p.brand === brand ? { ...p, isActive: newStatus } : p
       ));
 
       toast.success(
-        newStatus 
-          ? `${brandPerfumes.length} perfumes de ${brand} publicados` 
+        newStatus
+          ? `${brandPerfumes.length} perfumes de ${brand} publicados`
           : `${brandPerfumes.length} perfumes de ${brand} despublicados`
       );
     } catch (error) {
@@ -278,7 +279,7 @@ const Perfumes: React.FC = () => {
 
       // Obtener productos de la colección "all" (con upload de imágenes a B2)
       const processedPerfumes = await shopifyService.getProductsFromCollection('all', true);
-      
+
       if (processedPerfumes.length === 0) {
         toast.error('No se encontraron productos en Shopify', { id: 'import' });
         setImporting(false);
@@ -295,7 +296,7 @@ const Perfumes: React.FC = () => {
 
       // Crear perfumes en batch
       await perfumeService.createBatch(perfumesToImport);
-      
+
       toast.success(`${perfumesToImport.length} perfumes importados exitosamente`, { id: 'import' });
       await loadPerfumes();
     } catch (error) {
@@ -303,6 +304,61 @@ const Perfumes: React.FC = () => {
       toast.error('Error al importar productos de Shopify', { id: 'import' });
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleFixImages = async () => {
+    // Filtrar productos con imágenes de Shopify
+    const perfumesToFix = perfumes.filter(p =>
+      p.imageUrl && (p.imageUrl.includes('cdn.shopify.com') || p.imageUrl.includes('shopify'))
+    );
+
+    if (perfumesToFix.length === 0) {
+      toast.success('No se encontraron imágenes de Shopify para arreglar');
+      return;
+    }
+
+    if (!window.confirm(`Se encontraron ${perfumesToFix.length} perfumes con imágenes de Shopify. ¿Deseas subirlas a B2 para asegurar que se muestren correctamente? Esto puede tardar unos minutos.`)) {
+      return;
+    }
+
+    try {
+      setFixingImages(true);
+      let fixed = 0;
+      let errors = 0;
+      const total = perfumesToFix.length;
+
+      for (let i = 0; i < total; i++) {
+        const perfume = perfumesToFix[i];
+        toast.loading(`Arreglando ${i + 1}/${total}: ${perfume.name.substring(0, 20)}...`, { id: 'fix-images' });
+
+        try {
+          // Subir a B2
+          const newUrl = await shopifyService.uploadImageFromUrl(perfume.imageUrl!, perfume.brand, perfume.name);
+
+          // Actualizar en Firestore
+          await perfumeService.update(perfume.id, { imageUrl: newUrl });
+
+          // Actualizar estado local
+          setPerfumes(prev => prev.map(p =>
+            p.id === perfume.id ? { ...p, imageUrl: newUrl } : p
+          ));
+
+          fixed++;
+          // Pequeña pausa para no saturar
+          await new Promise(r => setTimeout(r, 500));
+        } catch (error) {
+          console.error(`Error fixing image for ${perfume.name}:`, error);
+          errors++;
+        }
+      }
+
+      toast.success(`Proceso completado: ${fixed} arregladas, ${errors} errores`, { id: 'fix-images' });
+    } catch (error) {
+      console.error('Error in fix images process:', error);
+      toast.error('Error en el proceso de arreglo de imágenes', { id: 'fix-images' });
+    } finally {
+      setFixingImages(false);
     }
   };
 
@@ -344,6 +400,20 @@ const Perfumes: React.FC = () => {
               <span className="sm:hidden">Importando...</span>
             </div>
           )}
+          <button
+            onClick={handleFixImages}
+            disabled={fixingImages || importing}
+            className="btn-secondary flex items-center space-x-2 text-sm sm:text-base text-orange-700 bg-orange-50 border-orange-200 hover:bg-orange-100"
+            title="Arreglar imágenes que no se muestran"
+          >
+            {fixingImages ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Wrench className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">Arreglar Imágenes</span>
+            <span className="sm:hidden">Fix</span>
+          </button>
           <button
             onClick={() => setShowBrandManagement(!showBrandManagement)}
             className="btn-secondary flex items-center space-x-2 text-sm sm:text-base"
@@ -590,13 +660,12 @@ const Perfumes: React.FC = () => {
             {brandStats.map(({ brand, total, published, allPublished, somePublished }) => (
               <div
                 key={brand}
-                className={`border rounded-lg p-3 flex items-center justify-between ${
-                  allPublished
-                    ? 'bg-green-50 border-green-200'
-                    : somePublished
+                className={`border rounded-lg p-3 flex items-center justify-between ${allPublished
+                  ? 'bg-green-50 border-green-200'
+                  : somePublished
                     ? 'bg-yellow-50 border-yellow-200'
                     : 'bg-gray-50 border-gray-200'
-                }`}
+                  }`}
               >
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-medium text-gray-900 truncate">{brand}</h3>
@@ -606,11 +675,10 @@ const Perfumes: React.FC = () => {
                 </div>
                 <button
                   onClick={() => handleToggleBrandPublish(brand)}
-                  className={`ml-2 p-2 rounded transition-colors ${
-                    allPublished
-                      ? 'text-green-600 hover:bg-green-100'
-                      : 'text-gray-400 hover:bg-gray-100'
-                  }`}
+                  className={`ml-2 p-2 rounded transition-colors ${allPublished
+                    ? 'text-green-600 hover:bg-green-100'
+                    : 'text-gray-400 hover:bg-gray-100'
+                    }`}
                   title={allPublished ? 'Despublicar todos' : 'Publicar todos'}
                 >
                   {allPublished ? (
@@ -675,11 +743,10 @@ const Perfumes: React.FC = () => {
                   <td className="px-2 py-2 whitespace-nowrap">
                     <button
                       onClick={() => handleTogglePublish(perfume)}
-                      className={`p-1.5 rounded transition-colors ${
-                        perfume.isActive
-                          ? 'text-green-600 hover:bg-green-50'
-                          : 'text-gray-400 hover:bg-gray-50'
-                      }`}
+                      className={`p-1.5 rounded transition-colors ${perfume.isActive
+                        ? 'text-green-600 hover:bg-green-50'
+                        : 'text-gray-400 hover:bg-gray-50'
+                        }`}
                       title={perfume.isActive ? 'Despublicar' : 'Publicar'}
                     >
                       {perfume.isActive ? (
@@ -753,11 +820,10 @@ const Perfumes: React.FC = () => {
                   <div className="flex items-center space-x-1 ml-2">
                     <button
                       onClick={() => handleTogglePublish(perfume)}
-                      className={`p-1.5 rounded transition-colors ${
-                        perfume.isActive
-                          ? 'text-green-600 hover:bg-green-50'
-                          : 'text-gray-400 hover:bg-gray-50'
-                      }`}
+                      className={`p-1.5 rounded transition-colors ${perfume.isActive
+                        ? 'text-green-600 hover:bg-green-50'
+                        : 'text-gray-400 hover:bg-gray-50'
+                        }`}
                     >
                       {perfume.isActive ? (
                         <Globe className="h-4 w-4" />
@@ -844,7 +910,7 @@ const Perfumes: React.FC = () => {
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input-field"
                     placeholder="Nombre del perfume"
                   />
@@ -856,7 +922,7 @@ const Perfumes: React.FC = () => {
                   </label>
                   <textarea
                     value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="input-field"
                     rows={3}
                     placeholder="Descripción del perfume"
@@ -871,7 +937,7 @@ const Perfumes: React.FC = () => {
                     type="text"
                     required
                     value={formData.brand}
-                    onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                     className="input-field"
                     placeholder="Ej: Arabiyat, Lattafa"
                   />
@@ -884,7 +950,7 @@ const Perfumes: React.FC = () => {
                   <input
                     type="text"
                     value={formData.collection}
-                    onChange={(e) => setFormData({...formData, collection: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, collection: e.target.value })}
                     className="input-field"
                     placeholder="Ej: Sugar, Prestige"
                   />
@@ -898,7 +964,7 @@ const Perfumes: React.FC = () => {
                     type="text"
                     required
                     value={formData.sku}
-                    onChange={(e) => setFormData({...formData, sku: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     className="input-field"
                     placeholder="Código SKU"
                   />
@@ -914,7 +980,7 @@ const Perfumes: React.FC = () => {
                     min="0"
                     step="0.01"
                     value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
                     className="input-field"
                     placeholder="0.00"
                   />
@@ -928,7 +994,7 @@ const Perfumes: React.FC = () => {
                   <input
                     type="url"
                     value={formData.imageUrl}
-                    onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                     className="input-field"
                     placeholder="https://..."
                   />
@@ -939,7 +1005,7 @@ const Perfumes: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={formData.isActive}
-                      onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                       className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                     <span className="text-sm font-medium text-gray-700">Activo (visible en tienda)</span>
@@ -1020,11 +1086,10 @@ const Perfumes: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    viewingPerfume.isActive
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${viewingPerfume.isActive
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800'
+                    }`}>
                     {viewingPerfume.isActive ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>

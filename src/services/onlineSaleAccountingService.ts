@@ -1,13 +1,13 @@
-import { 
-  collection, 
-  addDoc, 
-  getDocs, 
-  query, 
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
   orderBy,
   where,
   deleteDoc,
   doc,
-  Timestamp 
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import toast from 'react-hot-toast';
@@ -18,7 +18,7 @@ export interface OnlineSaleAccounting {
   saleId: string;
   totalValue: number;
   date: Date;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'arrived_ecuador' | 'delivered' | 'cancelled';
   notes?: string;
   createdAt: Date;
 }
@@ -41,7 +41,7 @@ export const onlineSaleAccountingService = {
         date: convertToTimestamp(sale.date),
         createdAt: convertToTimestamp(new Date())
       });
-      
+
       toast.success('Venta en línea registrada en contabilidad');
       return docRef.id;
     } catch (error) {
@@ -56,7 +56,7 @@ export const onlineSaleAccountingService = {
     try {
       const q = query(collection(db, 'onlineSaleAccounting'), orderBy('date', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -89,7 +89,7 @@ export const onlineSaleAccountingService = {
         where('saleId', '==', saleId)
       );
       const querySnapshot = await getDocs(q);
-      
+
       for (const docSnapshot of querySnapshot.docs) {
         await deleteDoc(doc(db, 'onlineSaleAccounting', docSnapshot.id));
       }

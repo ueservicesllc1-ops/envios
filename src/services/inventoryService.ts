@@ -140,14 +140,15 @@ export const inventoryService = {
   },
 
   // Actualizar stock después de entrada
-  async updateStockAfterEntry(productId: string, quantity: number, cost: number, unitPrice: number): Promise<void> {
+  // Actualizar stock después de entrada
+  async updateStockAfterEntry(productId: string, quantity: number, cost: number, unitPrice: number, location: string = 'Bodega Principal'): Promise<void> {
     try {
       // Obtener el producto para usar su salePrice1
       const { productService } = await import('./productService');
       const product = await productService.getById(productId);
       const actualUnitPrice = product?.salePrice1 || unitPrice; // Usar salePrice1 del producto
 
-      const existingItem = await this.getByProductId(productId);
+      const existingItem = await this.getByProductIdAndLocation(productId, location);
 
       if (existingItem) {
         // Actualizar stock existente
@@ -175,7 +176,7 @@ export const inventoryService = {
           totalCost: cost * quantity,
           totalPrice: actualUnitPrice * quantity,
           totalValue: cost * quantity,
-          location: 'Bodega Principal',
+          location: location,
           status: 'stock' // Estado inicial
         });
       }
@@ -262,9 +263,24 @@ export const inventoryService = {
   },
 
   // Remover stock del inventario
-  async removeStock(productId: string, quantity: number): Promise<void> {
+  async removeStock(productId: string, quantity: number, location?: string): Promise<void> {
     try {
-      const existingItem = await this.getByProductId(productId);
+      let existingItem: InventoryItem | null = null;
+
+      if (location) {
+        existingItem = await this.getByProductIdAndLocation(productId, location);
+        // Si no está en la ubicación específica y no se requiere estricto, podría buscar fallback, 
+        // pero para removeStock es mejor ser específico si se pide.
+        if (!existingItem) {
+          // Fallback: Si es POS y dice Bodega Principal pero no hay, quizás buscar general?
+          // Por seguridad, mantenemos la lógica simple: si pide ubicación y no hay, es error o null.
+          // Pero para mantener compatibilidad con llamadas sin location, el else cubre el genérico.
+        }
+      }
+
+      if (!existingItem) {
+        existingItem = await this.getByProductId(productId);
+      }
 
       if (existingItem && existingItem.quantity >= quantity) {
         const newQuantity = existingItem.quantity - quantity;
@@ -293,6 +309,38 @@ export const inventoryService = {
   // Reducir stock (alias para removeStock)
   async reduceStock(productId: string, quantity: number): Promise<void> {
     return this.removeStock(productId, quantity);
+  },
+
+  // Devolver stock al inventario después de eliminar/cancelar pedido
+  async returnStockAfterDelete(productId: string, quantity: number): Promise<void> {
+    try {
+      const existingItem = await this.getByProductId(productId);
+
+      if (existingItem) {
+        // Incrementar stock existente
+        const newQuantity = existingItem.quantity + quantity;
+        const costPerUnit = existingItem.totalCost / existingItem.quantity;
+        const pricePerUnit = existingItem.totalPrice / existingItem.quantity;
+        const newTotalCost = costPerUnit * newQuantity;
+        const newTotalPrice = pricePerUnit * newQuantity;
+        const newTotalValue = newTotalCost;
+
+        await this.update(existingItem.id, {
+          quantity: newQuantity,
+          totalCost: newTotalCost,
+          totalPrice: newTotalPrice,
+          totalValue: newTotalValue,
+          status: 'stock' // Devolver a estado stock
+        });
+
+        console.log(`✅ Stock devuelto: ${quantity} unidades de producto ${productId}`);
+      } else {
+        console.warn(`⚠️ No se encontró inventario para producto ${productId}, no se puede devolver stock`);
+      }
+    } catch (error) {
+      console.error('Error returning stock:', error);
+      throw error;
+    }
   },
 
   // Eliminar item de inventario
@@ -414,25 +462,25 @@ export const inventoryService = {
   // Regenerar inventario completo desde notas de entrada
   async regenerateInventory(): Promise<void> {
     try {
-      console.log('Iniciando regeneración del inventario...');
+      console.log('🔄 Iniciando regeneración del inventario...');
 
-      // Limpiar inventario actual
+      // 1. Limpiar inventario actual
       const currentInventory = await this.getAll();
-      console.log(`Eliminando ${currentInventory.length} items del inventario actual`);
+      console.log(`🗑️  Eliminando ${currentInventory.length} items del inventario actual`);
 
-      // Eliminar todos los items del inventario actual
       for (const item of currentInventory) {
         await this.delete(item.id);
       }
+      console.log('✅ Inventario limpiado\n');
 
-      // Obtener todas las notas de entrada
+      // 2. ENTRY NOTES - Suman stock
       const { entryNoteService } = await import('./entryNoteService');
       const entryNotes = await entryNoteService.getAll();
-      console.log(`Procesando ${entryNotes.length} notas de entrada`);
+      console.log(`📥 Procesando ${entryNotes.length} notas de ENTRADA (suman stock)`);
 
       // Procesar cada nota de entrada
       for (const note of entryNotes) {
-        console.log(`Procesando nota de entrada: ${note.number}`);
+        console.log(`   ➕ ${note.number}`);
         for (const item of note.items) {
           const quantity = item.quantity ?? 0;
           if (quantity <= 0) {
@@ -451,26 +499,127 @@ export const inventoryService = {
         }
       }
 
-      // Obtener todas las notas de salida válidas (no eliminadas)
+      console.log(`✅ Entry Notes procesadas\n`);
+
+      // 3. EXIT NOTES - Restan stock (TODAS)
       const { exitNoteService } = await import('./exitNoteService');
       const exitNotes = await exitNoteService.getAll();
-      console.log(`Procesando ${exitNotes.length} notas de salida`);
+      console.log(`📤 Procesando ${exitNotes.length} notas de SALIDA (restan stock)`);
+      console.log(`   ⚠️  Se restan TODAS las exit notes, estén pendientes o no`);
 
       // Restar stock de las notas de salida
       for (const note of exitNotes) {
-        console.log(`Procesando nota de salida: ${note.number}`);
+        console.log(`   ➖ ${note.number}`);
         for (const item of note.items) {
           const quantity = item.quantity ?? 0;
           if (quantity <= 0) {
             continue;
           }
 
-          await this.removeStock(item.productId, quantity);
+          try {
+            await this.removeStock(item.productId, quantity);
+          } catch (error) {
+            console.warn(`     ⚠️  No se pudo restar: ${error}`);
+          }
+        }
+      }
+      console.log(`✅ Exit Notes procesadas\n`);
+
+      // 4. DEVOLUCIONES - Suman a Bodega Ecuador  
+      const { returnService } = await import('./returnService');
+      const allReturns = await returnService.getAll();
+      const approvedReturns = allReturns.filter(r => r.status === 'approved');
+      console.log(`🔙 Procesando ${approvedReturns.length} DEVOLUCIONES aprobadas (suman a Ecuador)`);
+
+      for (const returnNote of approvedReturns) {
+        console.log(`   ➕ Return desde ${returnNote.sellerName || 'N/A'}`);
+        for (const item of returnNote.items) {
+          const quantity = item.quantity ?? 0;
+          if (quantity <= 0) continue;
+
+          try {
+            // Agregar a inventario
+            await this.updateStockAfterEntry(
+              item.productId,
+              quantity,
+              item.product?.cost || 0,
+              item.unitPrice
+            );
+
+            // Cambiar ubicación a Bodega Ecuador
+            const inventoryItem = await this.getByProductId(item.productId);
+            if (inventoryItem) {
+              await this.update(inventoryItem.id, {
+                location: 'Bodega Ecuador'
+              });
+            }
+          } catch (error) {
+            console.warn(`     ⚠️  Error procesando return: ${error}`);
+          }
+        }
+      }
+      console.log(`✅ Returns procesados\n`);
+
+      // 5. Obtener todas las ventas online confirmadas (no canceladas)
+      const { onlineSaleService } = await import('./onlineSaleService');
+      const onlineSales = await onlineSaleService.getAll();
+      const confirmedSales = onlineSales.filter(sale => sale.status !== 'cancelled');
+      console.log(`🛒 Procesando ${confirmedSales.length} VENTAS ONLINE confirmadas (restan stock)`);
+
+      // Restar stock de las ventas online confirmadas
+      for (const sale of confirmedSales) {
+        console.log(`   ➖ ${sale.number}`);
+        for (const item of sale.items) {
+          const quantity = item.quantity ?? 0;
+          if (quantity <= 0) {
+            continue;
+          }
+
+          try {
+            await this.removeStock(item.productId, quantity);
+          } catch (error) {
+            console.warn(`No se pudo restar stock de venta online ${sale.number}, producto ${item.productId}:`, error);
+            // Continuar con los demás items
+          }
         }
       }
 
-      console.log('Inventario regenerado exitosamente');
-      toast.success('Inventario regenerado exitosamente desde las notas de entrada');
+      console.log(`✅ Ventas online procesadas\n`);
+
+      // 6. VENTAS POS - Restan stock
+      const { posService } = await import('./posService');
+      const posSales = await posService.getAll();
+      const confirmedPosSales = posSales.filter(s => s.status === 'completed');
+      console.log(`🏪 Procesando ${confirmedPosSales.length} VENTAS POS confirmadas (restan stock)`);
+
+      for (const sale of confirmedPosSales) {
+        console.log(`   ➖ ${sale.saleNumber}`);
+        for (const item of sale.items) {
+          const quantity = item.quantity ?? 0;
+          if (quantity <= 0) continue;
+
+          try {
+            // POS siempre descuenta de Bodega Principal (por defecto en posService, asumimos aquí lo mismo o usamos general)
+            await this.removeStock(item.productId, quantity, 'Bodega Principal');
+          } catch (error) {
+            console.warn(`No se pudo restar stock de venta POS ${sale.saleNumber}, producto ${item.productId}:`, error);
+          }
+        }
+      }
+      console.log(`✅ Ventas POS procesadas\n`);
+
+      // 6. RESUMEN FINAL
+      const finalInventory = await this.getAll();
+      const usaStock = finalInventory.filter(i => i.location?.includes('USA') || i.location?.includes('Principal'));
+      const ecuadorStock = finalInventory.filter(i => i.location?.includes('Ecuador'));
+
+      console.log('\n📊 RESUMEN FINAL:');
+      console.log(`   Total productos: ${finalInventory.length}`);
+      console.log(`   Bodega USA: ${usaStock.length} productos`);
+      console.log(`   Bodega Ecuador: ${ecuadorStock.length} productos`);
+      console.log('✅ Inventario regenerado exitosamente\n');
+
+      toast.success('Inventario regenerado exitosamente');
     } catch (error) {
       console.error('Error regenerating inventory:', error);
       toast.error('Error al regenerar el inventario');

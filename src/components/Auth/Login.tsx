@@ -19,43 +19,23 @@ const Login: React.FC = () => {
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
-      
+
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      
+
       console.log('Usuario autenticado:', user);
-      
+
       // Verificar si es admin
       const isAdmin = user.email === 'ueservicesllc1@gmail.com';
-      
+
       if (isAdmin) {
-        // Admin va directamente al dashboard
+        // Solo el admin va directamente al dashboard
         toast.success(`¡Bienvenido ${user.displayName}!`);
         navigate('/dashboard');
       } else {
-        // Verificar si es vendedor
-        try {
-          const sellers = await sellerService.getAll();
-          const isSeller = sellers.some(seller => seller.email === user.email);
-          
-          if (isSeller) {
-            // Mostrar modal de selección para vendedores
-            setLoggedInUser({
-              name: user.displayName || user.email || 'Usuario',
-              email: user.email || ''
-            });
-            setShowDestinationModal(true);
-          } else {
-            // Usuario no reconocido, redirigir a la tienda
-            toast.success(`¡Bienvenido ${user.displayName}!`);
-            navigate('/');
-          }
-        } catch (error) {
-          console.error('Error verificando vendedores:', error);
-          // En caso de error, redirigir a la tienda
-          toast.success(`¡Bienvenido ${user.displayName}!`);
-          navigate('/');
-        }
+        // TODOS los demás (vendedores y clientes) van a la tienda
+        toast.success(`¡Bienvenido ${user.displayName}!`);
+        navigate('/');
       }
     } catch (error: any) {
       console.error('Error en autenticación:', error);
@@ -187,8 +167,8 @@ const Login: React.FC = () => {
           userName={loggedInUser.name}
           onClose={() => {
             setShowDestinationModal(false);
-            // Si cierra sin seleccionar, redirigir al panel de vendedor por defecto
-            navigate('/dashboard');
+            // Si cierra sin seleccionar, redirigir a la tienda
+            navigate('/');
           }}
         />
       )}

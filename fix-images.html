@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reparar Imágenes de Productos</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button.wg {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+        }
+        button.wg:hover {
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+        }
+        button.fb {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+        }
+        button.fb:hover {
+            box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+        }
+        #log {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        .log-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .log-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .log-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Reparador de Imágenes de Productos</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Herramienta para arreglar las imágenes rotas de productos importados de Five Below y Walgreens
+        </p>
+        
+        <div class="button-group">
+            <button class="wg" onclick="fixWalgreensImages()" id="btnWG">
+                🏪 Arreglar Imágenes de Walgreens
+            </button>
+            
+            <button class="fb" onclick="fixFiveBelowImages()" id="btnFB">
+                🎯 Arreglar Imágenes de Five Below
+            </button>
+            
+            <button onclick="fixAllImages()">
+                ✨ Arreglar Todas las Imágenes
+            </button>
+        </div>
+
+        <div id="log">
+            <div class="log-entry log-info">
+                📋 Registro de actividades...
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.17.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, updateDoc, doc, query, where } from 'https://www.gstatic.com/firebasejs/9.17.0/firebase-firestore.js';
+
+        // Configuración de Firebase (reemplaza con tus credenciales)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDn5P4C_Ah1T6olr3j9CgQmr94XXIdxp6g",
+            authDomain: "compras-express-1be93.firebaseapp.com",
+            projectId: "compras-express-1be93",
+            storageBucket: "compras-express-1be93.firebasestorage.app",
+            messagingSenderId: "831933662734",
+            appId: "1:831933662734:web:4cbb0f5f7e2bd8a76a4c0d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        window.fixWalgreensImages = async function() {
+            const btn = document.getElementById('btnWG');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Procesando...';
+            
+            try {
+                addLog('Buscando productos de Walgreens...', 'info');
+                
+                const productsCollection = collection(db, 'products');
+                const q = query(productsCollection, where("origin", "==", "walgreens"));
+                const querySnapshot = await getDocs(q);
+
+                let updatedCount = 0;
+                let skippedCount = 0;
+
+                for (const docSnapshot of querySnapshot.docs) {
+                    const product = docSnapshot.data();
+                    const currentImageUrl = product.imageUrl || '';
+
+                    // Si la URL ya tiene el proxy, saltarla
+                    if (currentImageUrl.includes('wsrv.nl')) {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    // Si es una URL de Walgreens, envolverla con el proxy
+                    if (currentImageUrl.includes('pics.walgreens.com')) {
+                        const proxiedUrl = `https://wsrv.nl/?url=${currentImageUrl}`;
+
+                        await updateDoc(doc(db, 'products', docSnapshot.id), {
+                            imageUrl: proxiedUrl
+                        });
+
+                        updatedCount++;
+                        addLog(`✅ Actualizado: ${product.name}`, 'success');
+                    }
+                }
+
+                if (updatedCount > 0) {
+                    addLog(`✅ Total: ${updatedCount} imágenes de Walgreens actualizadas`, 'success');
+                } else {
+                    addLog(`ℹ️ No se encontraron imágenes de Walgreens para actualizar (${skippedCount} ya tenían proxy)`, 'info');
+                }
+            } catch (error) {
+                console.error('Error updating Walgreens images:', error);
+                addLog(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🏪 Arreglar Imágenes de Walgreens';
+            }
+        };
+
+        window.fixFiveBelowImages = async function() {
+            const btn = document.getElementById('btnFB');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Procesando...';
+            
+            try {
+                addLog('Buscando productos de Five Below...', 'info');
+                
+                const productsCollection = collection(db, 'products');
+                const q = query(productsCollection, where("origin", "==", "fivebelow"));
+                const querySnapshot = await getDocs(q);
+
+                let updatedCount = 0;
+                let skippedCount = 0;
+
+                for (const docSnapshot of querySnapshot.docs) {
+                    const product = docSnapshot.data();
+                    const currentImageUrl = product.imageUrl || '';
+
+                    // Si ya tiene el proxy, saltarla
+                    if (currentImageUrl.includes('wsrv.nl')) {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    // Si es una URL de Five Below, envolverla con el proxy
+                    if (currentImageUrl.includes('fbres.fivebelow.com')) {
+                        const proxiedUrl = `https://wsrv.nl/?url=${currentImageUrl}`;
+
+                        await updateDoc(doc(db, 'products', docSnapshot.id), {
+                            imageUrl: proxiedUrl
+                        });
+
+                        updatedCount++;
+                        addLog(`✅ Actualizado: ${product.name}`, 'success');
+                    }
+                }
+
+                if (updatedCount > 0) {
+                    addLog(`✅ Total: ${updatedCount} imágenes de Five Below actualizadas`, 'success');
+                } else {
+                    addLog(`ℹ️ No se encontraron imágenes de Five Below para actualizar (${skippedCount} ya tenían proxy)`, 'info');
+                }
+            } catch (error) {
+                console.error('Error updating Five Below images:', error);
+                addLog(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🎯 Arreglar Imágenes de Five Below';
+            }
+        };
+
+        window.fixAllImages = async function() {
+            addLog('🚀 Iniciando reparación completa...', 'info');
+            await fixWalgreensImages();
+            await fixFiveBelowImages();
+            addLog('✅ Reparación completa finalizada', 'success');
+        };
+
+        addLog('🎉 Herramienta cargada y lista para usar', 'success');
+    </script>
+</body>
+</html>

@@ -51,11 +51,11 @@ const ExitNotes: React.FC = () => {
   const [showChangeSellerModal, setShowChangeSellerModal] = useState(false);
   const [selectedNewSellerId, setSelectedNewSellerId] = useState('');
   const [showMigrateProductModal, setShowMigrateProductModal] = useState(false);
-  const [selectedProductToMigrate, setSelectedProductToMigrate] = useState<{item: any; note: ExitNote} | null>(null);
+  const [selectedProductToMigrate, setSelectedProductToMigrate] = useState<{ item: any; note: ExitNote } | null>(null);
   const [migrateToSellerId, setMigrateToSellerId] = useState('');
   const [isMigrating, setIsMigrating] = useState(false);
   const [showRemoveProductModal, setShowRemoveProductModal] = useState(false);
-  const [productToRemove, setProductToRemove] = useState<{index: number; item: any} | null>(null);
+  const [productToRemove, setProductToRemove] = useState<{ index: number; item: any } | null>(null);
   const [removalReason, setRemovalReason] = useState<'not-sent' | 'damaged'>('not-sent');
 
   const resetForm = () => {
@@ -85,23 +85,23 @@ const ExitNotes: React.FC = () => {
   // Detectar cuando se escanea un código de barras en el modal de productos
   useEffect(() => {
     if (!showProductGrid) return;
-    
+
     const trimmedSku = skuSearch.trim();
     if (trimmedSku.length < 8) return;
-    
+
     // Esperar un momento para que termine el escaneo completo
     const timer = setTimeout(() => {
       // Verificar que el valor no haya cambiado (escaneo completo)
       if (skuSearch.trim() === trimmedSku) {
         const product = products.find(p => p.sku === trimmedSku);
-        
+
         // Si encontramos un producto que coincide exactamente con el SKU escaneado
         if (product) {
           handleAddProductFromSearch(trimmedSku);
         }
       }
     }, 500); // Esperar 500ms después del último cambio
-    
+
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skuSearch, showProductGrid]);
@@ -110,7 +110,7 @@ const ExitNotes: React.FC = () => {
     setEditingNote(null);
     resetForm();
     setShowModal(true);
-    
+
     // Cargar borradores temporales disponibles
     loadTemporaryDrafts();
   };
@@ -155,7 +155,7 @@ const ExitNotes: React.FC = () => {
       sellerId: draft.sellerId,
       notes: draft.notes || ''
     });
-    
+
     const draftItems = draft.items.map((item: any) => ({
       id: item.id,
       productId: item.productId,
@@ -164,7 +164,7 @@ const ExitNotes: React.FC = () => {
       weight: item.weight,
       unitPrice: item.unitPrice
     }));
-    
+
     setItems(draftItems);
     toast.success('Borrador temporal cargado');
   };
@@ -201,7 +201,7 @@ const ExitNotes: React.FC = () => {
         inventoryService.getAll(),
         shippingService.getAll()
       ]);
-      
+
       // Sincronizar estados de las notas con sus paquetes asociados
       const updatedNotes = notesData.map(note => {
         if (note.shippingId) {
@@ -214,7 +214,7 @@ const ExitNotes: React.FC = () => {
         }
         return note;
       });
-      
+
       setNotes(updatedNotes);
       setProducts(productsData);
       setSellers(sellersData);
@@ -268,120 +268,120 @@ const ExitNotes: React.FC = () => {
   // Obtener stock disponible considerando la nota que se está editando
   const getAvailableStockForEdit = (productId: string, editingNote: ExitNote | null): number => {
     const baseStock = getAvailableStock(productId);
-    
+
     // Si no hay nota en edición, retornar stock base
     if (!editingNote) {
       return baseStock;
     }
-    
+
     // Buscar si el producto ya está en la nota original
     const originalItem = editingNote.items.find(item => item.productId === productId);
-    
+
     // Si el producto ya está en la nota original, agregar su cantidad al stock disponible
     // porque esa cantidad ya está "reservada" y se puede usar
     if (originalItem) {
       return baseStock + originalItem.quantity;
     }
-    
+
     return baseStock;
   };
 
-const calculateItemTotal = (item: ExitNote['items'][number]): number => {
-  const quantity = item.quantity ?? 0;
-  const unitPrice = item.unitPrice ?? 0;
-  const explicitTotal = item.totalPrice;
-
-  if (typeof explicitTotal === 'number') {
-    return explicitTotal;
-  }
-
-  return quantity * unitPrice;
-};
-
-const generateExitNotePdf = (note: ExitNote) => {
-  const doc = new jsPDF();
-  const marginLeft = 14;
-  const lineHeight = 6;
-
-  doc.setFontSize(16);
-  doc.text('Nota de Salida', marginLeft, 20);
-
-  doc.setFontSize(11);
-  const headerLines = [
-    `Número: ${note.number}`,
-    `Fecha: ${formatDate(note.date)}`,
-    `Vendedor: ${note.seller}`,
-    `Cliente: ${note.customer}`,
-    note.shippingId ? `Envío asociado: ${note.shippingId}` : ''
-  ].filter(Boolean) as string[];
-
-  headerLines.forEach((line, index) => {
-    doc.text(line, marginLeft, 32 + index * lineHeight);
-  });
-
-  if (note.notes) {
-    doc.setFontSize(10);
-    doc.text(
-      `Notas: ${note.notes}`,
-      marginLeft,
-      32 + headerLines.length * lineHeight + 4
-    );
-  }
-
-  const tableStartY = 60;
-  const tableBody = note.items.map((item, index) => {
-    const product = item.product || ({} as Product);
+  const calculateItemTotal = (item: ExitNote['items'][number]): number => {
     const quantity = item.quantity ?? 0;
-    const weight = item.weight ?? product.weight ?? 0;
-    const unitPrice =
-      item.unitPrice ??
-      product.salePrice1 ??
-      product.salePrice2 ??
-      product.cost ??
-      0;
-    const total = calculateItemTotal(item);
+    const unitPrice = item.unitPrice ?? 0;
+    const explicitTotal = item.totalPrice;
 
-    return [
-      String(index + 1),
-      product.name || 'Producto sin nombre',
-      product.sku || '—',
-      String(quantity),
-      `${weight} g`,
-      formatCurrency(unitPrice),
-      formatCurrency(total)
-    ];
-  });
+    if (typeof explicitTotal === 'number') {
+      return explicitTotal;
+    }
 
-  autoTable(doc, {
-    startY: tableStartY,
-    head: [['#', 'Producto', 'SKU', 'Cant.', 'Peso', 'Precio Unit.', 'Total']],
-    body: tableBody,
-    styles: { fontSize: 9, cellPadding: 2 },
-    headStyles: { fillColor: [17, 24, 39] }
-  });
+    return quantity * unitPrice;
+  };
 
-  const finalY =
-    ((doc as any).lastAutoTable?.finalY as number | undefined) ?? tableStartY;
+  const generateExitNotePdf = (note: ExitNote) => {
+    const doc = new jsPDF();
+    const marginLeft = 14;
+    const lineHeight = 6;
 
-  const subtotal = note.items.reduce(
-    (sum, item) => sum + calculateItemTotal(item),
-    0
-  );
-  const total = note.totalPrice ?? subtotal;
+    doc.setFontSize(16);
+    doc.text('Nota de Salida', marginLeft, 20);
 
-  doc.setFontSize(11);
-  doc.text(`Subtotal: ${formatCurrency(subtotal)}`, marginLeft, finalY + 10);
-  doc.text(`Total: ${formatCurrency(total)}`, marginLeft, finalY + 16);
+    doc.setFontSize(11);
+    const headerLines = [
+      `Número: ${note.number}`,
+      `Fecha: ${formatDate(note.date)}`,
+      `Vendedor: ${note.seller}`,
+      `Cliente: ${note.customer}`,
+      note.shippingId ? `Envío asociado: ${note.shippingId}` : ''
+    ].filter(Boolean) as string[];
 
-  doc.setFontSize(9);
-  doc.text(
-    'Generado automáticamente por el sistema de gestión de notas de salida.',
-    marginLeft,
-    finalY + 32
-  );
+    headerLines.forEach((line, index) => {
+      doc.text(line, marginLeft, 32 + index * lineHeight);
+    });
 
-  doc.save(`${note.number || 'nota-de-salida'}.pdf`);
-};
+    if (note.notes) {
+      doc.setFontSize(10);
+      doc.text(
+        `Notas: ${note.notes}`,
+        marginLeft,
+        32 + headerLines.length * lineHeight + 4
+      );
+    }
+
+    const tableStartY = 60;
+    const tableBody = note.items.map((item, index) => {
+      const product = item.product || ({} as Product);
+      const quantity = item.quantity ?? 0;
+      const weight = item.weight ?? product.weight ?? 0;
+      const unitPrice =
+        item.unitPrice ??
+        product.salePrice1 ??
+        product.salePrice2 ??
+        product.cost ??
+        0;
+      const total = calculateItemTotal(item);
+
+      return [
+        String(index + 1),
+        product.name || 'Producto sin nombre',
+        product.sku || '—',
+        String(quantity),
+        `${weight} g`,
+        formatCurrency(unitPrice),
+        formatCurrency(total)
+      ];
+    });
+
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [['#', 'Producto', 'SKU', 'Cant.', 'Peso', 'Precio Unit.', 'Total']],
+      body: tableBody,
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [17, 24, 39] }
+    });
+
+    const finalY =
+      ((doc as any).lastAutoTable?.finalY as number | undefined) ?? tableStartY;
+
+    const subtotal = note.items.reduce(
+      (sum, item) => sum + calculateItemTotal(item),
+      0
+    );
+    const total = note.totalPrice ?? subtotal;
+
+    doc.setFontSize(11);
+    doc.text(`Subtotal: ${formatCurrency(subtotal)}`, marginLeft, finalY + 10);
+    doc.text(`Total: ${formatCurrency(total)}`, marginLeft, finalY + 16);
+
+    doc.setFontSize(9);
+    doc.text(
+      'Generado automáticamente por el sistema de gestión de notas de salida.',
+      marginLeft,
+      finalY + 32
+    );
+
+    doc.save(`${note.number || 'nota-de-salida'}.pdf`);
+  };
 
   const addItem = () => {
     setItems([...items, { productId: '', quantity: 1, size: '', weight: 0, unitPrice: 0 }]);
@@ -416,7 +416,7 @@ const generateExitNotePdf = (note: ExitNote) => {
     // Obtener precio según el vendedor seleccionado
     const selectedSeller = sellers.find(s => s.id === formData.sellerId);
     let unitPrice = product.salePrice1; // Precio por defecto
-    
+
     if (selectedSeller) {
       unitPrice = selectedSeller.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
     }
@@ -450,8 +450,8 @@ const generateExitNotePdf = (note: ExitNote) => {
     // Verificar si el producto ya está en los items
     const existingItem = items.find(item => item.productId === product.id);
     if (existingItem) {
-      setItems(items.map(item => 
-        item.productId === product.id 
+      setItems(items.map(item =>
+        item.productId === product.id
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
@@ -470,7 +470,7 @@ const generateExitNotePdf = (note: ExitNote) => {
       if (selectedSeller) {
         unitPrice = selectedSeller.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
       }
-      
+
       setItems([...items, {
         productId: product.id,
         quantity: 1,
@@ -480,7 +480,7 @@ const generateExitNotePdf = (note: ExitNote) => {
       }]);
       toast.success(`Producto agregado: ${product.name}`);
     }
-    
+
     setSkuSearch('');
     setShowProductGrid(false);
   };
@@ -494,7 +494,7 @@ const generateExitNotePdf = (note: ExitNote) => {
       setSkuSearch('');
       return;
     }
-    
+
     // Verificar si el producto ya está en los items
     const existingItem = items.find(item => item.productId === product.id);
     if (existingItem) {
@@ -512,15 +512,15 @@ const generateExitNotePdf = (note: ExitNote) => {
       setSkuSearch('');
       return;
     }
-    
+
     // Obtener precio según el vendedor seleccionado
     const selectedSeller = sellers.find(s => s.id === formData.sellerId);
     let unitPrice = product.salePrice1; // Precio por defecto
-    
+
     if (selectedSeller) {
       unitPrice = selectedSeller.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
     }
-    
+
     // Agregar producto automáticamente
     const newItem = {
       productId: product.id,
@@ -529,10 +529,10 @@ const generateExitNotePdf = (note: ExitNote) => {
       weight: product.weight || 0,
       unitPrice: unitPrice
     };
-    
+
     setItems([...items, newItem]);
     toast.success(`Producto agregado: ${product.name}`);
-    
+
     // Limpiar campo de búsqueda y mantener el escáner abierto para siguiente escaneo
     setSkuSearch('');
     // NO cerrar el escáner para permitir escanear más productos
@@ -543,7 +543,7 @@ const generateExitNotePdf = (note: ExitNote) => {
   const updateItem = (index: number, field: string, value: any) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], [field]: value };
-    
+
     // Si cambió el producto, actualizar el precio, talla y peso según el vendedor
     if (field === 'productId') {
       const product = products.find(p => p.id === value);
@@ -554,12 +554,12 @@ const generateExitNotePdf = (note: ExitNote) => {
         newItems[index].unitPrice = price;
         newItems[index].size = product.size || '';
         newItems[index].weight = product.weight || 0;
-        
+
         // Cargar automáticamente el SKU en el campo de búsqueda
         setSkuSearch(product.sku);
       }
     }
-    
+
     setItems(newItems);
   };
 
@@ -584,7 +584,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
   const buildExitNoteItems = (selectedSeller: Seller) => {
     const exitNoteItems = items.map(item => {
-      const product = products.find(p => p.id === item.productId) 
+      const product = products.find(p => p.id === item.productId)
         || editingNote?.items.find(original => original.productId === item.productId)?.product;
 
       if (!product) {
@@ -646,15 +646,15 @@ const generateExitNotePdf = (note: ExitNote) => {
       // Guardar en localStorage como borrador temporal
       const existingDrafts = JSON.parse(localStorage.getItem('exitNoteDrafts') || '[]');
       const draftId = `draft_${Date.now()}`;
-      
+
       existingDrafts.push({
         id: draftId,
         ...temporaryNote,
         savedAt: new Date().toISOString()
       });
-      
+
       localStorage.setItem('exitNoteDrafts', JSON.stringify(existingDrafts));
-      
+
       toast.success('Nota de salida guardada temporalmente');
       console.log('Borrador guardado:', temporaryNote);
     } catch (error) {
@@ -742,23 +742,23 @@ const generateExitNotePdf = (note: ExitNote) => {
         notes: `Nota de salida: ${exitNoteData.number} - ${formData.notes || 'Sin notas adicionales'}`,
         sellerId: selectedSeller.id
       };
- 
+
       const shippingId = await shippingService.create(shippingPackageData);
- 
+
       await exitNoteService.update(createdExitNote, {
         shippingId,
         notes: `${formData.notes || ''} - Envío: ${shippingId}`.trim()
       });
- 
+
       // Determinar si la nota es de Ecuador basándose en el número de nota
       // Si el número contiene "ECU" o empieza con "NS-ECU-", es de Ecuador
       const isEcuadorNote = exitNoteData.number?.includes('ECU') || exitNoteData.number?.startsWith('NS-ECU-');
       const location = isEcuadorNote ? 'Bodega Ecuador' : undefined;
-      
+
       for (const item of exitNoteItems) {
         await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id, location);
       }
- 
+
       for (const item of exitNoteItems) {
         await sellerInventoryService.addToSellerInventory(
           selectedSeller.id,
@@ -851,7 +851,7 @@ const generateExitNotePdf = (note: ExitNote) => {
       for (const productId of originalProductIds) {
         const originalData = originalItemsMap.get(productId)!;
         const newData = newItemsMap.get(productId);
-        
+
         if (!newData) {
           // Item fue eliminado completamente - revertir todo
           let product: Product | null = products.find(p => p.id === productId) || originalData.item.product || null;
@@ -874,7 +874,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
           // Solo remover lo que realmente tiene disponible
           const quantityToRemove = Math.min(originalData.quantity, availableSellerQuantity);
-          
+
           // Restaurar al inventario principal solo lo que se puede remover del vendedor
           if (quantityToRemove > 0) {
             await inventoryService.updateStockAfterEntry(
@@ -916,7 +916,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
           // Solo remover la diferencia que realmente está disponible
           const quantityToRemove = Math.min(difference, availableSellerQuantity);
-          
+
           if (quantityToRemove > 0) {
             await inventoryService.updateStockAfterEntry(
               productId,
@@ -940,7 +940,7 @@ const generateExitNotePdf = (note: ExitNote) => {
       for (const productId of newProductIds) {
         const newData = newItemsMap.get(productId)!;
         const originalData = originalItemsMap.get(productId);
-        
+
         if (!originalData) {
           // Item completamente nuevo - validar stock y aplicar
           // No usar getAvailableStockForEdit aquí porque es un item completamente nuevo
@@ -1073,7 +1073,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
   const handleRemoveProductFromNote = (itemIndex: number) => {
     if (!editingNote) return;
-    
+
     const item = items[itemIndex];
     if (!item.productId) {
       // Si no tiene productId, solo remover de la lista
@@ -1081,9 +1081,9 @@ const generateExitNotePdf = (note: ExitNote) => {
       return;
     }
 
-    const product = products.find(p => p.id === item.productId) || 
-                    editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
-    
+    const product = products.find(p => p.id === item.productId) ||
+      editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
+
     if (!product) {
       toast.error('Producto no encontrado');
       return;
@@ -1099,9 +1099,9 @@ const generateExitNotePdf = (note: ExitNote) => {
     if (!editingNote || !productToRemove) return;
 
     const item = productToRemove.item;
-    const product = products.find(p => p.id === item.productId) || 
-                    editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
-    
+    const product = products.find(p => p.id === item.productId) ||
+      editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
+
     if (!product) {
       toast.error('Producto no encontrado');
       setShowRemoveProductModal(false);
@@ -1153,7 +1153,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
       // Construir items de la nota con la lista actualizada
       const exitNoteItems = updatedItems.map(item => {
-        const prod = products.find(p => p.id === item.productId) 
+        const prod = products.find(p => p.id === item.productId)
           || editingNote.items.find(original => original.productId === item.productId)?.product;
 
         if (!prod) {
@@ -1188,7 +1188,7 @@ const generateExitNotePdf = (note: ExitNote) => {
       });
 
       toast.success(`Producto eliminado de la nota${removalReason === 'not-sent' ? ' y agregado de vuelta al inventario' : ' (producto dañado, no agregado al inventario)'}`);
-      
+
       setShowRemoveProductModal(false);
       setProductToRemove(null);
     } catch (error) {
@@ -1201,16 +1201,16 @@ const generateExitNotePdf = (note: ExitNote) => {
 
   const handleReturnProductFromNote = async (itemIndex: number) => {
     if (!editingNote) return;
-    
+
     const item = items[itemIndex];
     if (!item.productId) {
       toast.error('Producto no válido');
       return;
     }
 
-    const product = products.find(p => p.id === item.productId) || 
-                    editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
-    
+    const product = products.find(p => p.id === item.productId) ||
+      editingNote.items.find(noteItem => noteItem.productId === item.productId)?.product;
+
     if (!product) {
       toast.error('Producto no encontrado');
       return;
@@ -1280,7 +1280,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
       // Construir items de la nota con la lista actualizada
       const exitNoteItems = updatedItems.map(item => {
-        const prod = products.find(p => p.id === item.productId) 
+        const prod = products.find(p => p.id === item.productId)
           || editingNote.items.find(original => original.productId === item.productId)?.product;
 
         if (!prod) {
@@ -1322,7 +1322,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
   const handleChangeSeller = async () => {
     if (!viewingNote) return;
-    
+
     if (!selectedNewSellerId) {
       toast.error('Por favor selecciona un vendedor');
       return;
@@ -1355,11 +1355,11 @@ const generateExitNotePdf = (note: ExitNote) => {
             priceType: newSeller.priceType
           }
         );
-        
+
         setShowChangeSellerModal(false);
         setSelectedNewSellerId('');
         setViewingNote(null);
-        
+
         // Recargar datos
         await loadNotes();
         toast.success('Vendedor cambiado exitosamente');
@@ -1378,7 +1378,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
     const { item, note } = selectedProductToMigrate;
     const newSeller = sellers.find(s => s.id === migrateToSellerId);
-    
+
     if (!newSeller) {
       toast.error('Vendedor destino no encontrado');
       return;
@@ -1419,7 +1419,7 @@ const generateExitNotePdf = (note: ExitNote) => {
         );
       });
       const newTotalPrice = updatedItems.reduce((sum, noteItem) => sum + noteItem.totalPrice, 0);
-      
+
       await exitNoteService.update(note.id, {
         items: updatedItems,
         totalPrice: newTotalPrice,
@@ -1428,7 +1428,7 @@ const generateExitNotePdf = (note: ExitNote) => {
 
       // 3. Obtener precio según el tipo de precio del nuevo vendedor
       const product = products.find(p => p.id === item.productId) || item.product;
-      const unitPrice = newSeller.priceType === 'price2' 
+      const unitPrice = newSeller.priceType === 'price2'
         ? (product.salePrice2 ?? product.salePrice1 ?? item.unitPrice)
         : (product.salePrice1 ?? item.unitPrice);
 
@@ -1501,15 +1501,15 @@ const generateExitNotePdf = (note: ExitNote) => {
     note.customer.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-const handleDownloadPdf = (note: ExitNote) => {
-  try {
-    generateExitNotePdf(note);
-    toast.success('Descargando PDF de la nota de salida');
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    toast.error('No se pudo generar el PDF');
-  }
-};
+  const handleDownloadPdf = (note: ExitNote) => {
+    try {
+      generateExitNotePdf(note);
+      toast.success('Descargando PDF de la nota de salida');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('No se pudo generar el PDF');
+    }
+  };
 
   if (loading) {
     return (
@@ -1528,14 +1528,14 @@ const handleDownloadPdf = (note: ExitNote) => {
           <p className="text-gray-600">Gestiona las ventas y entregas a vendedores</p>
         </div>
         <div className="flex space-x-3">
-          <button 
+          <button
             onClick={openModal}
             className="btn-primary flex items-center"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nueva Nota
           </button>
-          <button 
+          <button
             onClick={loadTemporaryNotes}
             className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors flex items-center"
           >
@@ -1572,7 +1572,7 @@ const handleDownloadPdf = (note: ExitNote) => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 rounded-lg">
@@ -1600,7 +1600,7 @@ const handleDownloadPdf = (note: ExitNote) => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-green-100 rounded-lg">
@@ -1614,7 +1614,7 @@ const handleDownloadPdf = (note: ExitNote) => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-purple-100 rounded-lg">
@@ -1984,14 +1984,14 @@ const handleDownloadPdf = (note: ExitNote) => {
                             <option value="">Seleccionar producto</option>
                             {products.map(product => {
                               // Usar getAvailableStockForEdit cuando se está editando para considerar el stock ya reservado
-                              const availableStock = editingNote 
+                              const availableStock = editingNote
                                 ? getAvailableStockForEdit(product.id, editingNote)
                                 : getAvailableStock(product.id);
                               const isExistingItem = Boolean(editingNote && editingNote.items.some(noteItem => noteItem.productId === product.id));
                               const disableOption = !isExistingItem && availableStock === 0;
                               return (
-                                <option 
-                                  key={product.id} 
+                                <option
+                                  key={product.id}
                                   value={product.id}
                                   disabled={disableOption}
                                   title={`${product.name} - ${product.sku} ${product.size ? `(Talla: ${product.size})` : ''} - Stock: ${availableStock}`}
@@ -2042,7 +2042,7 @@ const handleDownloadPdf = (note: ExitNote) => {
                             min={editingNote && ['delivered', 'received'].includes(editingNote.status) ? 0 : 1}
                             max={item.productId ? (() => {
                               // Usar getAvailableStockForEdit cuando se está editando para considerar el stock ya reservado
-                              const availableStock = editingNote 
+                              const availableStock = editingNote
                                 ? getAvailableStockForEdit(item.productId, editingNote)
                                 : getAvailableStock(item.productId);
                               // Si estamos editando una nota ya enviada/recibida y el producto ya estaba en la nota original,
@@ -2151,13 +2151,12 @@ const handleDownloadPdf = (note: ExitNote) => {
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-medium text-gray-900">Peso Total:</span>
                       <div className="text-right">
-                        <span className={`text-xl font-bold ${
-                          (totalWeight / 453.592) > 8.5 
-                            ? 'text-red-600' 
-                            : (totalWeight / 453.592) > 7.5 
-                            ? 'text-yellow-600' 
-                            : 'text-green-600'
-                        }`}>
+                        <span className={`text-xl font-bold ${(totalWeight / 453.592) > 8.5
+                            ? 'text-red-600'
+                            : (totalWeight / 453.592) > 7.5
+                              ? 'text-yellow-600'
+                              : 'text-green-600'
+                          }`}>
                           {(totalWeight / 453.592).toFixed(2)} lbs
                         </span>
                         <div className="text-sm text-gray-500">
@@ -2409,7 +2408,7 @@ const handleDownloadPdf = (note: ExitNote) => {
                             <div className="flex items-center space-x-2">
                               {item.product.color && (
                                 <>
-                                  <div 
+                                  <div
                                     className="w-4 h-4 rounded-full border border-gray-300"
                                     style={{ backgroundColor: item.product.color }}
                                     title={item.product.color}
@@ -2725,10 +2724,10 @@ const handleDownloadPdf = (note: ExitNote) => {
 
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-900">
-                <strong>Producto:</strong> {productToRemove.item.productId ? 
-                  (products.find(p => p.id === productToRemove.item.productId)?.name || 
-                   editingNote.items.find(noteItem => noteItem.productId === productToRemove.item.productId)?.product?.name || 
-                   'Producto desconocido') : 
+                <strong>Producto:</strong> {productToRemove.item.productId ?
+                  (products.find(p => p.id === productToRemove.item.productId)?.name ||
+                    editingNote.items.find(noteItem => noteItem.productId === productToRemove.item.productId)?.product?.name ||
+                    'Producto desconocido') :
                   'Producto sin seleccionar'}
               </p>
               <p className="text-sm text-blue-900">
@@ -2801,7 +2800,7 @@ const handleDownloadPdf = (note: ExitNote) => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            
+
             {/* Buscador por SKU */}
             <div className="p-4 border-b bg-gray-50">
               <div className="flex items-center space-x-3">
@@ -2844,7 +2843,7 @@ const handleDownloadPdf = (note: ExitNote) => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                 {products
@@ -2853,78 +2852,90 @@ const handleDownloadPdf = (note: ExitNote) => {
                     return product.sku.toLowerCase().includes(skuSearch.toLowerCase());
                   })
                   .map((product) => {
-                  // Verificar si el producto está en stock
-                  const productInInventory = inventory.find(item => item.productId === product.id);
-                  const isInStock = productInInventory && productInInventory.quantity > 0;
-                  
-                  return (
-                    <div
-                      key={product.id}
-                      className={`border border-gray-200 rounded-lg p-3 transition-shadow ${
-                        isInStock 
-                          ? 'hover:shadow-md cursor-pointer' 
-                          : 'opacity-50 cursor-not-allowed'
-                      }`}
-                      onClick={() => {
-                        if (!isInStock) return; // No permitir click si no hay stock
-                        
-                        const existingItem = items.find(item => item.productId === product.id);
-                        if (existingItem) {
-                          setItems(items.map(item => 
-                            item.productId === product.id 
-                              ? { ...item, quantity: item.quantity + 1 }
-                              : item
-                          ));
-                        } else {
-                          setItems([...items, {
-                            productId: product.id,
-                            quantity: 1,
-                            size: product.size || '',
-                            weight: product.weight || 0,
-                            unitPrice: product.salePrice1 || 0
-                          }]);
-                        }
-                        setShowProductGrid(false);
-                      }}
-                    >
-                    <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                          <Package className="h-8 w-8" />
+                    // Determinar si la nota es de Ecuador basándose en el número
+                    const noteNumber = editingNote?.number || '';
+                    const isEcuadorNote = noteNumber.includes('ECU') || noteNumber.startsWith('NS-ECU-');
+
+                    // Verificar stock según la bodega correcta
+                    const productInInventory = inventory.find(item => {
+                      if (item.productId !== product.id) return false;
+
+                      // Si es nota de Ecuador, buscar en Bodega Ecuador
+                      if (isEcuadorNote) {
+                        return item.location?.toLowerCase().includes('ecuador') || item.location === 'Bodega Ecuador';
+                      }
+
+                      // Si es nota normal, buscar en Bodega Principal (o sin "ecuador")
+                      return !item.location?.toLowerCase().includes('ecuador') && item.location !== 'Bodega Ecuador';
+                    });
+
+                    const isInStock = productInInventory && productInInventory.quantity > 0;
+
+                    // Si no hay stock en la bodega correcta, no mostrar el producto
+                    if (!isInStock) return null;
+
+                    return (
+                      <div
+                        key={product.id}
+                        className="border border-gray-200 rounded-lg p-3 transition-shadow hover:shadow-md cursor-pointer"
+                        onClick={() => {
+                          const existingItem = items.find(item => item.productId === product.id);
+                          if (existingItem) {
+                            setItems(items.map(item =>
+                              item.productId === product.id
+                                ? { ...item, quantity: item.quantity + 1 }
+                                : item
+                            ));
+                          } else {
+                            setItems([...items, {
+                              productId: product.id,
+                              quantity: 1,
+                              size: product.size || '',
+                              weight: product.weight || 0,
+                              unitPrice: product.salePrice1 || 0
+                            }]);
+                          }
+                          setShowProductGrid(false);
+                        }}
+                      >
+                        <div className="aspect-square mb-2 bg-gray-100 rounded-lg overflow-hidden">
+                          {product.imageUrl ? (
+                            <img
+                              src={product.imageUrl}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                              <Package className="h-8 w-8" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="text-center">
-                      <h4 className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
-                        {product.name}
-                      </h4>
-                      <p className="text-xs text-gray-500 mb-1">SKU: {product.sku}</p>
-                      {product.color && (
-                        <p className="text-xs text-gray-500 mb-1">Color: {product.color}</p>
-                      )}
-                      {product.size && (
-                        <p className="text-xs text-gray-500 mb-1">Talla: {product.size}</p>
-                      )}
-                      <p className="text-xs font-semibold text-green-600">
-                        ${product.salePrice1?.toFixed(2) || '0.00'}
-                      </p>
-                      {!isInStock && (
-                        <div className="mt-2 px-2 py-1 bg-red-100 text-red-600 text-xs rounded-full">
-                          Sin Stock
+                        <div className="text-center">
+                          <h4 className="text-sm font-medium text-gray-900 mb-1 line-clamp-2">
+                            {product.name}
+                          </h4>
+                          <p className="text-xs text-gray-500 mb-1">SKU: {product.sku}</p>
+                          {product.color && (
+                            <p className="text-xs text-gray-500 mb-1">Color: {product.color}</p>
+                          )}
+                          {product.size && (
+                            <p className="text-xs text-gray-500 mb-1">Talla: {product.size}</p>
+                          )}
+                          <p className="text-xs font-semibold text-green-600">
+                            ${product.salePrice1?.toFixed(2) || '0.00'}
+                          </p>
+                          {isEcuadorNote && (
+                            <div className="mt-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full inline-block">
+                              📦 Ecuador
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  );
-                })}
+                      </div>
+                    );
+                  }).filter(Boolean)}
               </div>
-              
+
               {products.length === 0 && (
                 <div className="text-center py-8">
                   <Package className="mx-auto h-12 w-12 text-gray-400" />

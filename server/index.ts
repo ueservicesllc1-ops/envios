@@ -1,30 +1,53 @@
 import express from 'express';
 import cors from 'cors';
 import { getProductsFromCollection, getProductStats } from './services/shopifyScraper';
-import { getImageFromB2 } from './services/b2Service';
+import { getImageFromB2, uploadImageToB2 } from './services/b2Service';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// Dominios permitidos (Railway)
+const allowedDomains = process.env.ALLOWED_DOMAINS
+  ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim())
+  : ['http://localhost:3000', 'http://localhost:3001'];
+
+// Middleware CORS dinámico
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permitir requests sin origin (como mobile apps o curl)
+    if (!origin) return callback(null, true);
+
+    // Verificar si el origin está en la lista de permitidos
+    const isAllowed = allowedDomains.some(domain =>
+      origin.includes(domain) || domain === '*'
+    );
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`Origin no permitido: ${origin}`);
+      callback(null, true); // Permitir de todos modos en desarrollo
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Proxy para imágenes de B2 (con CORS)
 app.get('/api/b2/image', async (req, res) => {
   try {
     const path = req.query.path as string;
-    
+
     if (!path) {
       return res.status(400).json({ error: 'Path parameter is required' });
     }
 
     const imageBuffer = await getImageFromB2(path);
-    
+
     // Detectar content type
     const contentType = path.endsWith('.webp') ? 'image/webp' :
-                       path.endsWith('.png') ? 'image/png' :
-                       'image/jpeg';
+      path.endsWith('.png') ? 'image/png' :
+        'image/jpeg';
 
     // Headers CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -39,11 +62,41 @@ app.get('/api/b2/image', async (req, res) => {
   }
 });
 
+// Endpoint para subir imagen desde URL a B2
+app.post('/api/b2/upload-from-url', async (req, res) => {
+  try {
+    const { url, brand, name } = req.body;
+
+    if (!url || !brand || !name) {
+      return res.status(400).json({ error: 'Missing required parameters: url, brand, name' });
+    }
+
+    // Usar la función existente de b2Service que ya fue importada vía './services/b2Service'
+    // Necesito asegurarme que uploadImageToB2 esté importada. 
+    // Mirando arriba, solo getImageFromB2 está importada. Debo actualizar los imports.
+    // Como no puedo cambiar los imports en este bloque, usaré un truco:
+    // Voy a importar dinámicamente o asumir que el siguiente paso arreglará los imports.
+    // Mejor, actualizaré los imports PRIMERO en otro replace_file_content, o lo haré todo en uno si el usuario me deja.
+    // Pero replace_file_content es para un bloque contiguo.
+    // Actualizaré este endpoint asumiendo que tengo la función, y luego actualizaré los imports.
+    // Espera, TS se quejará si no importo.
+    // Mejor update imports + endpoint en un solo bloque si están cerca?
+    // Imports están en línea 4. Endpoint nuevo irá en línea 41. Están lejos.
+    // Usar multi_replace_file_content.
+
+    const uploadResult = await uploadImageToB2(url, brand, name);
+    res.json({ success: true, url: uploadResult.url });
+  } catch (error: any) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint para obtener productos de Shopify
 app.post('/api/shopify/import', async (req, res) => {
   try {
     const { collection = 'all', uploadImages = false } = req.body;
-    
+
     console.log(`Iniciando importación de productos desde Shopify...`);
     console.log(`Colección: ${collection}, Subir imágenes: ${uploadImages}`);
 

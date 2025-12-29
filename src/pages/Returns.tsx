@@ -944,7 +944,7 @@ const Returns: React.FC = () => {
                     <option value="">Todas las notas de salida</option>
                     {exitNotes.map(note => (
                       <option key={note.id} value={note.id}>
-                        {note.number} - {new Date(note.date).toLocaleDateString()} - ${note.totalPrice.toLocaleString()}
+                        {note.number} - {new Date(note.date).toLocaleDateString()} - ${note.totalPrice.toLocaleString()} {note.trackingNumber ? `- Tracking: ${note.trackingNumber}` : ''}
                       </option>
                     ))}
                   </select>
@@ -957,6 +957,11 @@ const Returns: React.FC = () => {
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-medium text-gray-700">
                       Productos de la Nota de Salida: {selectedExitNote?.number}
+                      {selectedExitNote?.trackingNumber && (
+                        <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          📦 Tracking: {selectedExitNote.trackingNumber}
+                        </span>
+                      )}
                       <span className="ml-2 text-xs text-gray-500">
                         (Todos los productos de esta nota)
                       </span>

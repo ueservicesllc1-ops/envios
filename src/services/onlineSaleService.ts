@@ -1,12 +1,13 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  getDocs, 
-  query, 
+import {
+  collection,
+  doc,
+  addDoc,
+  getDocs,
+  query,
   orderBy,
   where,
-  Timestamp 
+  Timestamp,
+  updateDoc
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { inventoryService } from './inventoryService';
@@ -18,18 +19,32 @@ export interface OnlineSale {
   number: string;
   items: OnlineSaleItem[];
   totalAmount: number;
+  shippingCost?: number; // Costo de envío
+  shippingWeight?: number; // Peso total en libras
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
   customerAddress?: string;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'arrived_ecuador' | 'delivered' | 'cancelled';
   paymentMethod: 'cash' | 'card' | 'transfer' | 'banco_pichincha' | 'paypal';
   receiptUrl?: string; // URL del recibo de transferencia/depósito
   notes?: string;
   createdAt: Date;
   confirmedAt?: Date;
+  processingAt?: Date;
   shippedAt?: Date;
+  arrivedEcuadorAt?: Date;
   deliveredAt?: Date;
+  // Tracking detallado
+  trackingStage?: 'order_received' | 'preparing' | 'airport_departure' | 'airport_arrival' | 'customs' | 'warehouse_ecuador' | 'ready_pickup' | 'delivered';
+  trackingHistory?: TrackingEvent[];
+  notificationSent?: boolean; // Si ya se envió notificación de llegada a Ecuador
+}
+
+export interface TrackingEvent {
+  stage: string;
+  timestamp: Date;
+  description: string;
 }
 
 export interface OnlineSaleItem {
@@ -40,6 +55,7 @@ export interface OnlineSaleItem {
   unitPrice: number;
   totalPrice: number;
   location: string; // Bodega USA o Bodega Ecuador
+  imageUrl?: string; // URL de la imagen del producto
 }
 
 // Utilidades para conversión de fechas
@@ -59,11 +75,13 @@ export const onlineSaleService = {
       const docRef = await addDoc(collection(db, 'onlineSales'), {
         ...sale,
         createdAt: convertToTimestamp(sale.createdAt),
-        confirmedAt: sale.confirmedAt ? convertToTimestamp(sale.confirmedAt) : undefined,
-        shippedAt: sale.shippedAt ? convertToTimestamp(sale.shippedAt) : undefined,
-        deliveredAt: sale.deliveredAt ? convertToTimestamp(sale.deliveredAt) : undefined
+        confirmedAt: sale.confirmedAt ? convertToTimestamp(sale.confirmedAt) : null,
+        processingAt: sale.processingAt ? convertToTimestamp(sale.processingAt) : null,
+        shippedAt: sale.shippedAt ? convertToTimestamp(sale.shippedAt) : null,
+        arrivedEcuadorAt: sale.arrivedEcuadorAt ? convertToTimestamp(sale.arrivedEcuadorAt) : null,
+        deliveredAt: sale.deliveredAt ? convertToTimestamp(sale.deliveredAt) : null
       });
-      
+
       // Actualizar inventario para cada producto
       for (const item of sale.items) {
         await inventoryService.updateStockAfterExit(
@@ -88,7 +106,7 @@ export const onlineSaleService = {
         console.error('Error creating accounting entry:', accountingError);
         // No lanzar error para no interrumpir la creación de la venta
       }
-      
+
       toast.success('Venta registrada exitosamente');
       return docRef.id;
     } catch (error) {
@@ -103,13 +121,15 @@ export const onlineSaleService = {
     try {
       const q = query(collection(db, 'onlineSales'), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: convertTimestamp(doc.data().createdAt),
         confirmedAt: doc.data().confirmedAt ? convertTimestamp(doc.data().confirmedAt) : undefined,
+        processingAt: doc.data().processingAt ? convertTimestamp(doc.data().processingAt) : undefined,
         shippedAt: doc.data().shippedAt ? convertTimestamp(doc.data().shippedAt) : undefined,
+        arrivedEcuadorAt: doc.data().arrivedEcuadorAt ? convertTimestamp(doc.data().arrivedEcuadorAt) : undefined,
         deliveredAt: doc.data().deliveredAt ? convertTimestamp(doc.data().deliveredAt) : undefined
       })) as OnlineSale[];
     } catch (error) {
@@ -128,18 +148,148 @@ export const onlineSaleService = {
         orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: convertTimestamp(doc.data().createdAt),
         confirmedAt: doc.data().confirmedAt ? convertTimestamp(doc.data().confirmedAt) : undefined,
+        processingAt: doc.data().processingAt ? convertTimestamp(doc.data().processingAt) : undefined,
         shippedAt: doc.data().shippedAt ? convertTimestamp(doc.data().shippedAt) : undefined,
+        arrivedEcuadorAt: doc.data().arrivedEcuadorAt ? convertTimestamp(doc.data().arrivedEcuadorAt) : undefined,
         deliveredAt: doc.data().deliveredAt ? convertTimestamp(doc.data().deliveredAt) : undefined
       })) as OnlineSale[];
     } catch (error) {
       console.error('Error getting online sales by status:', error);
       toast.error('Error al cargar las ventas');
+      throw error;
+    }
+  },
+
+  // Actualizar estado de venta
+  async updateStatus(id: string, status: OnlineSale['status']): Promise<void> {
+    try {
+      const docRef = doc(db, 'onlineSales', id);
+      const updateData: any = { status };
+
+      if (status === 'confirmed') updateData.confirmedAt = Timestamp.now();
+      if (status === 'processing') updateData.processingAt = Timestamp.now();
+      if (status === 'shipped') updateData.shippedAt = Timestamp.now();
+      if (status === 'arrived_ecuador') updateData.arrivedEcuadorAt = Timestamp.now();
+      if (status === 'delivered') updateData.deliveredAt = Timestamp.now();
+
+      await updateDoc(docRef, updateData);
+      toast.success(`Pedido actualizado a ${status}`);
+    } catch (error) {
+      console.error('Error updating sale status:', error);
+      toast.error('Error al actualizar el estado');
+      throw error;
+    }
+  },
+
+  // Eliminar venta y devolver stock al inventario
+  async delete(id: string): Promise<void> {
+    try {
+      // Primero obtener los detalles de la venta
+      const sales = await this.getAll();
+      const sale = sales.find(s => s.id === id);
+
+      if (!sale) {
+        throw new Error('Venta no encontrada');
+      }
+
+      // ⚠️ IMPORTANTE: Verificar si ya está cancelado
+      if (sale.status === 'cancelled') {
+        toast('Este pedido ya fue cancelado anteriormente', { icon: 'ℹ️' });
+        return; // No devolver stock de nuevo
+      }
+
+      console.log(`🗑️ Eliminando pedido ${sale.number} y devolviendo stock...`);
+
+      // Devolver el stock al inventario para cada producto
+      for (const item of sale.items) {
+        try {
+          console.log(`  📦 Devolviendo ${item.quantity}x ${item.productName} (ID: ${item.productId})`);
+          await inventoryService.returnStockAfterDelete(
+            item.productId,
+            item.quantity
+          );
+        } catch (inventoryError) {
+          console.error(`Error devolviendo stock del producto ${item.productId}:`, inventoryError);
+          // Continuar con los demás productos
+        }
+      }
+
+      // Marcar como cancelado
+      const docRef = doc(db, 'onlineSales', id);
+      await updateDoc(docRef, { status: 'cancelled' });
+
+      console.log(`✅ Pedido ${sale.number} cancelado y stock devuelto`);
+      toast.success('Pedido cancelado y stock devuelto al inventario');
+    } catch (error) {
+      console.error('Error deleting online sale:', error);
+      toast.error('Error al eliminar el pedido');
+      throw error;
+    }
+  },
+
+  // Actualizar tracking stage del pedido
+  async updateTracking(
+    id: string,
+    newStage: 'order_received' | 'preparing' | 'airport_departure' | 'airport_arrival' | 'customs' | 'warehouse_ecuador' | 'ready_pickup' | 'delivered',
+    description: string
+  ): Promise<void> {
+    try {
+      const sales = await this.getAll();
+      const sale = sales.find(s => s.id === id);
+
+      if (!sale) {
+        throw new Error('Pedido no encontrado');
+      }
+
+      // Crear evento de tracking
+      const trackingEvent: TrackingEvent = {
+        stage: newStage,
+        timestamp: new Date(),
+        description
+      };
+
+      // Agregar al historial
+      const currentHistory = sale.trackingHistory || [];
+      const updatedHistory = [...currentHistory, trackingEvent];
+
+      const docRef = doc(db, 'onlineSales', id);
+      const updateData: any = {
+        trackingStage: newStage,
+        trackingHistory: updatedHistory.map(event => ({
+          ...event,
+          timestamp: convertToTimestamp(event.timestamp)
+        }))
+      };
+
+      // Si llega a bodega Ecuador o está listo, enviar notificación
+      if ((newStage === 'warehouse_ecuador' || newStage === 'ready_pickup') && !sale.notificationSent) {
+        updateData.notificationSent = true;
+
+        // Importar dinámicamente el servicio de notificaciones
+        const { notificationService } = await import('./notificationService');
+
+        await notificationService.notifyReadyForPickup(
+          sale.id,
+          sale.number,
+          sale.customerEmail || '',
+          sale.customerName,
+          sale.customerPhone
+        );
+      }
+
+      // Actualizar en Firebase
+      await updateDoc(docRef, updateData);
+
+      toast.success(`Tracking actualizado: ${description}`);
+    } catch (error) {
+      console.error('Error updating tracking:', error);
+      toast.error('Error al actualizar tracking');
       throw error;
     }
   }

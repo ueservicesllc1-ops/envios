@@ -1,0 +1,14 @@
+{
+    "REACT_APP_FIREBASE_API_KEY": "AIzaSyDpgYROmKPvfD4Ak0OJiLe3ogjJCH7R0lo",
+    "REACT_APP_FIREBASE_AUTH_DOMAIN": "ueservicesllc-1.firebaseapp.com",
+    "REACT_APP_FIREBASE_PROJECT_ID": "ueservicesllc-1",
+    "REACT_APP_FIREBASE_STORAGE_BUCKET": "ueservicesllc-1.firebasestorage.app",
+    "REACT_APP_FIREBASE_MESSAGING_SENDER_ID": "932821685330",
+    "REACT_APP_FIREBASE_APP_ID": "1:932821685330:web:65c4c0a1b0bc72b11c2e57",
+    "REACT_APP_FIREBASE_MEASUREMENT_ID": "G-3HBHK0PJRC",
+    "ALLOWED_DOMAINS": "comprasexpress.us,ueservicesllc.com,localhost:3000,localhost:3001",
+    "PRIMARY_DOMAIN": "comprasexpress.us",
+    "REACT_APP_API_URL": "https://api-comprasexpress.up.railway.app",
+    "NODE_ENV": "production",
+    "PORT": "3001"
+}

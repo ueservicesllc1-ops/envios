@@ -15,6 +15,8 @@ export interface Product {
   originalPrice?: number; // Precio original de venta en tiendas físicas
   barcode?: string;
   imageUrl?: string;
+  images?: string[]; // Additional images for carousel
+  origin?: 'local' | 'fivebelow' | 'walgreens'; // Origen del producto
   // Campos específicos para perfumes
   brand?: string; // Marca del perfume
   perfumeName?: string; // Nombre específico del perfume
@@ -85,6 +87,7 @@ export interface ExitNote {
   notes?: string;
   receivedAt?: Date;
   shippingId?: string; // ID del envío asociado
+  trackingNumber?: string; // Número de tracking
   createdAt: Date;
   createdBy: string;
 }
@@ -201,8 +204,8 @@ export interface SellerInventoryItem {
 export interface PaymentNote {
   id: string;
   number: string;
-  sellerId: string;
-  sellerName: string;
+  sellerId?: string;
+  sellerName?: string;
   items: PaymentNoteItem[];
   totalAmount: number;
   status: 'pending' | 'approved' | 'rejected';
@@ -210,6 +213,11 @@ export interface PaymentNote {
   approvedAt?: Date;
   approvedBy?: string;
   notes?: string;
+  paymentDate?: Date;
+  reference?: string;
+  paymentMethod?: 'cash' | 'bank_deposit';
+  receiptImageUrl?: string;
+  sourceType?: 'seller' | 'customer';
 }
 
 export interface PaymentNoteItem {
@@ -266,6 +274,79 @@ export interface Perfume {
   shopifyProductId?: string; // ID del producto en Shopify
   shopifyVariantId?: string; // ID de la variante en Shopify
   isActive: boolean; // Si está visible en la tienda
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Tipos para Point of Sale (POS) - Sistema de Facturación
+export interface PointOfSale {
+  id: string;
+  saleNumber: string; // Formato: POS-000001
+  date: Date;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  customerAddress?: string;
+  items: POSItem[];
+  subtotal: number;
+  tax: number; // IVA si aplica (0% por ahora)
+  discount: number;
+  total: number;
+  paymentMethod: 'cash' | 'card' | 'transfer' | 'mixed';
+  cashReceived?: number;
+  change?: number;
+  cardAmount?: number;
+  transferAmount?: number;
+  status: 'completed' | 'cancelled' | 'refunded';
+  notes?: string;
+  receiptUrl?: string; // URL del recibo PDF
+  cashRegisterId?: string; // ID de la caja que procesó la venta
+  createdBy: string; // Usuario que realizó la venta
+  createdAt: Date;
+}
+
+export interface POSItem {
+  id: string;
+  productId: string;
+  product: Product;
+  quantity: number;
+  unitPrice: number;
+  discount: number; // Descuento por item
+  totalPrice: number; // (unitPrice * quantity) - discount
+}
+
+// Cash Register - Caja Registradora
+export interface CashRegister {
+  id: string;
+  registerNumber: string;
+  openedAt: Date;
+  openedBy: string;
+  closedAt?: Date;
+  closedBy?: string;
+  initialCash: number; // Fondo inicial
+  finalCash?: number; // Efectivo al cerrar
+  totalSales: number; // Total de ventas
+  totalCash: number; // Total en efectivo
+  totalCard: number; // Total con tarjeta
+  totalTransfer: number; // Total por transferencia
+  expectedCash: number; // Efectivo esperado: initialCash + totalCash
+  cashDifference?: number; // Diferencia: finalCash - expectedCash
+  salesCount: number; // Número de ventas
+  status: 'open' | 'closed';
+  notes?: string;
+  createdAt: Date;
+}
+
+// Customer - Cliente para POS
+export interface POSCustomer {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  totalPurchases: number; // Total histórico de compras
+  lastPurchaseDate?: Date;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

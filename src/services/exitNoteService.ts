@@ -1,15 +1,15 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   getDoc,
-  getDocs, 
-  query, 
+  getDocs,
+  query,
   orderBy,
   where,
-  Timestamp 
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { ExitNote } from '../types';
@@ -38,7 +38,7 @@ export const exitNoteService = {
         date: convertToTimestamp(note.date),
         createdAt: convertToTimestamp(note.createdAt)
       });
-      
+
       // Registrar venta en contabilidad automáticamente
       try {
         await exitNoteAccountingService.create({
@@ -53,7 +53,7 @@ export const exitNoteService = {
         console.error('Error creating accounting entry:', accountingError);
         // No lanzar error para no interrumpir la creación de la nota
       }
-      
+
       toast.success('Nota de salida creada exitosamente');
       return docRef.id;
     } catch (error) {
@@ -78,7 +78,7 @@ export const exitNoteService = {
         updateData.receivedAt = convertToTimestamp(note.receivedAt);
       }
       await updateDoc(docRef, updateData);
-      
+
       // Si se marca como entregada, actualizar inventario del vendedor
       if (note.status === 'delivered') {
         try {
@@ -86,7 +86,7 @@ export const exitNoteService = {
           const noteDoc = await getDoc(docRef);
           if (noteDoc.exists()) {
             const noteData = noteDoc.data();
-            
+
             // Agregar productos al inventario del vendedor
             for (const item of noteData.items) {
               const product = await productService.getById(item.productId);
@@ -105,7 +105,7 @@ export const exitNoteService = {
           // No lanzar error aquí para no interrumpir la actualización de la nota
         }
       }
-      
+
       toast.success('Nota de salida actualizada exitosamente');
     } catch (error) {
       console.error('Error updating exit note:', error);
@@ -125,6 +125,11 @@ export const exitNoteService = {
 
       // Devolver productos al inventario
       const { inventoryService } = await import('./inventoryService');
+
+      // Determinar ubicación basada en el número de nota
+      const isEcuadorNote = exitNote.number?.includes('ECU') || exitNote.number?.startsWith('NS-ECU-');
+      const location = isEcuadorNote ? 'Bodega Ecuador' : 'Bodega Principal';
+
       for (const item of exitNote.items) {
         // Obtener el producto para calcular el costo unitario
         const product = await productService.getById(item.productId);
@@ -134,7 +139,8 @@ export const exitNoteService = {
             item.productId,
             item.quantity,
             product.cost,
-            product.salePrice1
+            product.salePrice1,
+            location
           );
         }
       }
@@ -142,7 +148,7 @@ export const exitNoteService = {
       // Eliminar la nota de salida
       const docRef = doc(db, 'exitNotes', id);
       await deleteDoc(docRef);
-      
+
       // Eliminar entrada de contabilidad asociada
       try {
         await exitNoteAccountingService.deleteByExitNoteId(id);
@@ -160,7 +166,7 @@ export const exitNoteService = {
           console.warn('No se pudo eliminar el paquete de envío:', error);
         }
       }
-      
+
       toast.success('Nota de salida eliminada exitosamente y productos devueltos al inventario');
     } catch (error) {
       console.error('Error deleting exit note:', error);
@@ -174,7 +180,7 @@ export const exitNoteService = {
     try {
       const q = query(collection(db, 'exitNotes'), orderBy('date', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -196,7 +202,7 @@ export const exitNoteService = {
       // para evitar el error de índice compuesto
       const q = query(collection(db, 'exitNotes'), orderBy('date', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       const allNotes = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -218,7 +224,7 @@ export const exitNoteService = {
     try {
       const docRef = doc(db, 'exitNotes', id);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
         const data = docSnap.data();
         return {
@@ -238,8 +244,8 @@ export const exitNoteService = {
 
   // Cambiar vendedor de una nota de salida
   async changeSeller(
-    noteId: string, 
-    newSellerId: string, 
+    noteId: string,
+    newSellerId: string,
     newSeller: { id: string; name: string; email: string; address?: string; city?: string; phone?: string; priceType?: string }
   ): Promise<void> {
     try {
@@ -261,8 +267,8 @@ export const exitNoteService = {
         if (!product) return item;
 
         // Calcular nuevo precio según el tipo de precio del vendedor
-        const newUnitPrice = newSeller.priceType === 'price2' 
-          ? product.salePrice2 
+        const newUnitPrice = newSeller.priceType === 'price2'
+          ? product.salePrice2
           : product.salePrice1;
 
         return {
@@ -307,36 +313,36 @@ export const exitNoteService = {
 
         // Buscar items en el inventario del vendedor anterior que correspondan a este producto
         const oldItems = oldSellerInventory.filter(item => item.productId === noteItem.productId);
-        
+
         // Calcular cantidad total a transferir
         let quantityToTransfer = noteItem.quantity;
-        
+
         // Si hay items en el inventario anterior, eliminarlos
         for (const oldItem of oldItems) {
           if (quantityToTransfer > 0) {
             const quantityToRemove = Math.min(oldItem.quantity, quantityToTransfer);
-            
+
             if (quantityToRemove === oldItem.quantity) {
               // Eliminar completamente el item
               await sellerInventoryService.delete(oldItem.id);
             } else {
               // Reducir la cantidad del item
               await sellerInventoryService.updateQuantity(
-                oldItem.id, 
+                oldItem.id,
                 oldItem.quantity - quantityToRemove
               );
             }
-            
+
             quantityToTransfer -= quantityToRemove;
           }
         }
-        
+
         // Agregar al inventario del nuevo vendedor con el nuevo precio
         // Usar el precio del nuevo vendedor
-        const newUnitPrice = newSeller.priceType === 'price2' 
-          ? product.salePrice2 
+        const newUnitPrice = newSeller.priceType === 'price2'
+          ? product.salePrice2
           : product.salePrice1;
-        
+
         await sellerInventoryService.addToSellerInventory(
           newSellerId,
           noteItem.productId,

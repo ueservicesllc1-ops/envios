@@ -464,12 +464,13 @@ const WarehouseEcuador: React.FC = () => {
 
   // Filtrar productos disponibles en Bodega Ecuador para el modal de nota de salida
   const availableEcuadorProducts = useMemo(() => {
-    return filteredProducts.filter(product => {
+    // Obtener SOLO productos que están físicamente en Bodega Ecuador, sin importar el filtro de ubicación
+    return products.filter(product => {
       const stock = getEcuadorStock(product.id);
       return stock > 0;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredProducts, inventory]);
+  }, [products, inventory]);
 
   // Agrupar productos por productId y mostrar qué vendedores tienen cada uno
   const groupedProducts = useMemo(() => {
@@ -872,8 +873,8 @@ const WarehouseEcuador: React.FC = () => {
                                     </p>
                                   </div>
                                   <span className={`px-2 py-1 rounded text-xs ${seller.status === 'stock' ? 'bg-green-100 text-green-700' :
-                                      seller.status === 'in-transit' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-blue-100 text-blue-700'
+                                    seller.status === 'in-transit' ? 'bg-yellow-100 text-yellow-700' :
+                                      'bg-blue-100 text-blue-700'
                                     }`}>
                                     {seller.status === 'stock' ? 'En Stock' :
                                       seller.status === 'in-transit' ? 'En Tránsito' :
@@ -1035,8 +1036,8 @@ const WarehouseEcuador: React.FC = () => {
                                 onClick={() => handleAddProductToExitNote(product)}
                                 disabled={stock === 0}
                                 className={`text-left p-3 border-2 rounded-lg transition-all hover:shadow-md bg-white ${stock === 0
-                                    ? 'border-gray-200 opacity-50 cursor-not-allowed'
-                                    : 'border-gray-200 hover:bg-gray-50 hover:border-primary-500'
+                                  ? 'border-gray-200 opacity-50 cursor-not-allowed'
+                                  : 'border-gray-200 hover:bg-gray-50 hover:border-primary-500'
                                   }`}
                               >
                                 {/* Imagen del producto */}

@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, Filter, Package, X, Database, Upload, Image, Scan, Layers, CheckSquare, Square } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Filter, Package, X, Database, Upload, Image, Scan, Layers, CheckSquare, Square, Download } from 'lucide-react';
 import { Product } from '../types';
 import { productService } from '../services/productService';
 import { addSampleProducts } from '../utils/addSampleProducts';
+import { importFiveBelowProducts } from '../utils/importFiveBelow';
+import { importWalgreensProducts } from '../utils/importWalgreens';
+import { updateWalgreensImages } from '../utils/updateWalgreensImages';
+import { cleanProductsWithoutImages } from '../utils/cleanProductsWithoutImages';
+import { fixFiveBelowImages } from '../utils/fixFiveBelowImages';
+import { deleteProductsWithBrokenImages } from '../utils/deleteProductsWithBrokenImages';
+import { cleanAllFiveBelowProducts } from '../utils/cleanAllFiveBelowProducts';
 import { storage } from '../firebase/config';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import SimpleBarcodeScanner from '../components/SimpleBarcodeScanner';
@@ -28,8 +35,8 @@ const Products: React.FC = () => {
   const [showConsolidateSection, setShowConsolidateSection] = useState(false);
   const [selectedProductsForConsolidation, setSelectedProductsForConsolidation] = useState<Set<string>>(new Set());
   const [showConsolidateModal, setShowConsolidateModal] = useState(false);
-  const [weightUnit, setWeightUnit] = useState<'grams' | 'kilos' | 'pounds'>('grams');
-  
+  const [weightUnit, setWeightUnit] = useState<'grams' | 'kilos' | 'pounds'>('pounds');
+
   // Estados para filtros
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000 });
@@ -51,36 +58,43 @@ const Products: React.FC = () => {
     imageUrl: '',
     // Campos específicos para perfumes
     brand: '',
-    perfumeName: ''
+    perfumeName: '',
+    images: [] as string[],
+    origin: 'local' as 'local' | 'fivebelow' | 'walgreens'
   });
 
   useEffect(() => {
     loadProducts();
-    
+
     // Ejecutar limpieza automáticamente
     const autoClean = async () => {
       try {
         console.log('Ejecutando limpieza automática de productos...');
         const allProducts = await productService.getAll();
         console.log(`Total productos: ${allProducts.length}`);
-        
+
         let removed = 0;
         for (const product of allProducts) {
           const hasNoWeight = !product.weight || product.weight === 0;
           const hasNoCost = !product.cost || product.cost === 0;
           const hasNoPrice = !product.salePrice1 || product.salePrice1 === 0;
-          
-          if (hasNoWeight && hasNoCost && hasNoPrice) {
-            console.log(`Eliminando producto: ${product.name || 'Sin nombre'} - Peso: ${product.weight}, Costo: ${product.cost}, Precio: ${product.salePrice1}`);
+
+          // Detectar imágenes rotas de Five Below (sin proxy)
+          const imageUrl = product.imageUrl || '';
+          const hasBrokenFBImage = imageUrl.includes('fbres.fivebelow.com') && !imageUrl.includes('wsrv.nl');
+
+          if ((hasNoWeight && hasNoCost && hasNoPrice) || hasBrokenFBImage) {
+            const reason = hasBrokenFBImage ? 'Imagen FB rota' : `Datos incompletos (Peso: ${product.weight}, Costo: ${product.cost}, Precio: ${product.salePrice1})`;
+            console.log(`Eliminando producto: ${product.name || 'Sin nombre'} - Razón: ${reason}`);
             await productService.delete(product.id);
             removed++;
           }
         }
-        
+
         if (removed > 0) {
           console.log(`✅ Eliminados ${removed} productos inválidos`);
           await loadProducts();
-          alert(`Se eliminaron ${removed} productos sin datos válidos`);
+          alert(`Se eliminaron ${removed} productos sin datos válidos o con imágenes rotas`);
         } else {
           console.log('✅ No se encontraron productos inválidos para eliminar');
         }
@@ -88,30 +102,30 @@ const Products: React.FC = () => {
         console.error('Error:', error);
       }
     };
-    
+
     // Ejecutar limpieza después de 2 segundos
     setTimeout(autoClean, 2000);
-    
+
     // Exponer función de limpieza en el objeto window para uso manual
     (window as any).cleanInvalidProducts = async () => {
       try {
         console.log('Ejecutando limpieza manual de productos...');
         const allProducts = await productService.getAll();
         console.log(`Total productos: ${allProducts.length}`);
-        
+
         let removed = 0;
         for (const product of allProducts) {
           const hasNoWeight = !product.weight || product.weight === 0;
           const hasNoCost = !product.cost || product.cost === 0;
           const hasNoPrice = !product.salePrice1 || product.salePrice1 === 0;
-          
+
           if (hasNoWeight && hasNoCost && hasNoPrice) {
             console.log(`Eliminando producto: ${product.name || 'Sin nombre'} - Peso: ${product.weight}, Costo: ${product.cost}, Precio: ${product.salePrice1}`);
             await productService.delete(product.id);
             removed++;
           }
         }
-        
+
         console.log(`✅ Eliminados ${removed} productos inválidos`);
         await loadProducts();
         alert(`Se eliminaron ${removed} productos sin datos válidos`);
@@ -129,13 +143,13 @@ const Products: React.FC = () => {
 
     try {
       const selectedProducts = products.filter(p => selectedProductsForConsolidation.has(p.id));
-      
+
       // Obtener el primer producto como base
       const baseProduct = selectedProducts[0];
-      
+
       // Crear nombre consolidado (usar el nombre base sin variantes)
       const baseName = baseProduct.name.split(' - ')[0].split(' (')[0].trim();
-      
+
       // Crear el producto consolidado
       const consolidatedProductData: any = {
         name: baseName,
@@ -150,12 +164,12 @@ const Products: React.FC = () => {
         isConsolidated: true,
         consolidatedProducts: selectedProducts.map(p => p.id)
       };
-      
+
       // Solo agregar originalPrice si tiene un valor definido
       if (baseProduct.originalPrice !== undefined && baseProduct.originalPrice !== null) {
         consolidatedProductData.originalPrice = baseProduct.originalPrice;
       }
-      
+
       const consolidatedProduct: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> = consolidatedProductData;
 
       // Crear el producto consolidado
@@ -169,7 +183,7 @@ const Products: React.FC = () => {
       }
 
       toast.success(`Productos consolidados exitosamente. Se creó el producto: ${baseName}`);
-      
+
       // Limpiar selección y recargar
       setSelectedProductsForConsolidation(new Set());
       setShowConsolidateModal(false);
@@ -188,6 +202,24 @@ const Products: React.FC = () => {
     } catch (error) {
       toast.error('Error al cargar productos');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportFiveBelow = async () => {
+    if (window.confirm('¿Estás seguro de importar los productos de ejemplo de Five Below? Estos se agregarán a tu inventario.')) {
+      setLoading(true);
+      await importFiveBelowProducts();
+      await loadProducts();
+      setLoading(false);
+    }
+  };
+
+  const handleImportWalgreens = async () => {
+    if (window.confirm('¿Estás seguro de importar los productos de ejemplo de Walgreens? Estos se agregarán a tu inventario.')) {
+      setLoading(true);
+      await importWalgreensProducts();
+      await loadProducts();
       setLoading(false);
     }
   };
@@ -287,16 +319,16 @@ const Products: React.FC = () => {
 
       // Crear referencia en Firebase Storage
       const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-      
+
       // Subir archivo
       const snapshot = await uploadBytes(imageRef, file);
-      
+
       // Obtener URL de descarga
       const downloadURL = await getDownloadURL(snapshot.ref);
-      
+
       // Actualizar formData con la nueva URL
       setFormData({ ...formData, imageUrl: downloadURL });
-      
+
       toast.success('Imagen subida correctamente');
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -305,6 +337,49 @@ const Products: React.FC = () => {
       setUploadingImage(false);
     }
   };
+
+  const handleAdditionalImageUpload = async (file: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor selecciona un archivo de imagen');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen debe ser menor a 5MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      toast.loading('Subiendo imagen adicional...');
+
+      const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(imageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      setFormData(prev => ({
+        ...prev,
+        images: [...(prev.images || []), downloadURL]
+      }));
+
+      toast.success('Imagen adicional subida');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error('Error al subir la imagen');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: (prev.images || []).filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
 
   const handleBarcodeScan = async (barcode: string) => {
     try {
@@ -315,13 +390,13 @@ const Products: React.FC = () => {
         setShowExistingProductModal(true);
         return;
       }
-      
+
       // Auto-rellenar el campo SKU
       setFormData(prev => ({
         ...prev,
         sku: barcode
       }));
-      
+
       toast.success(`SKU escaneado: ${barcode}`);
       setShowScanner(false);
     } catch (error) {
@@ -332,13 +407,13 @@ const Products: React.FC = () => {
 
   const handleSkuSearch = async (sku: string) => {
     if (!sku.trim()) return;
-    
+
     setSkuSearching(true);
-    
+
     try {
       // Buscar producto existente directamente en la base de datos
       const existingProduct = await productService.getBySku(sku);
-      
+
       if (existingProduct) {
         setExistingProduct(existingProduct);
         setShowExistingProductModal(true);
@@ -356,7 +431,7 @@ const Products: React.FC = () => {
   // Función para convertir peso a gramos según la unidad seleccionada
   const convertToGrams = (weight: number, unit: 'grams' | 'kilos' | 'pounds'): number => {
     if (!weight || weight <= 0) return 0;
-    
+
     switch (unit) {
       case 'pounds':
         // 1 libra = 453.592 gramos
@@ -393,10 +468,10 @@ const Products: React.FC = () => {
         };
         setProducts([newProduct, ...products]);
       }
-      
+
       setShowModal(false);
       setEditingProduct(null);
-      setWeightUnit('grams');
+      setWeightUnit('pounds');
       setFormData({
         name: '',
         description: '',
@@ -412,7 +487,9 @@ const Products: React.FC = () => {
         originalPrice: 0,
         imageUrl: '',
         brand: '',
-        perfumeName: ''
+        perfumeName: '',
+        images: [],
+        origin: 'local'
       });
     } catch (error) {
       console.error('Error saving product:', error);
@@ -422,7 +499,7 @@ const Products: React.FC = () => {
   // Función para convertir de gramos a otra unidad
   const convertFromGrams = (weightInGrams: number, unit: 'grams' | 'kilos' | 'pounds'): number => {
     if (!weightInGrams || weightInGrams <= 0) return 0;
-    
+
     switch (unit) {
       case 'pounds':
         // 1 libra = 453.592 gramos
@@ -456,7 +533,9 @@ const Products: React.FC = () => {
       originalPrice: product.originalPrice || 0,
       imageUrl: product.imageUrl || '',
       brand: product.brand || '',
-      perfumeName: product.perfumeName || ''
+      perfumeName: product.perfumeName || '',
+      images: product.images || [],
+      origin: product.origin || 'local'
     });
     setShowModal(true);
   };
@@ -495,7 +574,75 @@ const Products: React.FC = () => {
             <span className="hidden sm:inline">Consolidar</span>
             <span className="sm:hidden">Cons.</span>
           </button>
-          <button 
+
+          <button
+            onClick={handleImportFiveBelow}
+            className="btn-secondary flex items-center bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 text-sm sm:text-base"
+            title="Importar demo Five Below"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Importar FB</span>
+            <span className="sm:hidden">FB</span>
+          </button>
+
+          <button
+            onClick={handleImportWalgreens}
+            className="btn-secondary flex items-center bg-red-50 text-red-700 border-red-200 hover:bg-red-100 text-sm sm:text-base"
+            title="Importar demo Walgreens"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Importar WG</span>
+            <span className="sm:hidden">WG</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              setLoading(true);
+              await updateWalgreensImages();
+              await loadProducts();
+              setLoading(false);
+            }}
+            className="btn-secondary flex items-center bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 text-sm sm:text-base"
+            title="Actualizar imágenes de Walgreens"
+          >
+            <Image className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Fix WG Imgs</span>
+            <span className="sm:hidden">🔧</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              setLoading(true);
+              await fixFiveBelowImages();
+              await loadProducts();
+              setLoading(false);
+            }}
+            className="btn-secondary flex items-center bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 text-sm sm:text-base"
+            title="Actualizar imágenes de Five Below"
+          >
+            <Image className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Fix FB Imgs</span>
+            <span className="sm:hidden">🔧</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              if (window.confirm('¿Eliminar TODOS los productos de Five Below? Esto eliminará todos los productos FB independientemente de sus imágenes.')) {
+                setLoading(true);
+                await cleanAllFiveBelowProducts();
+                await loadProducts();
+                setLoading(false);
+              }
+            }}
+            className="btn-secondary flex items-center bg-red-50 text-red-700 border-red-200 hover:bg-red-100 text-sm sm:text-base"
+            title="Eliminar todos los productos de Five Below"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Eliminar Todos FB</span>
+            <span className="sm:hidden">🗑️FB</span>
+          </button>
+
+          <button
             onClick={() => setShowModal(true)}
             className="btn-primary flex items-center text-sm sm:text-base"
           >
@@ -503,7 +650,7 @@ const Products: React.FC = () => {
             <span className="hidden sm:inline">Nuevo Producto</span>
             <span className="sm:hidden">Nuevo</span>
           </button>
-          
+
           {products.length === 0 && (
             <button
               onClick={async () => {
@@ -578,7 +725,7 @@ const Products: React.FC = () => {
               <X className="h-5 w-5" />
             </button>
           </div>
-          
+
           {selectedProductsForConsolidation.size > 0 && (
             <div className="mb-4 p-3 bg-blue-100 rounded-lg">
               <p className="text-sm font-medium text-gray-900">
@@ -744,7 +891,7 @@ const Products: React.FC = () => {
 
                 const isSelected = selectedProductsForConsolidation.has(product.id);
                 const isConsolidated = product.isConsolidated || product.parentConsolidatedId;
-                
+
                 return (
                   <tr key={product.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''} ${isConsolidated ? 'opacity-60' : ''}`}>
                     {showConsolidateSection && (
@@ -925,7 +1072,7 @@ const Products: React.FC = () => {
                     )}
                   </button>
                 )}
-                
+
                 <div className="h-16 w-16 flex-shrink-0">
                   {product.imageUrl ? (
                     <img
@@ -1085,7 +1232,9 @@ const Products: React.FC = () => {
                     originalPrice: 0,
                     imageUrl: '',
                     brand: '',
-                    perfumeName: ''
+                    perfumeName: '',
+                    images: [],
+                    origin: 'local'
                   });
                 }}
                 className="p-1 text-gray-400 hover:text-gray-600"
@@ -1104,7 +1253,7 @@ const Products: React.FC = () => {
                     type="text"
                     required
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input-field"
                     placeholder="Ej: Smartphone Samsung"
                   />
@@ -1119,7 +1268,7 @@ const Products: React.FC = () => {
                       type="text"
                       required
                       value={formData.sku}
-                      onChange={(e) => setFormData({...formData, sku: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                       onBlur={(e) => handleSkuSearch(e.target.value)}
                       className="input-field flex-1"
                       placeholder="Ej: 1234567890123"
@@ -1150,12 +1299,26 @@ const Products: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Origen del Producto
+                  </label>
+                  <select
+                    value={formData.origin || 'local'}
+                    onChange={(e) => setFormData({ ...formData, origin: e.target.value as 'local' | 'fivebelow' })}
+                    className="input-field"
+                  >
+                    <option value="local">Inventario Local</option>
+                    <option value="fivebelow">Five Below (Bajo Pedido)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Categoría * (Actualizado)
                   </label>
                   <select
                     required
                     value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="input-field"
                   >
                     <option value="">Seleccionar categoría</option>
@@ -1182,7 +1345,7 @@ const Products: React.FC = () => {
                       <select
                         required
                         value={formData.brand}
-                        onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                         className="input-field"
                       >
                         <option value="">Seleccionar marca</option>
@@ -1204,7 +1367,7 @@ const Products: React.FC = () => {
                         <option value="Otra">Otra</option>
                       </select>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Nombre del Perfume *
@@ -1213,7 +1376,7 @@ const Products: React.FC = () => {
                         type="text"
                         required
                         value={formData.perfumeName}
-                        onChange={(e) => setFormData({...formData, perfumeName: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, perfumeName: e.target.value })}
                         className="input-field"
                         placeholder="Ej: Eau de Toilette"
                       />
@@ -1227,7 +1390,7 @@ const Products: React.FC = () => {
                       </label>
                       <select
                         value={formData.size}
-                        onChange={(e) => setFormData({...formData, size: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, size: e.target.value })}
                         className="input-field"
                       >
                         <option value="">Seleccionar talla</option>
@@ -1269,14 +1432,14 @@ const Products: React.FC = () => {
                         <option value="Sin talla">Sin talla</option>
                       </select>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Color 1
                       </label>
                       <select
                         value={formData.color}
-                        onChange={(e) => setFormData({...formData, color: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
                         className="input-field"
                       >
                         <option value="">Seleccionar color</option>
@@ -1293,44 +1456,44 @@ const Products: React.FC = () => {
                         <option value="Vino">Vino</option>
                         <option value="Turqueza">Turqueza</option>
                         <option value="Celeste">Celeste</option>
-                      <option value="Verde Fluorescente">Verde Fluorescente</option>
-                      <option value="Beige">Beige</option>
-                      <option value="Café">Café</option>
-                      <option value="Durazno">Durazno</option>
-                      <option value="Camuflaje">Camuflaje</option>
-                      <option value="Sin color">Sin color</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Color 2
-                    </label>
-                    <select
-                      value={formData.color2}
-                      onChange={(e) => setFormData({...formData, color2: e.target.value})}
-                      className="input-field"
-                    >
-                      <option value="">Seleccionar color</option>
-                      <option value="Azul">Azul</option>
-                      <option value="Rojo">Rojo</option>
-                      <option value="Verde">Verde</option>
-                      <option value="Negro">Negro</option>
-                      <option value="Blanco">Blanco</option>
-                      <option value="Gris">Gris</option>
-                      <option value="Amarillo">Amarillo</option>
-                      <option value="Rosa">Rosa</option>
-                      <option value="Morado">Morado</option>
-                      <option value="Naranja">Naranja</option>
-                      <option value="Vino">Vino</option>
-                      <option value="Turqueza">Turqueza</option>
-                      <option value="Celeste">Celeste</option>
-                      <option value="Verde Fluorescente">Verde Fluorescente</option>
-                      <option value="Beige">Beige</option>
-                      <option value="Café">Café</option>
-                      <option value="Durazno">Durazno</option>
-                      <option value="Camuflaje">Camuflaje</option>
-                      <option value="Sin color">Sin color</option>
+                        <option value="Verde Fluorescente">Verde Fluorescente</option>
+                        <option value="Beige">Beige</option>
+                        <option value="Café">Café</option>
+                        <option value="Durazno">Durazno</option>
+                        <option value="Camuflaje">Camuflaje</option>
+                        <option value="Sin color">Sin color</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Color 2
+                      </label>
+                      <select
+                        value={formData.color2}
+                        onChange={(e) => setFormData({ ...formData, color2: e.target.value })}
+                        className="input-field"
+                      >
+                        <option value="">Seleccionar color</option>
+                        <option value="Azul">Azul</option>
+                        <option value="Rojo">Rojo</option>
+                        <option value="Verde">Verde</option>
+                        <option value="Negro">Negro</option>
+                        <option value="Blanco">Blanco</option>
+                        <option value="Gris">Gris</option>
+                        <option value="Amarillo">Amarillo</option>
+                        <option value="Rosa">Rosa</option>
+                        <option value="Morado">Morado</option>
+                        <option value="Naranja">Naranja</option>
+                        <option value="Vino">Vino</option>
+                        <option value="Turqueza">Turqueza</option>
+                        <option value="Celeste">Celeste</option>
+                        <option value="Verde Fluorescente">Verde Fluorescente</option>
+                        <option value="Beige">Beige</option>
+                        <option value="Café">Café</option>
+                        <option value="Durazno">Durazno</option>
+                        <option value="Camuflaje">Camuflaje</option>
+                        <option value="Sin color">Sin color</option>
                       </select>
                     </div>
                   </div>
@@ -1346,7 +1509,7 @@ const Products: React.FC = () => {
                       min="0"
                       step={weightUnit === 'grams' ? '1' : '0.01'}
                       value={formData.weight}
-                      onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })}
                       className="input-field flex-1"
                       placeholder="0"
                     />
@@ -1360,12 +1523,12 @@ const Products: React.FC = () => {
                           // Estamos editando: el peso en formData está en gramos
                           const weightInGrams = formData.weight;
                           const newWeight = convertFromGrams(weightInGrams, newUnit);
-                          setFormData({...formData, weight: newWeight});
+                          setFormData({ ...formData, weight: newWeight });
                         } else if (!editingProduct && formData.weight > 0) {
                           // Es nuevo producto: convertir de la unidad anterior a la nueva
                           const currentGrams = convertToGrams(formData.weight, weightUnit);
                           const newWeight = convertFromGrams(currentGrams, newUnit);
-                          setFormData({...formData, weight: newWeight});
+                          setFormData({ ...formData, weight: newWeight });
                         }
                         setWeightUnit(newUnit);
                       }}
@@ -1392,7 +1555,7 @@ const Products: React.FC = () => {
                     min="0"
                     step="0.01"
                     value={formData.cost}
-                    onChange={(e) => setFormData({...formData, cost: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
                     className="input-field"
                     placeholder="0.00"
                   />
@@ -1408,7 +1571,7 @@ const Products: React.FC = () => {
                     min="0"
                     step="0.01"
                     value={formData.salePrice1}
-                    onChange={(e) => setFormData({...formData, salePrice1: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, salePrice1: parseFloat(e.target.value) || 0 })}
                     className="input-field"
                     placeholder="0.00"
                   />
@@ -1424,7 +1587,7 @@ const Products: React.FC = () => {
                     min="0"
                     step="0.01"
                     value={formData.salePrice2}
-                    onChange={(e) => setFormData({...formData, salePrice2: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, salePrice2: parseFloat(e.target.value) || 0 })}
                     className="input-field"
                     placeholder="0.00"
                   />
@@ -1440,7 +1603,7 @@ const Products: React.FC = () => {
                     min="0"
                     step="0.01"
                     value={formData.originalPrice || 0}
-                    onChange={(e) => setFormData({...formData, originalPrice: parseFloat(e.target.value) || 0})}
+                    onChange={(e) => setFormData({ ...formData, originalPrice: parseFloat(e.target.value) || 0 })}
                     className="input-field"
                     placeholder="0.00"
                   />
@@ -1451,7 +1614,7 @@ const Products: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Imagen del Producto
                   </label>
-                  
+
                   {/* Vista previa de la imagen */}
                   {formData.imageUrl && (
                     <div className="mb-3">
@@ -1462,7 +1625,7 @@ const Products: React.FC = () => {
                       />
                     </div>
                   )}
-                  
+
                   {/* Campo para subir archivo */}
                   <div className="relative">
                     <input
@@ -1480,11 +1643,10 @@ const Products: React.FC = () => {
                     />
                     <label
                       htmlFor="image-upload"
-                      className={`flex items-center justify-center w-full py-2 px-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                        uploadingImage 
-                          ? 'border-gray-300 bg-gray-50 cursor-not-allowed' 
-                          : 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
-                      }`}
+                      className={`flex items-center justify-center w-full py-2 px-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingImage
+                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                        : 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
+                        }`}
                     >
                       {uploadingImage ? (
                         <div className="flex items-center">
@@ -1501,16 +1663,68 @@ const Products: React.FC = () => {
                       )}
                     </label>
                   </div>
-                  
+
                   {/* URL manual como alternativa */}
                   <div className="mt-2">
                     <input
                       type="url"
                       value={formData.imageUrl}
-                      onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                       className="input-field text-sm"
                       placeholder="O pega una URL de imagen"
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Imágenes Adicionales */}
+              <div className="col-span-full">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Imágenes Adicionales ({formData?.images?.length || 0})
+                </label>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
+                  {formData.images?.map((img, index) => (
+                    <div key={index} className="relative group aspect-square">
+                      <img
+                        src={img}
+                        alt={`Adicional ${index + 1}`}
+                        className="w-full h-full object-cover rounded-lg border border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Eliminar imagen"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Botón para subir más */}
+                  <div className="relative aspect-square">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleAdditionalImageUpload(file);
+                      }}
+                      className="hidden"
+                      id="additional-image-upload"
+                      disabled={uploadingImage}
+                    />
+                    <label
+                      htmlFor="additional-image-upload"
+                      className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingImage
+                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                        : 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
+                        }`}
+                    >
+                      <Plus className="h-8 w-8 text-gray-400 mb-2" />
+                      <span className="text-xs text-gray-500 text-center px-2">Agregar foto</span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1521,7 +1735,7 @@ const Products: React.FC = () => {
                 </label>
                 <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="input-field"
                   rows={3}
                   placeholder="Descripción detallada del producto..."
@@ -1534,7 +1748,7 @@ const Products: React.FC = () => {
                   onClick={() => {
                     setShowModal(false);
                     setEditingProduct(null);
-                    setWeightUnit('grams');
+                    setWeightUnit('pounds');
                     setFormData({
                       name: '',
                       description: '',
@@ -1550,7 +1764,9 @@ const Products: React.FC = () => {
                       originalPrice: 0,
                       imageUrl: '',
                       brand: '',
-                      perfumeName: ''
+                      perfumeName: '',
+                      images: [],
+                      origin: 'local'
                     });
                   }}
                   className="btn-secondary"
@@ -1951,7 +2167,7 @@ const Products: React.FC = () => {
                   Se consolidarán <strong>{selectedProductsForConsolidation.size} productos</strong> en uno solo.
                   Los productos originales se mantendrán pero se ocultarán en la tienda.
                 </p>
-                
+
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {products
                     .filter(p => selectedProductsForConsolidation.has(p.id))

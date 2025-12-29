@@ -15,7 +15,9 @@ import {
   Percent,
   Flag,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  Receipt,
+  ShoppingBag
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -30,11 +32,15 @@ const navigation = [
   { name: 'Notas de Pago', href: '/payment-notes', icon: CreditCard },
   { name: 'Paquetería', href: '/shipping', icon: Truck },
   { name: 'Contabilidad', href: '/accounting', icon: Calculator },
+  { name: 'Facturación', href: '/billing', icon: Receipt },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
+  { name: 'Admin Tienda', href: '/admin-store', icon: ShoppingBag },
   { name: 'Devoluciones', href: '/returns', icon: RotateCcw },
   { name: 'Perfumes', href: '/perfumes', icon: Sparkles },
   { name: 'Interes Compuesto', href: '/compound-interest', icon: Percent },
   { name: 'Vendedores', href: '/sellers', icon: Users },
+  { name: 'Saldo Vendedores', href: '/seller-balances', icon: CreditCard },
+  { name: 'Acceso Editor Tienda', href: '/store-editor-access', icon: ShoppingBag },
   { name: 'Configuración', href: '/settings', icon: Settings },
 ];
 
@@ -50,24 +56,27 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     <>
       {/* Overlay para móvil */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
-          <div className={clsx(
-            'fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0',
-            isOpen ? 'translate-x-0' : '-translate-x-full'
-          )} style={{left: '0px', margin: '0', padding: '0'}}>
+      <div className={clsx(
+        'fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0',
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      )} style={{ left: '0px', margin: '0', padding: '0' }}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <div className="flex items-center">
             <Package className="h-8 w-8 text-primary-600" />
-            <span className="ml-2 text-xl font-bold text-gray-900">Envíos Ecuador</span>
+            <div className="ml-2 flex flex-col">
+              <span className="text-lg font-bold text-gray-900 leading-tight">Compras Express</span>
+              <span className="text-[10px] text-gray-500 font-medium">Compra en USA y recíbelo en Ecuador</span>
+            </div>
           </div>
         </div>
-        
+
         <nav className="mt-6 px-3">
           <div className="space-y-1">
             {navigation.map((item) => {
@@ -96,7 +105,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             })}
           </div>
         </nav>
-        
+
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
           <div className="flex items-center">
             <div className="flex-shrink-0">

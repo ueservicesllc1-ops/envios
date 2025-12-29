@@ -1,15 +1,17 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  getDoc,
+  getDocs,
+  query,
   orderBy,
   where,
-  Timestamp 
+  Timestamp,
+  writeBatch,
+  deleteField
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Product } from '../types';
@@ -38,13 +40,13 @@ export const productService = {
           productData[key] = value;
         }
       });
-      
+
       const docRef = await addDoc(collection(db, 'products'), {
         ...productData,
         createdAt: convertToTimestamp(now),
         updatedAt: convertToTimestamp(now)
       });
-      
+
       toast.success('Producto creado exitosamente');
       return docRef.id;
     } catch (error) {
@@ -66,12 +68,12 @@ export const productService = {
           updateData[key] = value;
         }
       });
-      
+
       await updateDoc(docRef, {
         ...updateData,
         updatedAt: convertToTimestamp(new Date())
       });
-      
+
       toast.success('Producto actualizado exitosamente');
     } catch (error) {
       console.error('Error updating product:', error);
@@ -97,7 +99,7 @@ export const productService = {
     try {
       const docRef = doc(db, 'products', id);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
         const data = docSnap.data();
         return {
@@ -120,7 +122,7 @@ export const productService = {
     try {
       const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -138,11 +140,11 @@ export const productService = {
   async getBySku(sku: string): Promise<Product | null> {
     try {
       const q = query(
-        collection(db, 'products'), 
+        collection(db, 'products'),
         where('sku', '==', sku)
       );
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const doc = querySnapshot.docs[0];
         const data = doc.data();
@@ -156,6 +158,44 @@ export const productService = {
       return null;
     } catch (error) {
       console.error('Error searching product by SKU:', error);
+      throw error;
+    }
+  },
+
+  // Deshacer consolidación
+  async unconsolidate(parentId: string): Promise<void> {
+    try {
+      const parentRef = doc(db, 'products', parentId);
+      const parentSnap = await getDoc(parentRef);
+
+      if (!parentSnap.exists()) throw new Error('Producto no encontrado');
+
+      const parentData = parentSnap.data() as Product;
+
+      // Batch para atomicidad
+      const batch = writeBatch(db);
+
+      // 1. Limpiar hijos (si existen en la lista)
+      if (parentData.consolidatedProducts && parentData.consolidatedProducts.length > 0) {
+        parentData.consolidatedProducts.forEach(childId => {
+          const childRef = doc(db, 'products', childId);
+          batch.update(childRef, {
+            parentConsolidatedId: deleteField()
+          });
+        });
+      }
+
+      // 2. Limpiar padre
+      batch.update(parentRef, {
+        isConsolidated: false,
+        consolidatedProducts: []
+      });
+
+      await batch.commit();
+      toast.success('Consolidación deshecha correctamente');
+    } catch (error) {
+      console.error('Error undoing consolidation:', error);
+      toast.error('Error al deshacer consolidación');
       throw error;
     }
   }

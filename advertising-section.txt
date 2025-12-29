@@ -1,0 +1,65 @@
+                )}
+
+                {activeTab === 'advertising' && (
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <h2 className="text-xl font-bold mb-4">Cartillas Publicitarias</h2>
+                            <p className="text-gray-600 mb-6">
+                                Sube hasta 12 imágenes publicitarias. Se mostrarán aleatoriamente 4 de ellas entre las secciones de productos.
+                            </p>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {settings.advertisingBanners?.map((banner, index) => (
+                                    <div key={banner.id} className="border border-gray-200 rounded-lg p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="text-sm font-bold text-gray-900">Imagen {index + 1}</h3>
+                                            <label className="flex items-center gap-1 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={banner.enabled}
+                                                    onChange={(e) => {
+                                                        const newBanners = [...settings.advertisingBanners];
+                                                        newBanners[index] = { ...banner, enabled: e.target.checked };
+                                                        setSettings({ ...settings, advertisingBanners: newBanners });
+                                                    }}
+                                                    className="w-3 h-3"
+                                                />
+                                                <span className="text-xs text-gray-600">Activa</span>
+                                            </label>
+                                        </div>
+                                        <div>
+                                            {banner.imageUrl && (
+                                                <div className="border border-gray-200 rounded overflow-hidden mb-2">
+                                                    <img src={banner.imageUrl} alt={`Ad ${index + 1}`} className="w-full h-24 object-cover" />
+                                                </div>
+                                            )}
+                                            <label className="btn-secondary cursor-pointer flex items-center justify-center gap-1 w-full text-xs py-2">
+                                                <Upload className="h-3 w-3" />
+                                                {uploadingImage ? 'Subiendo...' : (banner.imageUrl ? 'Cambiar' : 'Subir')}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    disabled={uploadingImage}
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            try {
+                                                                const url = await handleImageUpload(file);
+                                                                const newBanners = [...settings.advertisingBanners];
+                                                                newBanners[index] = { ...banner, imageUrl: url, enabled: true };
+                                                                setSettings({ ...settings, advertisingBanners: newBanners });
+                                                            } catch (error) {
+                                                                console.error('Error uploading image:', error);
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
