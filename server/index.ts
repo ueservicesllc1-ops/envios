@@ -135,10 +135,26 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Servir archivos estáticos de React en producción
+if (process.env.NODE_ENV === 'production') {
+  const path = require('path');
+
+  // Servir archivos estáticos del build
+  app.use(express.static(path.join(__dirname, '../build')));
+
+  // Todas las rutas que no sean API sirven el index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../build', 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
   console.log(`📸 Proxy de imágenes: http://localhost:${PORT}/api/b2/image`);
   console.log(`🛍️  Importación: http://localhost:${PORT}/api/shopify/import`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🌐 Frontend React servido desde /build`);
+  }
 });
 
 

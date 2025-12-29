@@ -43,6 +43,7 @@
     "serve": "serve -s build -l 3000",
     "server": "ts-node --project server/tsconfig.json server/index.ts",
     "server:dev": "nodemon --exec ts-node --project server/tsconfig.json server/index.ts",
+    "server:prod": "ts-node --project server/tsconfig.json server/index.ts",
     "update:perfume-prices": "ts-node --project server/tsconfig.json server/scripts/update-perfume-prices.ts",
     "translate:perfumes": "ts-node --project server/tsconfig.json server/scripts/translate-perfume-descriptions.ts"
   },
