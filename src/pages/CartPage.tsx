@@ -501,12 +501,21 @@ const CartPage: React.FC = () => {
                             </div>
 
                             {!showCheckoutForm ? (
-                                <button
-                                    onClick={() => setShowCheckoutForm(true)}
-                                    className="w-full mt-6 bg-blue-900 text-white py-3 rounded-lg font-bold hover:bg-blue-800 transition-colors"
-                                >
-                                    Continuar Compra
-                                </button>
+                                user ? (
+                                    <button
+                                        onClick={() => setShowCheckoutForm(true)}
+                                        className="w-full mt-6 bg-blue-900 text-white py-3 rounded-lg font-bold hover:bg-blue-800 transition-colors"
+                                    >
+                                        Continuar Compra
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => navigate('/login')}
+                                        className="w-full mt-6 bg-yellow-500 text-blue-900 py-3 rounded-lg font-bold hover:bg-yellow-400 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <User className="h-5 w-5" /> Iniciar Sesión para Comprar
+                                    </button>
+                                )
                             ) : (
                                 <button
                                     onClick={handleCheckout}
