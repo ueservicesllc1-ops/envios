@@ -540,7 +540,7 @@ const Home: React.FC = () => {
                     <Menu className="h-6 w-6" />
                   </button>
                   <div className="flex flex-col cursor-pointer" onClick={() => navigate('/')}>
-                    <img src="/logo-compras-express.png" alt="Compras Express" className="h-8 object-contain bg-white rounded px-1" />
+                    <img src="/logo-splash.png" alt="Compras Express" className="h-8 object-contain" />
                     <span className="text-[9px] text-yellow-400 font-medium tracking-wide mt-1">USA - Ecuador</span>
                   </div>
                 </div>
@@ -564,7 +564,7 @@ const Home: React.FC = () => {
                   onClick={() => navigate('/')}
                 >
                   <div className="flex items-center gap-2">
-                    <img src="/logo-compras-express.png" alt="Compras Express" className="h-10 object-contain bg-white rounded px-2 py-1" />
+                    <img src="/logo-splash.png" alt="Compras Express" className="h-10 object-contain" />
                   </div>
                   <span className="text-[10px] text-yellow-400 leading-none tracking-wide mt-1">Compra en USA y recíbelo en Ecuador</span>
                 </div>
