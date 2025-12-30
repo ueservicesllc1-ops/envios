@@ -146,6 +146,12 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
     
+    // Reglas para preferencias de usuario (userPreferences)
+    match /userPreferences/{userId} {
+      // Permitir que cada usuario lea y escriba sus propias preferencias
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
     // Reglas para POS Sales
     match /pos_sales/{saleId} {
       allow read, write: if request.auth != null;
