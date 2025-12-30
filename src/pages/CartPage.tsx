@@ -12,6 +12,8 @@ import { sellerService } from '../services/sellerService';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage, auth } from '../firebase/config';
 import { signOut } from 'firebase/auth';
+import CouponSelector from '../components/CouponSelector';
+import { Coupon } from '../services/couponService';
 
 const CartPage: React.FC = () => {
     const navigate = useNavigate();
@@ -85,6 +87,7 @@ const CartPage: React.FC = () => {
     const [showBankDetails, setShowBankDetails] = useState(false);
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
     const [uploadingReceipt, setUploadingReceipt] = useState(false);
+    const [rewardCoupon, setRewardCoupon] = useState<Coupon | null>(null);
 
     const handleApplyCoupon = () => {
         // Aquí deberías validar el cupón real, por ahora simulamos
@@ -147,11 +150,12 @@ const CartPage: React.FC = () => {
             }).filter(Boolean) as any[];
 
             const saleNumber = `VENTA-${Date.now()}`;
+            const finalTotal = Math.max(0, totalWithShipping - (rewardCoupon?.amount || 0));
 
             await onlineSaleService.create({
                 number: saleNumber,
                 items: saleItems,
-                totalAmount: totalWithShipping,
+                totalAmount: finalTotal,
                 shippingCost,
                 shippingWeight,
                 customerName: `${customerInfo.name} ${customerInfo.lastName}`,
@@ -161,9 +165,17 @@ const CartPage: React.FC = () => {
                 status: selectedPaymentMethod === 'banco_pichincha' ? 'pending' : 'confirmed',
                 paymentMethod: selectedPaymentMethod || 'banco_pichincha',
                 receiptUrl,
-                notes: 'Venta desde Tienda Online',
+                notes: rewardCoupon
+                    ? `Venta desde Tienda Online - Cupón aplicado: ${rewardCoupon.code} (-$${rewardCoupon.amount})`
+                    : 'Venta desde Tienda Online',
                 createdAt: new Date()
             });
+
+            // Marcar cupón como usado
+            if (rewardCoupon) {
+                const { couponService } = await import('../services/couponService');
+                await couponService.useCoupon(rewardCoupon.id, saleNumber);
+            }
 
             toast.success('¡Pedido realizado con éxito!');
             clearCart();
@@ -496,10 +508,28 @@ const CartPage: React.FC = () => {
                                     <span className="font-medium">${shippingCost.toFixed(2)}</span>
                                 </div>
 
+                                {rewardCoupon && (
+                                    <div className="flex justify-between text-green-600 font-medium">
+                                        <span>Cupón de Recompensa</span>
+                                        <span>-${rewardCoupon.amount.toFixed(2)}</span>
+                                    </div>
+                                )}
+
                                 <div className="border-t pt-3 flex justify-between text-lg font-bold">
                                     <span>Total a Pagar</span>
-                                    <span className="text-blue-900">${totalWithShipping.toFixed(2)}</span>
+                                    <span className="text-blue-900">
+                                        ${Math.max(0, totalWithShipping - (rewardCoupon?.amount || 0)).toFixed(2)}
+                                    </span>
                                 </div>
+                            </div>
+
+                            {/* Cupones de Recompensa */}
+                            <div className="mt-4">
+                                <CouponSelector
+                                    subtotal={productSubtotal + perfumeSubtotal}
+                                    onCouponApplied={setRewardCoupon}
+                                    appliedCoupon={rewardCoupon}
+                                />
                             </div>
 
                             {!showCheckoutForm ? (

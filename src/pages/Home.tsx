@@ -21,6 +21,8 @@ import { signOut } from 'firebase/auth';
 import { storeSettingsService, StoreSettings } from '../services/storeSettingsService';
 import AdvertisingCarousel from '../components/AdvertisingCarousel';
 import ChatBubble from '../components/ChatBubble';
+import RewardGameModal from '../components/RewardGameModal';
+import { couponService } from '../services/couponService';
 import toast from 'react-hot-toast';
 
 // Precio de envío por libra
@@ -98,6 +100,7 @@ const Home: React.FC = () => {
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRewardModal, setShowRewardModal] = useState(false);
   const [globalDiscount, setGlobalDiscount] = useState(0);
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -240,6 +243,27 @@ const Home: React.FC = () => {
     }, 5000);
     return () => clearInterval(interval);
   }, [totalSlides]);
+
+  // Mostrar modal de recompensas al cargar la página
+  useEffect(() => {
+    const checkAndShowRewardModal = async () => {
+      if (!user) return;
+
+      try {
+        const hasPlayed = await couponService.hasPlayedEver(user.uid);
+        if (!hasPlayed) {
+          // Esperar 2 segundos para que cargue la página primero
+          setTimeout(() => {
+            setShowRewardModal(true);
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Error checking reward status:', error);
+      }
+    };
+
+    checkAndShowRewardModal();
+  }, [user]);
 
 
   // Función para limpiar HTML y convertir a texto plano o renderizar HTML de forma segura
@@ -2090,6 +2114,12 @@ const Home: React.FC = () => {
 
       {/* Chat Bubble */}
       <ChatBubble />
+
+      {/* Reward Game Modal */}
+      <RewardGameModal
+        isOpen={showRewardModal}
+        onClose={() => setShowRewardModal(false)}
+      />
     </div >
   );
 };
