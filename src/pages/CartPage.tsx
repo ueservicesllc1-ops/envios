@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Trash2, ShoppingCart, CreditCard, Truck, CheckCircle, Package, Menu, Search, ChevronDown, User, LogOut, LayoutDashboard, Wallet, X } from 'lucide-react';
+import Footer from '../components/Layout/Footer';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../hooks/useAuth';
@@ -208,8 +209,8 @@ const CartPage: React.FC = () => {
                                         <Menu className="h-6 w-6" />
                                     </button>
                                     <div className="flex flex-col cursor-pointer" onClick={() => navigate('/')}>
-                                        <span className="text-lg font-bold text-white tracking-tight leading-none">Compras Express</span>
-                                        <span className="text-[9px] text-yellow-400 font-medium tracking-wide">USA - Ecuador</span>
+                                        <img src="/logo-compras-express.png" alt="Compras Express" className="h-8 object-contain bg-white rounded px-1" />
+                                        <span className="text-[9px] text-yellow-400 font-medium tracking-wide mt-1">USA - Ecuador</span>
                                     </div>
                                 </div>
                                 <button onClick={() => navigate('/cart')} className="relative p-1 text-white">
@@ -226,9 +227,9 @@ const CartPage: React.FC = () => {
                             <div className="hidden md:flex items-center gap-4">
                                 <div className="flex flex-col cursor-pointer" onClick={() => navigate('/')}>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-2xl font-bold text-white tracking-tight">Compras Express</span>
+                                        <img src="/logo-compras-express.png" alt="Compras Express" className="h-10 object-contain bg-white rounded px-2 py-1" />
                                     </div>
-                                    <span className="text-[10px] text-yellow-400 leading-none tracking-wide">Compra en USA y recíbelo en Ecuador</span>
+                                    <span className="text-[10px] text-yellow-400 leading-none tracking-wide mt-1">Compra en USA y recíbelo en Ecuador</span>
                                 </div>
                             </div>
 
@@ -439,8 +440,9 @@ const CartPage: React.FC = () => {
                                     {showBankDetails && selectedPaymentMethod === 'banco_pichincha' && (
                                         <div className="bg-yellow-50 p-4 rounded-lg text-sm space-y-2 ml-4 mb-4 border border-yellow-200">
                                             <p><strong>Banco:</strong> Pichincha</p>
-                                            <p><strong>Cuenta:</strong> Corriente 2101234567890</p>
-                                            <p><strong>A nombre de:</strong> ENVIOS ECUADOR S.A.</p>
+                                            <p><strong>Cuenta:</strong> Ahorro Transaccional</p>
+                                            <p><strong>Número:</strong> 2204259085</p>
+                                            <p><strong>A nombre de:</strong> Luis Uchubanda Falconi</p>
                                             <div className="mt-3">
                                                 <label className="block font-medium mb-1">Subir Comprobante</label>
                                                 <input type="file" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
@@ -596,6 +598,7 @@ const CartPage: React.FC = () => {
                     </div>
                 </div>
             )}
+            <Footer />
         </div>
     );
 };

@@ -10,11 +10,15 @@ import {
     TrendingUp,
     Calendar,
     CreditCard,
-    Phone
+    Phone,
+    Download,
+    Trash2
 } from 'lucide-react';
 import POSModal from '../components/POS/POSModal';
+import EditSaleModal from '../components/POS/EditSaleModal';
 import { posService } from '../services/posService';
 import { PointOfSale } from '../types';
+import { generatePOSReceipt } from '../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 
 const BillingDashboard: React.FC = () => {
@@ -23,11 +27,46 @@ const BillingDashboard: React.FC = () => {
     const [sales, setSales] = useState<PointOfSale[]>([]);
     const [loadingSales, setLoadingSales] = useState(false);
 
+    // Edit Modal State
+    const [editingSale, setEditingSale] = useState<PointOfSale | null>(null);
+
+    const [dailyStats, setDailyStats] = useState({
+        totalRevenue: 0,
+        totalSales: 0,
+        totalCustomers: 0,
+        totalCash: 0,
+        totalCard: 0,
+        totalTransfer: 0
+    });
+
+    useEffect(() => {
+        loadDailyStats();
+    }, []);
+
     useEffect(() => {
         if (selectedView === 'receipts') {
             loadSales();
         }
     }, [selectedView]);
+
+    const loadDailyStats = async () => {
+        try {
+            const report = await posService.getDailySalesReport();
+            // Calcular clientes únicos (simple aproximación por nombre)
+            const uniqueCustomers = new Set(report.sales.map(s => s.customerName || 'Cliente General')).size;
+
+            setDailyStats({
+                totalRevenue: report.totalRevenue,
+                totalSales: report.totalSales,
+                totalCustomers: uniqueCustomers,
+                totalCash: report.totalCash,
+                totalCard: report.totalCard,
+                totalTransfer: report.totalTransfer
+            });
+        } catch (error) {
+            console.error('Error loading daily stats:', error);
+        }
+    };
 
     const loadSales = async () => {
         try {
@@ -39,6 +78,21 @@ const BillingDashboard: React.FC = () => {
             toast.error('Error al cargar ventas');
         } finally {
             setLoadingSales(false);
+        }
+    };
+
+    const handleDeleteSale = async (sale: PointOfSale) => {
+        if (!window.confirm(`¿Estás seguro de cancelar la venta ${sale.saleNumber}? Esto devolverá los productos al inventario.`)) {
+            return;
+        }
+
+        try {
+            await posService.cancelSale(sale.id, 'Cancelado por usuario admin desde panel');
+            toast.success('Venta cancelada exitosamente');
+            loadSales(); // Refresh list
+            loadDailyStats(); // Refresh stats
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -77,38 +131,6 @@ const BillingDashboard: React.FC = () => {
         }
     ];
 
-    const [dailyStats, setDailyStats] = useState({
-        totalRevenue: 0,
-        totalSales: 0,
-        totalCustomers: 0,
-        totalCash: 0,
-        totalCard: 0,
-        totalTransfer: 0
-    });
-
-    useEffect(() => {
-        loadDailyStats();
-    }, []);
-
-    const loadDailyStats = async () => {
-        try {
-            const report = await posService.getDailySalesReport();
-            // Calcular clientes únicos (simple aproximación por nombre)
-            const uniqueCustomers = new Set(report.sales.map(s => s.customerName || 'Cliente General')).size;
-
-            setDailyStats({
-                totalRevenue: report.totalRevenue,
-                totalSales: report.totalSales,
-                totalCustomers: uniqueCustomers,
-                totalCash: report.totalCash,
-                totalCard: report.totalCard,
-                totalTransfer: report.totalTransfer
-            });
-        } catch (error) {
-            console.error('Error loading daily stats:', error);
-        }
-    };
-
     const stats = [
         {
             label: 'Ventas Hoy',
@@ -143,7 +165,10 @@ const BillingDashboard: React.FC = () => {
                 <div className="mb-8">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-4xl font-bold text-gray-900 mb-2">Compras Express - POS</h1>
+                            <div className="flex items-center gap-3 mb-2">
+                                <img src="/logo-compras-express.png" alt="Compras Express" className="h-12 object-contain" />
+                                <span className="text-4xl font-bold text-gray-900">- POS</span>
+                            </div>
                             <p className="text-gray-600 flex items-center">
                                 <Calendar className="h-4 w-4 mr-2" />
                                 {new Date().toLocaleDateString('es-ES', {
@@ -422,6 +447,7 @@ const BillingDashboard: React.FC = () => {
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Método</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
@@ -453,6 +479,37 @@ const BillingDashboard: React.FC = () => {
                                                         {sale.status === 'completed' ? 'Completada' : 'Cancelada'}
                                                     </span>
                                                 </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <div className="flex space-x-2">
+                                                        <button
+                                                            onClick={() => generatePOSReceipt(sale)}
+                                                            className="text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 p-2 rounded-full transition-colors"
+                                                            title="Descargar Recibo"
+                                                        >
+                                                            <Download className="h-5 w-5" />
+                                                        </button>
+                                                        {sale.status === 'completed' && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => setEditingSale(sale)}
+                                                                    className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 p-2 rounded-full transition-colors"
+                                                                    title="Editar Datos"
+                                                                >
+                                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteSale(sale)}
+                                                                    className="text-red-600 hover:text-red-900 hover:bg-red-50 p-2 rounded-full transition-colors"
+                                                                    title="Cancelar Venta"
+                                                                >
+                                                                    <Trash2 className="h-5 w-5" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -468,6 +525,18 @@ const BillingDashboard: React.FC = () => {
                 setShowPOS(false);
                 loadDailyStats(); // Recargar estadísticas al cerrar el POS
             }} />}
+
+            {/* Edit Sale Modal */}
+            {editingSale && (
+                <EditSaleModal
+                    sale={editingSale}
+                    onClose={() => setEditingSale(null)}
+                    onUpdate={() => {
+                        loadSales();
+                        loadDailyStats();
+                    }}
+                />
+            )}
         </div>
     );
 };

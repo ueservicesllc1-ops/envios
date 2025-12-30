@@ -20,6 +20,7 @@ import { inventoryService } from '../../services/inventoryService';
 import { posService } from '../../services/posService';
 import { cashRegisterService } from '../../services/cashRegisterService';
 import { posCustomerService } from '../../services/posCustomerService';
+import { generatePOSReceipt } from '../../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
@@ -267,7 +268,7 @@ const POSModal: React.FC<POSModalProps> = ({ onClose }) => {
                 createdBy: 'Admin'
             };
 
-            await posService.createSale(sale);
+            const saleId = await posService.createSale(sale);
 
             await cashRegisterService.addSaleToRegister(
                 total,
@@ -301,6 +302,18 @@ const POSModal: React.FC<POSModalProps> = ({ onClose }) => {
             setCashReceived(0);
             setCardAmount(0);
             setTransferAmount(0);
+
+            // Generar recibo
+            try {
+                const completeSale = await posService.getSaleById(saleId);
+                if (completeSale) {
+                    generatePOSReceipt(completeSale);
+                    toast.success('Recibo descargado');
+                }
+            } catch (error) {
+                console.error('Error generating receipt:', error);
+            }
+
             onClose();
         } catch (error) {
             console.error('Error processing payment:', error);

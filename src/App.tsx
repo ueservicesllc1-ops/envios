@@ -34,11 +34,20 @@ import OrderTracking from './pages/OrderTracking';
 import AdminStore from './pages/AdminStore';
 import StoreEditor from './pages/StoreEditor';
 import StoreEditorAccessConfig from './pages/StoreEditorAccessConfig';
+import AdminChats from './pages/AdminChats';
 
 import { CartProvider } from './contexts/CartContext';
 import CartPage from './pages/CartPage';
 
+import SplashScreen from './components/Layout/SplashScreen';
+
 function App() {
+  const [showSplash, setShowSplash] = React.useState(true);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
   return (
     <Router>
       <CartProvider>
@@ -89,6 +98,8 @@ function App() {
             <Route path="/store-editor" element={<AuthWrapper><StoreEditor /></AuthWrapper>} />
             {/* Configuración de acceso al editor (con Layout) */}
             <Route path="/store-editor-access" element={<AuthWrapper><Layout><StoreEditorAccessConfig /></Layout></AuthWrapper>} />
+            {/* Ruta para chat de soporte (sin Layout - pantalla completa) */}
+            <Route path="/chats" element={<AuthWrapper><AdminChats /></AuthWrapper>} />
             <Route path="/settings" element={<AuthWrapper><Layout><Settings /></Layout></AuthWrapper>} />
             <Route path="/mobile-scanner" element={<AuthWrapper><Layout><MobileScanner /></Layout></AuthWrapper>} />
           </Routes>

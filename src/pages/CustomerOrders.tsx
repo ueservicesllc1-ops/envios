@@ -11,6 +11,7 @@ import { es } from 'date-fns/locale';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import toast from 'react-hot-toast';
+import Footer from '../components/Layout/Footer';
 
 interface OrderItem {
     productId: string;
@@ -226,9 +227,9 @@ const CustomerOrders: React.FC = () => {
                                     onClick={() => navigate('/')}
                                 >
                                     <div className="flex items-center gap-2">
-                                        <span className="text-2xl font-bold text-white tracking-tight">Compras Express</span>
+                                        <img src="/logo-compras-express.png" alt="Compras Express" className="h-10 object-contain bg-white rounded px-2 py-1" />
                                     </div>
-                                    <span className="text-[10px] text-yellow-400 leading-none tracking-wide">Compra en USA y recíbelo en Ecuador</span>
+                                    <span className="text-[10px] text-yellow-400 leading-none tracking-wide mt-1">Compra en USA y recíbelo en Ecuador</span>
                                 </div>
                             </div>
 
@@ -492,6 +493,7 @@ const CustomerOrders: React.FC = () => {
                     </div>
                 )}
             </main>
+            <Footer />
         </div>
     );
 };

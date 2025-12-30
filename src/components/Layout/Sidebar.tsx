@@ -69,9 +69,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       )} style={{ left: '0px', margin: '0', padding: '0' }}>
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <div className="flex items-center">
-            <Package className="h-8 w-8 text-primary-600" />
             <div className="ml-2 flex flex-col">
-              <span className="text-lg font-bold text-gray-900 leading-tight">Compras Express</span>
+              <img src="/logo-compras-express.png" alt="Compras Express" className="h-10 object-contain" />
               <span className="text-[10px] text-gray-500 font-medium">Compra en USA y recíbelo en Ecuador</span>
             </div>
           </div>

@@ -21,6 +21,7 @@ import { inventoryService } from '../services/inventoryService';
 import { posService } from '../services/posService';
 import { cashRegisterService } from '../services/cashRegisterService';
 import { posCustomerService } from '../services/posCustomerService';
+import { generatePOSReceipt } from '../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 
@@ -293,7 +294,17 @@ const PointOfSale: React.FC = () => {
             setCardAmount(0);
             setTransferAmount(0);
 
-            // TODO: Generar y mostrar recibo PDF
+            // Generar y mostrar recibo PDF
+            try {
+                const completeSale = await posService.getSaleById(saleId);
+                if (completeSale) {
+                    generatePOSReceipt(completeSale);
+                    toast.success('Recibo descargado');
+                }
+            } catch (pdfError) {
+                console.error('Error al generar PDF:', pdfError);
+                toast.error('Venta completada pero error al generar recibo');
+            }
         } catch (error) {
             console.error('Error processing payment:', error);
             toast.error(error instanceof Error ? error.message : 'Error al procesar el pago');

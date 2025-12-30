@@ -20,6 +20,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { signOut } from 'firebase/auth';
 import { storeSettingsService, StoreSettings } from '../services/storeSettingsService';
 import AdvertisingCarousel from '../components/AdvertisingCarousel';
+import ChatBubble from '../components/ChatBubble';
 import toast from 'react-hot-toast';
 
 // Precio de envío por libra
@@ -2082,6 +2083,9 @@ const Home: React.FC = () => {
           </div>
         )
       }
+
+      {/* Chat Bubble */}
+      <ChatBubble />
     </div >
   );
 };

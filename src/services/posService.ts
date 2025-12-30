@@ -106,6 +106,29 @@ export const posService = {
         }
     },
 
+    // Actualizar venta (Solo metadatos)
+    async updateSale(id: string, updates: Partial<PointOfSale>): Promise<void> {
+        try {
+            const saleRef = doc(db, 'pos_sales', id);
+
+            // Clean undefined
+            const cleanUpdates = Object.fromEntries(
+                Object.entries(updates).filter(([_, v]) => v !== undefined)
+            );
+
+            if (updates.date) {
+                cleanUpdates.date = convertToTimestamp(updates.date) as any;
+            }
+
+            await updateDoc(saleRef, cleanUpdates);
+            toast.success('Venta actualizada');
+        } catch (error) {
+            console.error('Error updating sale:', error);
+            toast.error('Error al actualizar venta');
+            throw error;
+        }
+    },
+
     // Obtener venta por ID
     async getSaleById(id: string): Promise<PointOfSale | null> {
         try {
