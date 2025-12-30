@@ -24,6 +24,8 @@ export interface ChatMessage {
     timestamp: Timestamp;
     isAdmin: boolean;
     read: boolean;
+    imageUrl?: string;
+    imageFileName?: string;
 }
 
 export interface Conversation {
@@ -77,11 +79,13 @@ export const chatService = {
         senderName: string,
         senderEmail: string,
         message: string,
-        isAdmin: boolean = false
+        isAdmin: boolean = false,
+        imageUrl?: string,
+        imageFileName?: string
     ): Promise<void> {
         try {
             const messagesRef = collection(db, 'chatMessages');
-            await addDoc(messagesRef, {
+            const messageData: any = {
                 conversationId,
                 senderId,
                 senderName,
@@ -90,12 +94,20 @@ export const chatService = {
                 timestamp: Timestamp.now(),
                 isAdmin,
                 read: false
-            });
+            };
+
+            if (imageUrl) {
+                messageData.imageUrl = imageUrl;
+                messageData.imageFileName = imageFileName || 'image.jpg';
+            }
+
+            await addDoc(messagesRef, messageData);
 
             // Actualizar última mensaje en conversación
             const conversationRef = doc(db, 'conversations', conversationId);
+            const lastMsg = imageUrl ? '📷 Imagen' : message;
             await updateDoc(conversationRef, {
-                lastMessage: message,
+                lastMessage: lastMsg,
                 lastMessageTime: Timestamp.now(),
                 unreadCount: isAdmin ? 0 : (await getDoc(conversationRef)).data()?.unreadCount || 0 + 1
             });

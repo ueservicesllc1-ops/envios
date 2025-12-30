@@ -15,21 +15,37 @@ const AdminChats: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    console.log('AdminChats component rendering, user:', user);
+
     useEffect(() => {
+        console.log('AdminChats useEffect triggered');
+        console.log('User:', user);
+
         if (!user) {
-            toast.error('Debes iniciar sesión');
-            navigate('/login');
+            console.log('No user detected');
+            setLoading(false); // Mostrar interfaz aunque no haya usuario
             return;
         }
 
-        // Suscribirse a todas las conversaciones
-        const unsubscribe = chatService.subscribeToConversations((convs) => {
-            setConversations(convs);
-            setLoading(false);
-        });
+        console.log('User authenticated, subscribing to conversations');
 
-        return () => unsubscribe();
-    }, [user, navigate]);
+        try {
+            // Suscribirse a todas las conversaciones
+            const unsubscribe = chatService.subscribeToConversations((convs) => {
+                console.log('Conversations received:', convs.length);
+                setConversations(convs);
+                setLoading(false);
+            });
+
+            return () => {
+                console.log('Unsubscribing from conversations');
+                unsubscribe();
+            };
+        } catch (error) {
+            console.error('Error in subscribeToConversations:', error);
+            setLoading(false);
+        }
+    }, [user]);
 
     useEffect(() => {
         if (selectedConversation) {
@@ -81,10 +97,33 @@ const AdminChats: React.FC = () => {
         return `${days}d`;
     };
 
+    console.log('Loading state:', loading);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Cargando chat...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!user) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="text-center">
+                    <MessageCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-xl font-bold text-gray-900 mb-2">Acceso Restringido</p>
+                    <p className="text-gray-600">Debes iniciar sesión para acceder al chat</p>
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                        Iniciar Sesión
+                    </button>
+                </div>
             </div>
         );
     }
@@ -138,8 +177,8 @@ const AdminChats: React.FC = () => {
                                     key={conversation.id}
                                     onClick={() => setSelectedConversation(conversation)}
                                     className={`w-full p-4 border-b hover:bg-gray-50 transition-colors text-left ${selectedConversation?.id === conversation.id
-                                            ? 'bg-blue-50 border-l-4 border-l-blue-600'
-                                            : ''
+                                        ? 'bg-blue-50 border-l-4 border-l-blue-600'
+                                        : ''
                                         }`}
                                 >
                                     <div className="flex items-start justify-between">
@@ -220,8 +259,8 @@ const AdminChats: React.FC = () => {
                                     >
                                         <div
                                             className={`max-w-[70%] rounded-lg px-4 py-3 ${msg.isAdmin
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
                                                 }`}
                                         >
                                             {!msg.isAdmin && (

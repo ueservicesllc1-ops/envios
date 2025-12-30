@@ -98,8 +98,8 @@ function App() {
             <Route path="/store-editor" element={<AuthWrapper><StoreEditor /></AuthWrapper>} />
             {/* Configuración de acceso al editor (con Layout) */}
             <Route path="/store-editor-access" element={<AuthWrapper><Layout><StoreEditorAccessConfig /></Layout></AuthWrapper>} />
-            {/* Ruta para chat de soporte (sin Layout - pantalla completa) */}
-            <Route path="/chats" element={<AuthWrapper><AdminChats /></AuthWrapper>} />
+            {/* Ruta para chat de soporte (sin Layout ni AuthWrapper - maneja auth internamente) */}
+            <Route path="/chats" element={<AdminChats />} />
             <Route path="/settings" element={<AuthWrapper><Layout><Settings /></Layout></AuthWrapper>} />
             <Route path="/mobile-scanner" element={<AuthWrapper><Layout><MobileScanner /></Layout></AuthWrapper>} />
           </Routes>
