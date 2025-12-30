@@ -500,13 +500,17 @@ const Home: React.FC = () => {
   const handleAddToCart = (item: Product | Perfume, type: 'product' | 'perfume' = 'product') => {
     if (type === 'product') {
       const product = item as Product;
-      const availableQty = getAvailableQuantity(product.id);
-      // Nota: Para verificar stock en carrito ya existente necesitaríamos consultar el cart del context.
-      // Por simplicidad, validamos contra stock total disponible ahora.
 
-      if (availableQty <= 0) {
-        toast.error(`${t('home.stockAvailable')}: ${availableQty} ${t('home.units')}`);
-        return;
+      // Five Below (FB) y Walgreens (WG) son productos bajo pedido - no validar stock
+      const isFBorWG = product.origin === 'fivebelow' || product.origin === 'walgreens';
+
+      if (!isFBorWG) {
+        const availableQty = getAvailableQuantity(product.id);
+
+        if (availableQty <= 0) {
+          toast.error(`${t('home.stockAvailable')}: ${availableQty} ${t('home.units')}`);
+          return;
+        }
       }
 
       addToCart(product, 'product');
