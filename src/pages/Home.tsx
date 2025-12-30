@@ -141,10 +141,10 @@ const Home: React.FC = () => {
   const [showHowToBuy, setShowHowToBuy] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(20.00); // Bono inicial por registro
+  const [walletBalance, setWalletBalance] = useState(10.00); // Bono inicial por registro
   const [pendingBalance, setPendingBalance] = useState(0);
 
-  const referralLink = user ? `https://enviosec.store?ref=${user.uid}` : '';
+  const referralLink = user ? `https://comprasexpress.us/?ref=${user.uid}` : '';
 
   // Capturar referido de URL
   useEffect(() => {
@@ -152,7 +152,7 @@ const Home: React.FC = () => {
     const ref = params.get('ref');
     if (ref && !user) {
       localStorage.setItem('referralCode', ref);
-      toast.success('¡Código de referido detectado! Regístrate para ganar $20.', {
+      toast.success('¡Código de referido detectado! Regístrate para ganar $10.', {
         icon: '🎁',
         duration: 5000
       });
@@ -227,13 +227,18 @@ const Home: React.FC = () => {
   // Auto-rellenar email del usuario autenticado en el formulario
 
 
+  // Obtener slides habilitados dinámicamente
+  const enabledSlides = storeSettings?.heroSlides.filter(slide => slide.enabled) || [];
+  const totalSlides = enabledSlides.length;
+
   // Auto-rotate del carrusel cada 5 segundos
   useEffect(() => {
+    if (totalSlides === 0) return;
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev === 2 ? 0 : prev + 1));
+      setCurrentSlide((prev) => (prev === totalSlides - 1 ? 0 : prev + 1));
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [totalSlides]);
 
 
   // Función para limpiar HTML y convertir a texto plano o renderizar HTML de forma segura
@@ -535,8 +540,8 @@ const Home: React.FC = () => {
                     <Menu className="h-6 w-6" />
                   </button>
                   <div className="flex flex-col cursor-pointer" onClick={() => navigate('/')}>
-                    <span className="text-lg font-bold text-white tracking-tight leading-none">Compras Express</span>
-                    <span className="text-[9px] text-yellow-400 font-medium tracking-wide">USA - Ecuador</span>
+                    <img src="/logo-compras-express.png" alt="Compras Express" className="h-8 object-contain bg-white rounded px-1" />
+                    <span className="text-[9px] text-yellow-400 font-medium tracking-wide mt-1">USA - Ecuador</span>
                   </div>
                 </div>
                 <button
@@ -559,9 +564,9 @@ const Home: React.FC = () => {
                   onClick={() => navigate('/')}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-white tracking-tight">Compras Express</span>
+                    <img src="/logo-compras-express.png" alt="Compras Express" className="h-10 object-contain bg-white rounded px-2 py-1" />
                   </div>
-                  <span className="text-[10px] text-yellow-400 leading-none tracking-wide">Compra en USA y recíbelo en Ecuador</span>
+                  <span className="text-[10px] text-yellow-400 leading-none tracking-wide mt-1">Compra en USA y recíbelo en Ecuador</span>
                 </div>
               </div>
 
@@ -706,7 +711,7 @@ const Home: React.FC = () => {
         {/* Banner Promocional Superior (Top Strip) */}
         <div className="bg-yellow-500 text-blue-900 text-center py-1 px-4">
           <p className="text-sm font-bold inline-block">
-            🎁 ¡Bono por registro de $20 Dólares!*
+            🎁 ¡Bono por registro de $10 Dólares!*
           </p>
           <p className="text-[10px] font-medium opacity-90 mt-0.5 md:mt-0 md:ml-2 md:inline-block">
             *Este bono se usará para pagos de envíos y se deducirá 20% de este bono por cada envío hasta alcanzar el total.
@@ -717,14 +722,14 @@ const Home: React.FC = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="relative group max-w-[1200px] mx-auto">
             {/* Carousel Slides - Dinámicos desde Firebase */}
-            <div className="overflow-hidden rounded-lg shadow-xl aspect-[3/1] md:aspect-[4/1] bg-gray-200 relative">
+            <div className="overflow-hidden rounded-lg shadow-xl aspect-[1400/387] bg-gray-200 relative">
               {storeSettings?.heroSlides.filter(slide => slide.enabled).map((slide, index) => (
                 <div key={slide.id} className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${currentSlide === index ? 'opacity-100' : 'opacity-0'}`}>
                   <div className="w-full h-full relative overflow-hidden">
                     <img
                       src={slide.imageUrl || 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80'}
                       alt={slide.title || `Banner ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   </div>
                 </div>
@@ -733,13 +738,13 @@ const Home: React.FC = () => {
 
             {/* Navigation Buttons - Flechas Circulares Fuera del Banner */}
             <button
-              onClick={() => setCurrentSlide(prev => (prev === 0 ? 2 : prev - 1))}
+              onClick={() => setCurrentSlide(prev => (prev === 0 ? totalSlides - 1 : prev - 1))}
               className="absolute -left-5 md:-left-6 top-1/2 -translate-y-1/2 bg-white text-gray-700 p-3 rounded-full shadow-lg hover:text-blue-900 transition-all hover:scale-110 z-20 border border-gray-100"
             >
               <ChevronDown className="h-6 w-6 transform rotate-90" />
             </button>
             <button
-              onClick={() => setCurrentSlide(prev => (prev === 2 ? 0 : prev + 1))}
+              onClick={() => setCurrentSlide(prev => (prev === totalSlides - 1 ? 0 : prev + 1))}
               className="absolute -right-5 md:-right-6 top-1/2 -translate-y-1/2 bg-white text-gray-700 p-3 rounded-full shadow-lg hover:text-blue-900 transition-all hover:scale-110 z-20 border border-gray-100"
             >
               <ChevronDown className="h-6 w-6 transform -rotate-90" />
@@ -747,7 +752,7 @@ const Home: React.FC = () => {
 
             {/* Dots */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
-              {[0, 1, 2].map((index) => (
+              {Array.from({ length: totalSlides }, (_, i) => i).map((index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentSlide(index)}
@@ -1086,7 +1091,7 @@ const Home: React.FC = () => {
                           const hasStock = product.consolidatedProducts.some(productId => {
                             return getAvailableQuantity(productId) > 0;
                           });
-                          isDisabled = !hasStock;
+                          isDisabled = !hasStock && product.origin !== 'fivebelow' && product.origin !== 'walgreens';
                           // Contar variantes con stock
                           const variantsWithStock = product.consolidatedProducts.filter(productId => {
                             return getAvailableQuantity(productId) > 0;
@@ -1359,10 +1364,19 @@ const Home: React.FC = () => {
               if (product.isConsolidated) {
                 // Si es consolidado, verificar si hay variante seleccionada y si tiene stock
                 if (selectedVariant && selectedVariant.productId) {
-                  isDisabled = getAvailableQuantity(selectedVariant.productId) === 0;
+                  // Permitir si es FB/WG aunque no tenga stock
+                  if (product.origin === 'fivebelow' || product.origin === 'walgreens') {
+                    isDisabled = false;
+                  } else {
+                    isDisabled = getAvailableQuantity(selectedVariant.productId) === 0;
+                  }
                 } else {
-                  // Si no hay variante seleccionada, verificar si al menos una tiene stock
-                  isDisabled = !consolidatedVariants.some(v => getAvailableQuantity(v.id) > 0);
+                  // Si no hay variante seleccionada, verificar si al menos una tiene stock O si es FB/WG
+                  if (product.origin === 'fivebelow' || product.origin === 'walgreens') {
+                    isDisabled = false;
+                  } else {
+                    isDisabled = !consolidatedVariants.some(v => getAvailableQuantity(v.id) > 0);
+                  }
                 }
               } else {
                 // Si es Five Below, permitir aunque stock sea 0
@@ -1545,7 +1559,7 @@ const Home: React.FC = () => {
                                 {Array.from(new Set(consolidatedVariants.map(v => v.size).filter(Boolean))).map(size => {
                                   // Buscar todas las variantes con esta talla
                                   const variantsWithSize = consolidatedVariants.filter(v => v.size === size);
-                                  const hasStock = variantsWithSize.some(v => getAvailableQuantity(v.id) > 0);
+                                  const hasStock = variantsWithSize.some(v => getAvailableQuantity(v.id) > 0) || (product && (product.origin === 'fivebelow' || product.origin === 'walgreens'));
                                   const stockQty = variantsWithSize.reduce((sum, v) => sum + getAvailableQuantity(v.id), 0);
 
                                   return (
@@ -1553,9 +1567,9 @@ const Home: React.FC = () => {
                                       key={size}
                                       onClick={() => {
                                         if (hasStock) {
-                                          // Buscar un producto con esta talla que tenga stock
+                                          // Buscar un producto con esta talla que tenga stock OR is force-allowed
                                           const variantWithSize = consolidatedVariants.find(v =>
-                                            v.size === size && getAvailableQuantity(v.id) > 0
+                                            v.size === size && (getAvailableQuantity(v.id) > 0 || v.origin === 'fivebelow' || v.origin === 'walgreens')
                                           );
                                           if (variantWithSize) {
                                             setSelectedVariant({
@@ -1599,7 +1613,7 @@ const Home: React.FC = () => {
                                     v.color === color &&
                                     (!selectedVariant?.size || v.size === selectedVariant.size)
                                   );
-                                  const hasStock = variantsWithColor.some(v => getAvailableQuantity(v.id) > 0);
+                                  const hasStock = variantsWithColor.some(v => getAvailableQuantity(v.id) > 0) || (product && (product.origin === 'fivebelow' || product.origin === 'walgreens'));
                                   const stockQty = variantsWithColor.reduce((sum, v) => sum + getAvailableQuantity(v.id), 0);
 
                                   return (
@@ -1607,11 +1621,11 @@ const Home: React.FC = () => {
                                       key={color}
                                       onClick={() => {
                                         if (hasStock) {
-                                          // Buscar un producto con este color (y talla si está seleccionada) que tenga stock
+                                          // Buscar un producto con este color (y talla si está seleccionada) que tenga stock OR is force-allowed
                                           const variantWithColor = consolidatedVariants.find(v =>
                                             v.color === color &&
                                             (!selectedVariant?.size || v.size === selectedVariant.size) &&
-                                            getAvailableQuantity(v.id) > 0
+                                            (getAvailableQuantity(v.id) > 0 || v.origin === 'fivebelow' || v.origin === 'walgreens')
                                           );
                                           if (variantWithColor) {
                                             setSelectedVariant({
@@ -1650,7 +1664,7 @@ const Home: React.FC = () => {
                             <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
                               {consolidatedVariants.map(variant => {
                                 const stock = getAvailableQuantity(variant.id);
-                                const isAvailable = stock > 0;
+                                const isAvailable = stock > 0 || variant.origin === 'fivebelow' || variant.origin === 'walgreens';
                                 const isSelected = selectedVariant?.productId === variant.id;
 
                                 return (
@@ -1770,7 +1784,7 @@ const Home: React.FC = () => {
         }
 
         {/* Footer */}
-        <footer className="bg-gray-900 text-white mt-12 py-8 px-4">
+        <footer className="bg-blue-900 text-white mt-12 py-8 px-4 border-t border-blue-800">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div>
@@ -1778,13 +1792,13 @@ const Home: React.FC = () => {
                   <Package className="h-6 w-6" />
                   <h3 className="text-lg font-bold">{t('home.footer.title')}</h3>
                 </div>
-                <p className="text-gray-400 text-sm">
+                <p className="text-blue-200 text-sm">
                   {t('home.footer.description')}
                 </p>
               </div>
               <div>
                 <h4 className="font-semibold mb-4">{t('home.footer.links')}</h4>
-                <ul className="space-y-2 text-sm text-gray-400">
+                <ul className="space-y-2 text-sm text-blue-200">
                   <li>
                     <button onClick={() => navigate('/login')} className="hover:text-white">
                       {t('home.footer.login')}
@@ -1799,13 +1813,16 @@ const Home: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-semibold mb-4">{t('home.footer.contact')}</h4>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-blue-200">
                   {t('home.footer.description')}
                 </p>
               </div>
             </div>
-            <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-              <p>&copy; {new Date().getFullYear()} {t('home.footer.title')}. {t('home.footer.rights')}.</p>
+            <div className="border-t border-blue-800 mt-8 pt-8 text-center">
+              <p className="font-bold text-lg text-white mb-2">Compras Express 2025</p>
+              <p className="text-xs text-blue-200 uppercase tracking-wider">
+                Potenciado y diseñado por <a href="https://freedomlabs.dev/" target="_blank" rel="noopener noreferrer" className="text-yellow-400 font-bold hover:text-yellow-300 transition-colors">Freedom Labs</a>
+              </p>
             </div>
           </div>
         </footer>
@@ -1876,7 +1893,7 @@ const Home: React.FC = () => {
 
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                   <p className="text-sm text-gray-600 mb-3">
-                    Comparte tu enlace único. Tus amigos reciben <strong>$20 de bono</strong> al registrarse, y tú recibes <strong>$10 extra</strong> cuando ellos hagan su primera compra.
+                    Comparte tu enlace único. Tus amigos reciben <strong>$10 de bono</strong> al registrarse, y tú recibes <strong>$10 extra</strong> cuando ellos hagan su primera compra.
                   </p>
 
                   <div className="flex gap-2">

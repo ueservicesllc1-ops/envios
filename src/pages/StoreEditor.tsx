@@ -373,7 +373,7 @@ const StoreEditor: React.FC = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Imagen del Banner</label>
-                                    <p className="text-xs text-gray-500 mb-3">Sube una imagen horizontal para el carrusel (recomendado: 1200x400px)</p>
+                                    <p className="text-xs text-gray-500 mb-3">Sube una imagen horizontal para el carrusel (recomendado: 1400x387px)</p>
                                     <div className="flex flex-col gap-4">
                                         {slide.imageUrl && (
                                             <div className="border-2 border-gray-200 rounded-lg overflow-hidden">

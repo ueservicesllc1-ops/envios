@@ -76,10 +76,30 @@ const DEFAULT_SETTINGS: StoreSettings = {
             backgroundColor: 'from-purple-800 to-indigo-900',
             imageUrl: '',
             enabled: true
+        },
+        {
+            id: 'slide-4',
+            title: 'Productos Destacados',
+            subtitle: 'Las mejores marcas de USA',
+            buttonText: 'Ver catálogo',
+            buttonLink: '#productos',
+            backgroundColor: 'from-green-700 to-emerald-800',
+            imageUrl: '',
+            enabled: false
+        },
+        {
+            id: 'slide-5',
+            title: 'Ofertas Especiales',
+            subtitle: 'Descuentos increíbles todo el año',
+            buttonText: 'Ver ofertas',
+            buttonLink: '#ofertas',
+            backgroundColor: 'from-red-700 to-orange-800',
+            imageUrl: '',
+            enabled: false
         }
     ],
     promoBanner: {
-        text: '🎁 ¡Bono por registro de $20 Dólares!*',
+        text: '🎁 ¡Bono por registro de $10 Dólares!*',
         subtext: '*Este bono se usará para pagos de envíos y se deducirá 20% de este bono por cada envío hasta alcanzar el total.',
         backgroundColor: '#fbbf24',
         textColor: '#1e3a8a',
