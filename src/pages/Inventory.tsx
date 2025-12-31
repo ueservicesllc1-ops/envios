@@ -12,7 +12,7 @@ const Inventory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [filterBy, setFilterBy] = useState('all');
-  
+
   // Estados para edición
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -23,11 +23,11 @@ const Inventory: React.FC = () => {
     location: '',
     status: 'stock' as 'stock' | 'in-transit' | 'delivered'
   });
-  
+
   // Estados para modal de imagen
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string>('');
-  
+
   // Estados para modal de eliminación
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
@@ -35,28 +35,28 @@ const Inventory: React.FC = () => {
 
   useEffect(() => {
     loadData();
-    
+
     // Exponer función de limpieza en el objeto window para uso manual
     (window as any).cleanInvalidItems = async () => {
       try {
         console.log('Ejecutando limpieza manual...');
         const allInventory = await inventoryService.getAll();
         console.log(`Total items: ${allInventory.length}`);
-        
+
         let removed = 0;
         for (const item of allInventory) {
           const product = item.product || {};
           const hasNoWeight = !product.weight || product.weight === 0;
           const hasNoCost = !item.cost || item.cost === 0;
           const hasNoPrice = !item.unitPrice || item.unitPrice === 0;
-          
+
           if (hasNoWeight && hasNoCost && hasNoPrice) {
             console.log(`Eliminando: ${product.name || 'Sin nombre'} - Peso: ${product.weight}, Costo: ${item.cost}, Precio: ${item.unitPrice}`);
             await inventoryService.delete(item.id);
             removed++;
           }
         }
-        
+
         console.log(`✅ Eliminados ${removed} items inválidos`);
         await loadData();
         alert(`Se eliminaron ${removed} productos sin datos válidos`);
@@ -73,7 +73,7 @@ const Inventory: React.FC = () => {
         inventoryService.getAll(),
         productService.getAll()
       ]);
-      
+
       // Combinar datos de inventario con productos
       const inventoryWithProducts = inventoryData.map(item => {
         const product = productsData.find(p => p.id === item.productId);
@@ -82,7 +82,7 @@ const Inventory: React.FC = () => {
           product: product || {} as Product
         };
       });
-      
+
       setInventory(inventoryWithProducts);
       setProducts(productsData);
     } catch (error) {
@@ -125,8 +125,8 @@ const Inventory: React.FC = () => {
       });
 
       // Actualizar el estado local
-      setInventory(prev => prev.map(item => 
-        item.id === editingItem.id 
+      setInventory(prev => prev.map(item =>
+        item.id === editingItem.id
           ? { ...item, ...editFormData, totalCost: newTotalCost, totalPrice: newTotalPrice, totalValue: newTotalValue }
           : item
       ));
@@ -220,14 +220,14 @@ const Inventory: React.FC = () => {
   const filteredInventory = inventory
     .filter(item => {
       const matchesSearch = item.product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.location.toLowerCase().includes(searchTerm.toLowerCase());
-      
+        item.product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.location.toLowerCase().includes(searchTerm.toLowerCase());
+
       if (filterBy === 'all') return matchesSearch;
       if (filterBy === 'low-stock') return matchesSearch && item.quantity < 10;
       if (filterBy === 'out-of-stock') return matchesSearch && item.quantity === 0;
       if (filterBy === 'high-value') return matchesSearch && item.totalValue > 1000;
-      
+
       return matchesSearch;
     })
     .sort((a, b) => {
@@ -270,7 +270,7 @@ const Inventory: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             Ajuste de Inventario
           </button>
-          <button 
+          <button
             onClick={async () => {
               if (window.confirm('¿Estás seguro de que quieres eliminar los productos sin datos válidos (sin peso, costo ni precio)?')) {
                 try {
@@ -289,7 +289,7 @@ const Inventory: React.FC = () => {
             <Package className="h-4 w-4 mr-2" />
             Limpiar Sin Datos
           </button>
-          <button 
+          <button
             onClick={async () => {
               if (window.confirm('¿Estás seguro de que quieres limpiar los productos duplicados? Esta acción consolidará los productos duplicados en uno solo.')) {
                 try {
@@ -308,7 +308,7 @@ const Inventory: React.FC = () => {
             <Package className="h-4 w-4 mr-2" />
             Limpiar Duplicados
           </button>
-          <button 
+          <button
             onClick={handleRegenerateInventory}
             className="btn-secondary flex items-center"
           >
@@ -331,7 +331,7 @@ const Inventory: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-green-100 rounded-lg">
@@ -343,7 +343,7 @@ const Inventory: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-yellow-100 rounded-lg">
@@ -355,7 +355,7 @@ const Inventory: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-red-100 rounded-lg">
@@ -468,7 +468,7 @@ const Inventory: React.FC = () => {
                     </td>
                     <td className="table-cell">
                       <span className="text-sm font-medium text-gray-900">
-                        {item.quantity.toLocaleString()}
+                        {(item.quantity || 0).toLocaleString()}
                       </span>
                     </td>
                     <td className="table-cell">
@@ -476,22 +476,22 @@ const Inventory: React.FC = () => {
                     </td>
                     <td className="table-cell">
                       <span className="text-sm text-gray-900">
-                        ${item.cost.toLocaleString()}
+                        ${(item.cost || 0).toLocaleString()}
                       </span>
                     </td>
                     <td className="table-cell">
                       <span className="text-sm text-gray-900">
-                        ${(item.cost * item.quantity).toLocaleString()}
+                        ${((item.cost || 0) * (item.quantity || 0)).toLocaleString()}
                       </span>
                     </td>
                     <td className="table-cell">
                       <span className="text-sm text-gray-900">
-                        ${item.product.salePrice1.toLocaleString()}
+                        ${(item.product?.salePrice1 || 0).toLocaleString()}
                       </span>
                     </td>
                     <td className="table-cell">
                       <span className="text-sm font-medium text-gray-900">
-                        ${(item.product.salePrice1 * item.quantity).toLocaleString()}
+                        ${((item.product?.salePrice1 || 0) * (item.quantity || 0)).toLocaleString()}
                       </span>
                     </td>
                     <td className="table-cell">
@@ -558,7 +558,7 @@ const Inventory: React.FC = () => {
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {/* Información del producto */}
                 <div className="bg-gray-50 p-3 rounded-lg">
@@ -580,7 +580,7 @@ const Inventory: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Ubicación
@@ -592,7 +592,7 @@ const Inventory: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Costo Unitario
@@ -606,7 +606,7 @@ const Inventory: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Precio Unitario
@@ -620,7 +620,7 @@ const Inventory: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  
+
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Estado
@@ -711,7 +711,7 @@ const Inventory: React.FC = () => {
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {/* Información del producto */}
                 <div className="bg-gray-50 p-3 rounded-lg">
@@ -726,7 +726,7 @@ const Inventory: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Tipo de eliminación:
                   </label>
-                  
+
                   <div className="space-y-2">
                     <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                       <input
@@ -740,12 +740,12 @@ const Inventory: React.FC = () => {
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">Eliminado por Error</div>
                         <div className="text-sm text-gray-600">
-                          El producto se eliminará del inventario pero NO afectará presupuestos ni contabilidad. 
+                          El producto se eliminará del inventario pero NO afectará presupuestos ni contabilidad.
                           Útil cuando el producto fue agregado por error o no debería estar en inventario.
                         </div>
                       </div>
                     </label>
-                    
+
                     <label className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                       <input
                         type="radio"
@@ -758,7 +758,7 @@ const Inventory: React.FC = () => {
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">Eliminación Permanente</div>
                         <div className="text-sm text-gray-600">
-                          El producto se eliminará permanentemente del inventario. 
+                          El producto se eliminará permanentemente del inventario.
                           Esta acción no se puede deshacer.
                         </div>
                       </div>
@@ -769,9 +769,9 @@ const Inventory: React.FC = () => {
                 {/* Advertencia */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <p className="text-sm text-yellow-800">
-                    <strong>Advertencia:</strong> Esta acción eliminará el producto del inventario. 
-                    {deleteReason === 'error' 
-                      ? ' No se afectarán presupuestos ni contabilidad.' 
+                    <strong>Advertencia:</strong> Esta acción eliminará el producto del inventario.
+                    {deleteReason === 'error'
+                      ? ' No se afectarán presupuestos ni contabilidad.'
                       : ' Esta acción es permanente.'}
                   </p>
                 </div>

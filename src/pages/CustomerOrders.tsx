@@ -96,76 +96,59 @@ const CustomerOrders: React.FC = () => {
         }
     };
 
-    const loadOrders = useCallback(async () => {
-        if (!user?.email) {
-            console.log('❌ No hay usuario o email');
-            return;
-        }
+    useEffect(() => {
+        let unsubscribe: () => void;
 
-        try {
-            setLoadingOrders(true);
-            console.log('🔍 Cargando pedidos para:', user.email);
-            const allSales = await onlineSaleService.getAll();
-            console.log('📦 Total de ventas en sistema:', allSales.length);
+        const setupSubscription = async () => {
+            if (authLoading) return;
 
-            // Filtrar ventas del usuario actual
-            const userOrders = allSales
-                .filter(sale => {
-                    const matches = sale.customerEmail === user.email;
-                    if (!matches) {
-                        console.log('❌ Venta no coincide:', {
-                            saleEmail: sale.customerEmail,
-                            userEmail: user.email,
-                            saleNumber: sale.number,
-                            status: sale.status
-                        });
-                    }
-                    return matches;
-                })
-                .map(sale => ({
-                    ...sale,
-                    estimatedDelivery: addDays(sale.createdAt, Math.floor(Math.random() * 4) + 12) // 12-15 días
-                }))
-                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-            console.log('✅ Pedidos del usuario:', userOrders.length);
-            userOrders.forEach(order => {
-                console.log(`   - ${order.number} (${order.status}) - ${order.customerEmail}`);
-            });
-
-            // Enriquecer con imágenes de productos si no las tienen
-            for (const order of userOrders) {
-                for (const item of order.items) {
-                    if (!item.imageUrl && item.productId) {
-                        try {
-                            const product = await productService.getById(item.productId);
-                            if (product?.imageUrl) {
-                                item.imageUrl = product.imageUrl;
-                            }
-                        } catch (error) {
-                            console.warn(`No se pudo cargar imagen para producto ${item.productId}:`, error);
-                        }
-                    }
-                }
+            if (!user?.email) {
+                navigate('/login');
+                return;
             }
 
-            setOrders(userOrders as any);
-        } catch (error) {
-            console.error('Error loading orders:', error);
-        } finally {
-            setLoadingOrders(false);
-        }
-    }, [user]);
+            setLoadingOrders(true);
+            console.log('🔍 Suscribiéndose a pedidos para:', user.email);
 
-    useEffect(() => {
-        if (authLoading) return; // Esperar a que termine de cargar auth
+            unsubscribe = onlineSaleService.subscribeToUserOrders(user.email, async (sales) => {
+                console.log('📦 Actualización de pedidos recibida:', sales.length);
 
-        if (!user) {
-            navigate('/login');
-            return;
-        }
-        loadOrders();
-    }, [user, navigate, loadOrders, authLoading]);
+                // Procesar pedidos (fechas e imágenes)
+                const processedOrders = await Promise.all(sales.map(async (sale) => {
+                    const orderWithDate = {
+                        ...sale,
+                        estimatedDelivery: addDays(sale.createdAt, Math.floor(Math.random() * 4) + 12)
+                    };
+
+                    // Enriquecer con imágenes
+                    const itemsWithImages = await Promise.all(sale.items.map(async (item) => {
+                        if (!item.imageUrl && item.productId) {
+                            try {
+                                const product = await productService.getById(item.productId);
+                                if (product?.imageUrl) {
+                                    return { ...item, imageUrl: product.imageUrl };
+                                }
+                            } catch (e) {
+                                // Ignorar error imagen
+                            }
+                        }
+                        return item;
+                    }));
+
+                    return { ...orderWithDate, items: itemsWithImages };
+                }));
+
+                setOrders(processedOrders as any);
+                setLoadingOrders(false);
+            });
+        };
+
+        setupSubscription();
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [user, authLoading, navigate]);
 
     const getStatusColor = (status: string) => {
         switch (status) {

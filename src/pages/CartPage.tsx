@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, ShoppingCart, CreditCard, Truck, CheckCircle, Package, Menu, Search, ChevronDown, User, LogOut, LayoutDashboard, Wallet, X } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, ShoppingCart, User, X, Check, Upload, CheckCircle, Menu, Package, LayoutDashboard, LogOut, Wallet, Truck, Search, ChevronDown } from 'lucide-react';
+import { PayPalButtons } from "@paypal/react-paypal-js";
 import Footer from '../components/Layout/Footer';
 import { useCart } from '../contexts/CartContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -8,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getImageUrl } from '../utils/imageUtils';
 import toast from 'react-hot-toast';
 import { onlineSaleService } from '../services/onlineSaleService';
+import { inventoryService } from '../services/inventoryService';
 import { sellerService } from '../services/sellerService';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage, auth } from '../firebase/config';
@@ -63,9 +65,10 @@ const CartPage: React.FC = () => {
     const {
         cart, updateCartQuantity, removeFromCart, clearCart,
         cartTotal, perfumeSubtotal, productSubtotal,
-        couponCode, setCouponCode, couponDiscount,
+        couponCode, setCouponCode, couponDiscount, setCouponDiscount,
         couponActive, enteredCouponCode: contextEnteredCoupon,
         setCouponActive, appliedCoupon, setAppliedCoupon,
+        activeCouponId, setActiveCouponId,
         couponDiscountAmount,
         shippingCost, shippingWeight, totalWithShipping
     } = useCart();
@@ -88,69 +91,145 @@ const CartPage: React.FC = () => {
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
     const [uploadingReceipt, setUploadingReceipt] = useState(false);
     const [rewardCoupon, setRewardCoupon] = useState<Coupon | null>(null);
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
-    const handleApplyCoupon = () => {
-        // Aquí deberías validar el cupón real, por ahora simulamos
-        if (enteredCouponCode.toUpperCase() === 'WELCOME20') {
-            // Lógica simulada, idealmente esto vendría del contexto o servicio
-            toast.success('Cupón aplicado');
-        } else {
-            toast.error('Cupón inválido');
+    const handleApplyCoupon = async () => {
+        if (!enteredCouponCode.trim()) return;
+
+        try {
+            const { couponService } = await import('../services/couponService');
+            const coupon = await couponService.getCouponByCode(enteredCouponCode.trim());
+
+            if (!coupon) {
+                toast.error('Cupón inválido o expirado');
+                return;
+            }
+
+            // Validar mínimo de compra (usando subtotales sin envío)
+            const subtotal = productSubtotal + perfumeSubtotal;
+            if (subtotal < coupon.minPurchase) {
+                toast.error(`La compra mínima para este cupón es $${coupon.minPurchase}`);
+                return;
+            }
+
+            // Aplicar cupón
+            setCouponActive(true);
+            setAppliedCoupon(true);
+            setCouponCode(coupon.code);
+            setCouponDiscount(coupon.amount); // Monto fijo
+            setActiveCouponId(coupon.id);
+
+            toast.success(`Cupón de $${coupon.amount} aplicado correctamente`);
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al validar el cupón');
         }
     };
 
-    const handleCheckout = async () => {
-        if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) {
-            toast.error('Por favor completa todos los campos requeridos');
+    const validateCartStock = async () => {
+        for (const item of cart) {
+            if (item.type === 'product' && item.product) {
+                // Buscar stock globalmente por producto 
+                const inventory = await inventoryService.getByProductId(item.product.id);
+                if (!inventory || inventory.quantity < item.quantity) {
+                    return {
+                        valid: false,
+                        message: `Stock insuficiente para ${item.product?.name || 'producto'}. Disponible: ${inventory?.quantity || 0}`
+                    };
+                }
+            }
+        }
+        return { valid: true };
+    };
+
+    const handleCheckout = async (paypalTransactionId?: string) => {
+        if (!user) {
+            toast.error(t('auth.loginRequired'));
+            navigate('/login');
             return;
         }
 
-        try {
-            setProcessingSale(true);
+        const currentSubtotal = productSubtotal + perfumeSubtotal;
 
+        if (currentSubtotal === 0) {
+            toast.error(t('cart.empty'));
+            return;
+        }
+
+        // Validar información del cliente
+        if (!customerInfo.name || !customerInfo.email || !customerInfo.phone || !customerInfo.address) {
+            toast.error('Por favor complete todos los datos de envío');
+            setShowCheckoutForm(true);
+            return;
+        }
+
+        // Si es transferencia y no hay recibo
+        if (selectedPaymentMethod === 'banco_pichincha' && !receiptFile) {
+            toast.error('Por favor suba el comprobante de depósito');
+            return;
+        }
+
+        // Validar stock antes de procesar cualquier cosa
+        const stockCheck = await validateCartStock();
+        if (!stockCheck.valid) {
+            toast.error(stockCheck.message!);
+            return;
+        }
+
+        setProcessingSale(true);
+        setUploadingReceipt(true);
+
+        try {
             let receiptUrl = '';
-            if (selectedPaymentMethod === 'banco_pichincha' && receiptFile) {
-                setUploadingReceipt(true);
-                const timestamp = Date.now();
-                const fileName = `receipts/${timestamp}_${receiptFile.name}`;
-                const storageRef = ref(storage, fileName);
+
+            // Subir recibo si existe
+            if (receiptFile) {
+                const storageRef = ref(storage, `receipts/${user.uid}/${Date.now()}_${receiptFile.name}`);
                 await uploadBytes(storageRef, receiptFile);
                 receiptUrl = await getDownloadURL(storageRef);
-                setUploadingReceipt(false);
             }
 
-            // Preparar items
-            const saleItems = cart.map(item => {
+            const saleItems: any[] = cart.map(item => {
                 const product = item.product;
                 const perfume = item.perfume;
 
                 if (product) {
                     return {
                         productId: product.id,
-                        productName: product.name,
-                        productSku: product.sku,
                         quantity: item.quantity,
                         unitPrice: product.salePrice2 || product.salePrice1,
-                        totalPrice: (product.salePrice2 || product.salePrice1) * item.quantity,
-                        location: 'Bodega USA', // Simplificado
-                        imageUrl: product.imageUrl
+                        subtotal: (product.salePrice2 || product.salePrice1) * item.quantity,
+                        name: product.name,
+                        image: product.imageUrl,
+                        type: 'product'
                     };
                 } else if (perfume) {
                     return {
                         productId: perfume.id,
-                        productName: perfume.name,
-                        productSku: 'PERFUME',
                         quantity: item.quantity,
                         unitPrice: perfume.price,
-                        totalPrice: perfume.price * item.quantity,
-                        location: 'Bodega USA'
+                        subtotal: perfume.price * item.quantity,
+                        name: `${perfume.brand} - ${perfume.name}`,
+                        image: perfume.imageUrl,
+                        type: 'perfume'
                     };
                 }
                 return null;
             }).filter(Boolean) as any[];
 
             const saleNumber = `VENTA-${Date.now()}`;
-            const finalTotal = Math.max(0, totalWithShipping - (rewardCoupon?.amount || 0));
+            // totalWithShipping ya incluye el descuento del cupón aplicado en el Provider
+            const finalTotal = Math.max(0, totalWithShipping);
+
+            // Determinar estado basado en método de pago
+            let saleStatus: 'pending' | 'confirmed' | 'cancelled' = 'pending';
+            if (selectedPaymentMethod === 'banco_pichincha') {
+                saleStatus = 'pending';
+            } else if (selectedPaymentMethod === 'paypal' && paypalTransactionId) {
+                saleStatus = 'confirmed'; // Pago confirmado por PayPal
+            } else {
+                saleStatus = 'confirmed'; // Otros métodos
+            }
 
             await onlineSaleService.create({
                 number: saleNumber,
@@ -162,28 +241,42 @@ const CartPage: React.FC = () => {
                 customerEmail: customerInfo.email,
                 customerPhone: customerInfo.phone,
                 customerAddress: customerInfo.address,
-                status: selectedPaymentMethod === 'banco_pichincha' ? 'pending' : 'confirmed',
+                status: saleStatus,
                 paymentMethod: selectedPaymentMethod || 'banco_pichincha',
+                paypalTransactionId: paypalTransactionId,
                 receiptUrl,
-                notes: rewardCoupon
-                    ? `Venta desde Tienda Online - Cupón aplicado: ${rewardCoupon.code} (-$${rewardCoupon.amount})`
+                notes: appliedCoupon && couponCode
+                    ? `Venta desde Tienda Online - Cupón aplicado: ${couponCode} (-$${couponDiscountAmount})`
                     : 'Venta desde Tienda Online',
                 createdAt: new Date()
             });
 
             // Marcar cupón como usado
-            if (rewardCoupon) {
+            // Marcar cupón como usado
+            if (activeCouponId) {
                 const { couponService } = await import('../services/couponService');
-                await couponService.useCoupon(rewardCoupon.id, saleNumber);
+                await couponService.useCoupon(activeCouponId, saleNumber);
+                // Limpiar cupón del estado global
+                setAppliedCoupon(false);
+                setCouponActive(false);
+                setCouponDiscount(0);
+                setCouponCode('');
+                setActiveCouponId(null);
             }
 
-            toast.success('¡Pedido realizado con éxito!');
+            // ÉXITO
             clearCart();
-            navigate('/my-orders'); // O a una página de éxito
+            // Redirigir a página de éxito
+            navigate('/order-success', { state: { orderNumber: saleNumber } });
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error('Error al procesar el pedido');
+            // Si el error es de stock (lanzado por onlineSaleService si falla en concurrencia), mostrarlo
+            if (error.message && error.message.includes('Stock insuficiente')) {
+                toast.error('Lo sentimos, uno o más productos ya no tienen stock suficiente.');
+            } else {
+                toast.error('Error al procesar el pedido');
+            }
         } finally {
             setProcessingSale(false);
             setUploadingReceipt(false);
@@ -549,13 +642,123 @@ const CartPage: React.FC = () => {
                                     </button>
                                 )
                             ) : (
-                                <button
-                                    onClick={handleCheckout}
-                                    disabled={processingSale || (selectedPaymentMethod === 'banco_pichincha' && !receiptFile)}
-                                    className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors disabled:opacity-50"
-                                >
-                                    {processingSale ? 'Procesando...' : 'Finalizar Pedido'}
-                                </button>
+                                selectedPaymentMethod === 'paypal' ? (
+                                    <div className="mt-6 space-y-4">
+                                        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
+                                            <input
+                                                type="checkbox"
+                                                id="terms-checkbox"
+                                                checked={termsAccepted}
+                                                onChange={(e) => setTermsAccepted(e.target.checked)}
+                                                className="mt-1 h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                            <label htmlFor="terms-checkbox" className="text-sm text-gray-700 cursor-pointer">
+                                                He leído y acepto los <Link to="/terminos" target="_blank" className="text-blue-600 font-medium hover:underline">Términos y Condiciones</Link>,
+                                                la <Link to="/politica" target="_blank" className="text-blue-600 font-medium hover:underline">Política de Privacidad</Link> y
+                                                la <Link to="/devoluciones" target="_blank" className="text-blue-600 font-medium hover:underline">Política de Devoluciones</Link>.
+                                            </label>
+                                        </div>
+
+                                        {(!customerInfo.name || !customerInfo.lastName || !customerInfo.email || !customerInfo.phone || !customerInfo.address || !termsAccepted) ? (
+                                            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                                                <p className="text-yellow-800 font-medium text-sm">
+                                                    🔒 Para habilitar el pago, completa todos los datos de envío y acepta los términos.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="z-0 relative space-y-4">
+                                                <div className="relative z-0">
+                                                    <PayPalButtons
+                                                        fundingSource="paypal"
+                                                        style={{ layout: "vertical", label: "pay", color: "gold" }}
+                                                        createOrder={(data, actions) => {
+                                                            // ... createOrder logic
+                                                            const finalAmount = Math.max(0, totalWithShipping - (rewardCoupon?.amount || 0));
+                                                            return actions.order.create({
+                                                                intent: "CAPTURE",
+                                                                application_context: {
+                                                                    brand_name: "COMPRASEXPRESS",
+                                                                    shipping_preference: "NO_SHIPPING",
+                                                                    landing_page: "LOGIN",
+                                                                    user_action: "PAY_NOW"
+                                                                },
+                                                                purchase_units: [{
+                                                                    amount: {
+                                                                        currency_code: 'USD',
+                                                                        value: finalAmount.toFixed(2)
+                                                                    }
+                                                                }]
+                                                            });
+                                                        }}
+                                                        onApprove={async (data, actions) => {
+                                                            if (actions.order) {
+                                                                try {
+                                                                    const details = await actions.order.capture();
+                                                                    await handleCheckout(details.id);
+                                                                } catch (error) {
+                                                                    console.error("Error capturando pago:", error);
+                                                                    toast.error("Error al procesar el pago de PayPal");
+                                                                }
+                                                            }
+                                                        }}
+                                                        onError={(err) => {
+                                                            console.error("PayPal Error:", err);
+                                                            toast.error("Error PayPal. Intente iniciar sesión para pruebas Sandbox.");
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <div className="relative z-0">
+                                                    <PayPalButtons
+                                                        fundingSource="card"
+                                                        style={{ layout: "vertical", label: "pay" }}
+                                                        createOrder={(data, actions) => {
+                                                            const finalAmount = Math.max(0, totalWithShipping - (rewardCoupon?.amount || 0));
+                                                            return actions.order.create({
+                                                                intent: "CAPTURE",
+                                                                application_context: {
+                                                                    brand_name: "COMPRASEXPRESS",
+                                                                    shipping_preference: "NO_SHIPPING",
+                                                                    landing_page: "LOGIN",
+                                                                    user_action: "PAY_NOW"
+                                                                },
+                                                                purchase_units: [{
+                                                                    amount: {
+                                                                        currency_code: 'USD',
+                                                                        value: finalAmount.toFixed(2)
+                                                                    }
+                                                                }]
+                                                            });
+                                                        }}
+                                                        onApprove={async (data, actions) => {
+                                                            if (actions.order) {
+                                                                try {
+                                                                    const details = await actions.order.capture();
+                                                                    await handleCheckout(details.id);
+                                                                } catch (error) {
+                                                                    console.error("Error capturando pago:", error);
+                                                                    toast.error("Error al procesar el pago de PayPal");
+                                                                }
+                                                            }
+                                                        }}
+                                                        onError={(err) => {
+                                                            console.error("Card Error:", err);
+                                                            toast.error("Pago rechazado. En Sandbox usa: 4111 1111 1111 1111");
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => handleCheckout()}
+                                        disabled={processingSale || (selectedPaymentMethod === 'banco_pichincha' && !receiptFile)}
+                                        className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors disabled:opacity-50"
+                                    >
+                                        {processingSale ? 'Procesando...' : 'Finalizar Pedido'}
+                                    </button>
+                                )
                             )}
 
                             {showCheckoutForm && (

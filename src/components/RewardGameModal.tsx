@@ -124,7 +124,7 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                             </div>
                             <div>
                                 <h2 className="text-4xl font-black text-white drop-shadow-lg">
-                                    Recompensa Diaria
+                                    ¡Regalo de Bienvenida!
                                 </h2>
                                 <p className="text-yellow-300 text-sm font-medium mt-1 flex items-center gap-2">
                                     <Award className="h-4 w-4" />
@@ -156,7 +156,7 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                                     Recibirás cupones de descuento divididos estratégicamente
                                 </p>
                                 <p className="text-yellow-300 font-bold text-center mt-2 text-sm">
-                                    Una oportunidad por día
+                                    Oportunidad única de bienvenida
                                 </p>
                             </div>
 
@@ -170,10 +170,10 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                                         onMouseLeave={() => setHoveredBox(null)}
                                         disabled={selectedBox !== null}
                                         className={`aspect-square rounded-3xl flex flex-col items-center justify-center transition-all duration-500 transform relative ${selectedBox === null
-                                                ? 'hover:scale-125 cursor-pointer bg-gradient-to-br from-amber-400 to-orange-600 hover:shadow-2xl hover:shadow-orange-500/50'
-                                                : selectedBox === boxIndex
-                                                    ? 'scale-125 bg-gradient-to-br from-emerald-400 to-green-600 animate-wiggle shadow-2xl shadow-green-500/50'
-                                                    : 'scale-75 opacity-30 bg-gray-600'
+                                            ? 'hover:scale-125 cursor-pointer bg-gradient-to-br from-amber-400 to-orange-600 hover:shadow-2xl hover:shadow-orange-500/50'
+                                            : selectedBox === boxIndex
+                                                ? 'scale-125 bg-gradient-to-br from-emerald-400 to-green-600 animate-wiggle shadow-2xl shadow-green-500/50'
+                                                : 'scale-75 opacity-30 bg-gray-600'
                                             } ${isRevealing && selectedBox === boxIndex ? 'animate-shake' : ''}`}
                                     >
                                         {/* Brillo en hover */}

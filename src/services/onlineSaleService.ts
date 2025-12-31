@@ -7,7 +7,8 @@ import {
   orderBy,
   where,
   Timestamp,
-  updateDoc
+  updateDoc,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { inventoryService } from './inventoryService';
@@ -27,6 +28,7 @@ export interface OnlineSale {
   customerAddress?: string;
   status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'arrived_ecuador' | 'delivered' | 'cancelled';
   paymentMethod: 'cash' | 'card' | 'transfer' | 'banco_pichincha' | 'paypal';
+  paypalTransactionId?: string; // ID de transacción de PayPal
   receiptUrl?: string; // URL del recibo de transferencia/depósito
   notes?: string;
   createdAt: Date;
@@ -292,6 +294,80 @@ export const onlineSaleService = {
       toast.error('Error al actualizar tracking');
       throw error;
     }
+  },
+
+  // Actualizar items de una venta (y ajustar inventario)
+  async updateSaleItems(saleId: string, newItems: OnlineSaleItem[], newTotal: number): Promise<void> {
+    try {
+      // Obtener venta actual directamente para asegurar datos frescos
+      const docRef = doc(db, 'onlineSales', saleId);
+      const sales = await this.getAll(); // Usar getAll (cacheado por firebase) o getDoc directo. Usaremos getAll por consistencia con el servicio.
+      const currentSale = sales.find(s => s.id === saleId);
+
+      if (!currentSale) throw new Error('Venta no encontrada');
+
+      // 1. Manejar devoluciones (Items eliminados o cantidad reducida)
+      for (const originalItem of currentSale.items) {
+        const newItem = newItems.find(i => i.productId === originalItem.productId);
+
+        if (!newItem) {
+          // Item eliminado -> Devolver todo el stock
+          await inventoryService.returnStockAfterDelete(originalItem.productId, originalItem.quantity);
+        } else if (newItem.quantity < originalItem.quantity) {
+          // Cantidad reducida -> Devolver diferencia
+          const diff = originalItem.quantity - newItem.quantity;
+          await inventoryService.returnStockAfterDelete(originalItem.productId, diff);
+        }
+      }
+
+      // 2. Manejar salidas adicionales (Cantidad aumentada)
+      for (const newItem of newItems) {
+        const originalItem = currentSale.items.find(i => i.productId === newItem.productId);
+
+        if (originalItem && newItem.quantity > originalItem.quantity) {
+          const diff = newItem.quantity - originalItem.quantity;
+          // updateStockAfterExit reduce el stock
+          await inventoryService.updateStockAfterExit(newItem.productId, diff, saleId, undefined);
+        }
+        // Nota: No manejamos items totalmente nuevos aquí sin buscador, asumimos edición de existentes.
+      }
+
+      // 3. Actualizar documento
+      await updateDoc(docRef, {
+        items: newItems,
+        totalAmount: newTotal
+      });
+
+      toast.success('Pedido actualizado y stock ajustado');
+    } catch (error) {
+      console.error('Error updating sale items:', error);
+      toast.error('Error al actualizar el pedido');
+      throw error;
+    }
+  },
+
+  // Suscribirse a pedidos de un usuario en tiempo real
+  subscribeToUserOrders(email: string, callback: (sales: OnlineSale[]) => void): () => void {
+    const q = query(
+      collection(db, 'onlineSales'),
+      where('customerEmail', '==', email),
+      orderBy('createdAt', 'desc')
+    );
+
+    return onSnapshot(q, (snapshot) => {
+      const sales = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: convertTimestamp(doc.data().createdAt),
+        confirmedAt: doc.data().confirmedAt ? convertTimestamp(doc.data().confirmedAt) : undefined,
+        processingAt: doc.data().processingAt ? convertTimestamp(doc.data().processingAt) : undefined,
+        shippedAt: doc.data().shippedAt ? convertTimestamp(doc.data().shippedAt) : undefined,
+        arrivedEcuadorAt: doc.data().arrivedEcuadorAt ? convertTimestamp(doc.data().arrivedEcuadorAt) : undefined,
+        deliveredAt: doc.data().deliveredAt ? convertTimestamp(doc.data().deliveredAt) : undefined
+      })) as OnlineSale[];
+
+      callback(sales);
+    });
   }
 };
 

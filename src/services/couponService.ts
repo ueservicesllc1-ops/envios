@@ -204,5 +204,28 @@ export const couponService = {
     // Configuración de premios disponibles
     getPrizeConfig: (prizeAmount: 100 | 50 | 20) => {
         return REWARD_PRIZES.find(p => p.amount === prizeAmount);
+    },
+
+    // Buscar cupón por código
+    async getCouponByCode(code: string): Promise<Coupon | null> {
+        try {
+            const q = query(collection(db, 'coupons'), where('code', '==', code));
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) return null;
+
+            const docData = snapshot.docs[0].data();
+            const coupon = { id: snapshot.docs[0].id, ...docData } as Coupon;
+
+            // Verificar expiración
+            if (coupon.expiresAt.toDate() < new Date()) return null;
+            // Verificar si ya fue usado
+            if (coupon.used) return null;
+
+            return coupon;
+        } catch (error) {
+            console.error('Error finding coupon:', error);
+            return null;
+        }
     }
 };

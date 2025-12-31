@@ -38,84 +38,105 @@ import AdminChats from './pages/AdminChats';
 
 import { CartProvider } from './contexts/CartContext';
 import CartPage from './pages/CartPage';
+import OrderSuccess from './pages/OrderSuccess';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import ReturnsPolicyPage from './pages/ReturnsPolicyPage';
 
 import SplashScreen from './components/Layout/SplashScreen';
 
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+
 function App() {
-  const [showSplash, setShowSplash] = React.useState(true);
+  // Omitir splash screen en páginas legales
+  const isLegalPage = ['/terminos', '/politica', '/devoluciones'].includes(window.location.pathname);
+  const [showSplash, setShowSplash] = React.useState(!isLegalPage);
+
+  const paypalOptions = {
+    clientId: "AaFORp_eG8-oLREmVF57r42xWO7H05jm4O0hBzu35NsUDrCwDnw0iAAD985NrCfkgDmU8-ft6wusaZIC",
+    currency: "USD",
+    intent: "capture",
+    "disable-funding": "venmo,paylater"
+  };
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
   return (
-    <Router>
-      <CartProvider>
-        <div className="App">
-          <Routes>
-            {/* Ruta pública para la página de inicio (tienda en línea) */}
-            <Route path="/" element={<Home />} />
+    <PayPalScriptProvider options={paypalOptions}>
+      <Router>
+        <CartProvider>
+          <div className="App">
+            <Routes>
+              {/* Ruta pública para la página de inicio (tienda en línea) */}
+              <Route path="/" element={<Home />} />
 
-            {/* Ruta del Carrito */}
-            <Route path="/cart" element={<CartPage />} />
+              {/* Ruta del Carrito */}
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/order-success" element={<OrderSuccess />} />
+              <Route path="/terminos" element={<TermsPage />} />
+              <Route path="/politica" element={<PrivacyPage />} />
+              <Route path="/devoluciones" element={<ReturnsPolicyPage />} />
 
-            {/* Ruta pública para login */}
-            <Route path="/login" element={<Login />} />
+              {/* Ruta pública para login */}
+              <Route path="/login" element={<Login />} />
 
-            {/* Ruta para pedidos del cliente (requiere login) */}
-            <Route path="/my-orders" element={<CustomerOrders />} />
+              {/* Ruta para pedidos del cliente (requiere login) */}
+              <Route path="/my-orders" element={<CustomerOrders />} />
 
-            {/* Ruta para rastreo de pedido */}
-            <Route path="/track-order/:orderId" element={<OrderTracking />} />
+              {/* Ruta para rastreo de pedido */}
+              <Route path="/track-order/:orderId" element={<OrderTracking />} />
 
-            {/* Ruta pública para la tienda del vendedor - sin Layout ni AuthWrapper */}
-            <Route path="/store/:slug" element={<PublicStore />} />
+              {/* Ruta pública para la tienda del vendedor - sin Layout ni AuthWrapper */}
+              <Route path="/store/:slug" element={<PublicStore />} />
 
-            {/* Rutas protegidas con AuthWrapper y Layout */}
-            <Route path="/dashboard" element={<AuthWrapper><Layout><Dashboard /></Layout></AuthWrapper>} />
-            <Route path="/products" element={<AuthWrapper><Layout><Products /></Layout></AuthWrapper>} />
-            <Route path="/warehouse" element={<AuthWrapper><Layout><Warehouse /></Layout></AuthWrapper>} />
-            <Route path="/warehouse-ecuador" element={<AuthWrapper><Layout><WarehouseEcuador /></Layout></AuthWrapper>} />
-            <Route path="/inventory" element={<AuthWrapper><Layout><Inventory /></Layout></AuthWrapper>} />
-            <Route path="/entry-notes" element={<AuthWrapper><Layout><EntryNotes /></Layout></AuthWrapper>} />
-            <Route path="/exit-notes" element={<AuthWrapper><Layout><ExitNotes /></Layout></AuthWrapper>} />
-            <Route path="/payment-notes" element={<AuthWrapper><Layout><PaymentNotes /></Layout></AuthWrapper>} />
-            <Route path="/shipping" element={<AuthWrapper><Layout><Shipping /></Layout></AuthWrapper>} />
-            <Route path="/accounting" element={<AuthWrapper><Layout><Accounting /></Layout></AuthWrapper>} />
-            <Route path="/billing" element={<AuthWrapper><Layout><BillingDashboard /></Layout></AuthWrapper>} />
-            <Route path="/sellers" element={<AuthWrapper><Layout><Sellers /></Layout></AuthWrapper>} />
-            <Route path="/sellers/:id" element={<AuthWrapper><Layout><SellerDetails /></Layout></AuthWrapper>} />
-            <Route path="/seller-balances" element={<AuthWrapper><Layout><SellerBalances /></Layout></AuthWrapper>} />
-            <Route path="/seller-balances/:id" element={<AuthWrapper><Layout><SellerBalanceDetails /></Layout></AuthWrapper>} />
-            <Route path="/seller-panel/:id" element={<AuthWrapper><Layout><SellerPanel /></Layout></AuthWrapper>} />
-            <Route path="/seller-dashboard/:id" element={<AuthWrapper><Layout><SellerDashboard /></Layout></AuthWrapper>} />
-            <Route path="/orders" element={<AuthWrapper><Layout><Orders /></Layout></AuthWrapper>} />
-            <Route path="/compound-interest" element={<AuthWrapper><Layout><CompoundInterest /></Layout></AuthWrapper>} />
-            <Route path="/returns" element={<AuthWrapper><Layout><Returns /></Layout></AuthWrapper>} />
-            <Route path="/perfumes" element={<AuthWrapper><Layout><Perfumes /></Layout></AuthWrapper>} />
-            <Route path="/admin-store" element={<AuthWrapper><Layout><AdminStore /></Layout></AuthWrapper>} />
-            {/* Ruta independiente para editor de tienda (sin Layout) */}
-            <Route path="/store-editor" element={<AuthWrapper><StoreEditor /></AuthWrapper>} />
-            {/* Configuración de acceso al editor (con Layout) */}
-            <Route path="/store-editor-access" element={<AuthWrapper><Layout><StoreEditorAccessConfig /></Layout></AuthWrapper>} />
-            {/* Ruta para chat de soporte (sin Layout ni AuthWrapper - maneja auth internamente) */}
-            <Route path="/chats" element={<AdminChats />} />
-            <Route path="/settings" element={<AuthWrapper><Layout><Settings /></Layout></AuthWrapper>} />
-            <Route path="/mobile-scanner" element={<AuthWrapper><Layout><MobileScanner /></Layout></AuthWrapper>} />
-          </Routes>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-            }}
-          />
-        </div>
-      </CartProvider>
-    </Router>
+              {/* Rutas protegidas con AuthWrapper y Layout */}
+              <Route path="/dashboard" element={<AuthWrapper><Layout><Dashboard /></Layout></AuthWrapper>} />
+              <Route path="/products" element={<AuthWrapper><Layout><Products /></Layout></AuthWrapper>} />
+              <Route path="/warehouse" element={<AuthWrapper><Layout><Warehouse /></Layout></AuthWrapper>} />
+              <Route path="/warehouse-ecuador" element={<AuthWrapper><Layout><WarehouseEcuador /></Layout></AuthWrapper>} />
+              <Route path="/inventory" element={<AuthWrapper><Layout><Inventory /></Layout></AuthWrapper>} />
+              <Route path="/entry-notes" element={<AuthWrapper><Layout><EntryNotes /></Layout></AuthWrapper>} />
+              <Route path="/exit-notes" element={<AuthWrapper><Layout><ExitNotes /></Layout></AuthWrapper>} />
+              <Route path="/payment-notes" element={<AuthWrapper><Layout><PaymentNotes /></Layout></AuthWrapper>} />
+              <Route path="/shipping" element={<AuthWrapper><Layout><Shipping /></Layout></AuthWrapper>} />
+              <Route path="/accounting" element={<AuthWrapper><Layout><Accounting /></Layout></AuthWrapper>} />
+              <Route path="/billing" element={<AuthWrapper><Layout><BillingDashboard /></Layout></AuthWrapper>} />
+              <Route path="/sellers" element={<AuthWrapper><Layout><Sellers /></Layout></AuthWrapper>} />
+              <Route path="/sellers/:id" element={<AuthWrapper><Layout><SellerDetails /></Layout></AuthWrapper>} />
+              <Route path="/seller-balances" element={<AuthWrapper><Layout><SellerBalances /></Layout></AuthWrapper>} />
+              <Route path="/seller-balances/:id" element={<AuthWrapper><Layout><SellerBalanceDetails /></Layout></AuthWrapper>} />
+              <Route path="/seller-panel/:id" element={<AuthWrapper><Layout><SellerPanel /></Layout></AuthWrapper>} />
+              <Route path="/seller-dashboard/:id" element={<AuthWrapper><Layout><SellerDashboard /></Layout></AuthWrapper>} />
+              <Route path="/orders" element={<AuthWrapper><Layout><Orders /></Layout></AuthWrapper>} />
+              <Route path="/compound-interest" element={<AuthWrapper><Layout><CompoundInterest /></Layout></AuthWrapper>} />
+              <Route path="/returns" element={<AuthWrapper><Layout><Returns /></Layout></AuthWrapper>} />
+              <Route path="/perfumes" element={<AuthWrapper><Layout><Perfumes /></Layout></AuthWrapper>} />
+              <Route path="/admin-store" element={<AuthWrapper><Layout><AdminStore /></Layout></AuthWrapper>} />
+              {/* Ruta independiente para editor de tienda (sin Layout) */}
+              <Route path="/store-editor" element={<AuthWrapper><StoreEditor /></AuthWrapper>} />
+              {/* Configuración de acceso al editor (con Layout) */}
+              <Route path="/store-editor-access" element={<AuthWrapper><Layout><StoreEditorAccessConfig /></Layout></AuthWrapper>} />
+              {/* Ruta para chat de soporte (sin Layout ni AuthWrapper - maneja auth internamente) */}
+              <Route path="/chats" element={<AdminChats />} />
+              <Route path="/settings" element={<AuthWrapper><Layout><Settings /></Layout></AuthWrapper>} />
+              <Route path="/mobile-scanner" element={<AuthWrapper><Layout><MobileScanner /></Layout></AuthWrapper>} />
+            </Routes>
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+              }}
+            />
+          </div>
+        </CartProvider>
+      </Router>
+    </PayPalScriptProvider>
   );
 }
 

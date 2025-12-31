@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Package, User, CheckCircle, XCircle, Truck, Clock, Search, Filter, Ban, Check, Trash2 } from 'lucide-react';
+import { ShoppingBag, Package, User, CheckCircle, XCircle, Truck, Clock, Search, Filter, Ban, Check, Trash2, Edit, Save, Minus, Plus } from 'lucide-react';
 import { onlineSaleService, OnlineSale } from '../services/onlineSaleService';
 import { productService } from '../services/productService';
 import { inventoryService } from '../services/inventoryService';
@@ -16,7 +16,12 @@ const AdminStore: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [showTrackingModal, setShowTrackingModal] = useState(false);
+
     const [selectedOrder, setSelectedOrder] = useState<OnlineSale | null>(null);
+
+    // Estados para edición
+    const [editingOrder, setEditingOrder] = useState<OnlineSale | null>(null);
+    const [editedItems, setEditedItems] = useState<any[]>([]);
 
     useEffect(() => {
         if (activeTab === 'orders') loadOrders();
@@ -107,6 +112,42 @@ const AdminStore: React.FC = () => {
         }
     };
 
+    const handleEditOrder = (order: OnlineSale) => {
+        setEditingOrder(order);
+        setEditedItems(JSON.parse(JSON.stringify(order.items))); // Deep clone
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingOrder) return;
+
+        try {
+            // Filtrar items con cantidad 0 (eliminados)
+            const validItems = editedItems.filter(item => item.quantity > 0);
+
+            // Recalcular total (simple, asumiendo precio fijo unitario guardado)
+            // Nota: Esto no recalcula envío, pero el totalAmount se actualiza con la suma de items.
+            // Si el envío era aparte, habría que sumarlo. Tomamos el shippingCost original.
+            const newItemsSubtotal = validItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+            const newTotal = newItemsSubtotal + (editingOrder.shippingCost || 0);
+
+            await onlineSaleService.updateSaleItems(editingOrder.id, validItems, newTotal);
+
+            setEditingOrder(null);
+            setEditedItems([]);
+            await loadOrders();
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const updateItemQuantity = (index: number, change: number) => {
+        const newItems = [...editedItems];
+        const newQuantity = Math.max(0, newItems[index].quantity + change);
+        newItems[index].quantity = newQuantity;
+        newItems[index].totalPrice = newItems[index].unitPrice * newQuantity;
+        setEditedItems(newItems);
+    };
+
     // Protección de ruta: Solo admin autorizado
     if (user && user.email !== 'ueservicesllc1@gmail.com') {
         return (
@@ -161,7 +202,14 @@ const AdminStore: React.FC = () => {
                     <>
                         {/* Pedidos Activos */}
                         <div className="bg-white rounded-lg shadow overflow-hidden">
-                            {activeTab === 'orders' && <OrdersTable orders={orders.filter(o => o.status !== 'cancelled')} onStatusUpdate={handleStatusUpdate} onDeleteOrder={handleDeleteOrder} onOpenTracking={handleOpenTrackingModal} title="Pedidos Activos" />}
+                            {activeTab === 'orders' && <OrdersTable
+                                orders={orders.filter(o => o.status !== 'cancelled')}
+                                onStatusUpdate={handleStatusUpdate}
+                                onDeleteOrder={handleDeleteOrder}
+                                onOpenTracking={handleOpenTrackingModal}
+                                onEditOrder={handleEditOrder} // Nuevo
+                                title="Pedidos Activos"
+                            />}
                             {activeTab === 'stock' && <StockTable items={inventory} onUnconsolidate={handleUnconsolidate} />}
                         </div>
 
@@ -173,12 +221,89 @@ const AdminStore: React.FC = () => {
                                     onStatusUpdate={handleStatusUpdate}
                                     onDeleteOrder={handleDeleteOrder}
                                     onOpenTracking={handleOpenTrackingModal}
+                                    // No permitimos editar cancelados
                                     title="Pedidos Eliminados"
                                     isDeletedSection={true}
                                 />
                             </div>
                         )}
                     </>
+                )}
+
+                {/* Modal de Edición */}
+                {editingOrder && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold text-gray-900">Editar Pedido #{editingOrder.number}</h2>
+                                <button onClick={() => setEditingOrder(null)} className="text-gray-400 hover:text-gray-600">
+                                    <XCircle className="h-6 w-6" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 mb-6">
+                                {editedItems.map((item, index) => (
+                                    <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <div className="flex-1">
+                                            <p className="font-medium text-gray-900 text-sm">{item.productName}</p>
+                                            <p className="text-xs text-gray-500">${item.unitPrice} c/u</p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center bg-white border border-gray-300 rounded-md">
+                                                <button
+                                                    onClick={() => updateItemQuantity(index, -1)}
+                                                    className="p-1 hover:bg-gray-100 text-gray-600"
+                                                >
+                                                    <Minus className="h-4 w-4" />
+                                                </button>
+                                                <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
+                                                <button
+                                                    onClick={() => updateItemQuantity(index, 1)}
+                                                    className="p-1 hover:bg-gray-100 text-gray-600"
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                            <div className="w-20 text-right font-bold text-gray-900">
+                                                ${(item.unitPrice * item.quantity).toFixed(2)}
+                                            </div>
+                                            <button
+                                                onClick={() => updateItemQuantity(index, -item.quantity)} // Set to 0
+                                                className="text-red-500 hover:text-red-700 p-1"
+                                                title="Eliminar item"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <div className="flex justify-end pt-4 border-t border-gray-100">
+                                    <div className="text-right">
+                                        <p className="text-sm text-gray-500">Nuevo Total (aprox)</p>
+                                        <p className="text-xl font-bold text-blue-900">
+                                            ${(editedItems.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0) + (editingOrder.shippingCost || 0)).toFixed(2)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={() => setEditingOrder(null)}
+                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveEdit}
+                                    className="px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-800 transition-colors flex items-center gap-2"
+                                >
+                                    <Save className="h-4 w-4" /> Recalcular y Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>
@@ -191,6 +316,7 @@ const OrdersTable = ({
     onStatusUpdate,
     onDeleteOrder,
     onOpenTracking,
+    onEditOrder,
     title = "Pedidos",
     isDeletedSection = false
 }: {
@@ -198,6 +324,7 @@ const OrdersTable = ({
     onStatusUpdate: (id: string, status: OnlineSale['status']) => void,
     onDeleteOrder: (id: string) => void,
     onOpenTracking: (order: OnlineSale) => void,
+    onEditOrder?: (order: OnlineSale) => void, // Nuevo prop opcional
     title?: string,
     isDeletedSection?: boolean
 }) => {
@@ -282,6 +409,16 @@ const OrdersTable = ({
                                             >
                                                 <Check className="h-5 w-5" />
                                             </button>
+                                            {/* Botón Editar - Solo para pendientes/confirmados y si no es sección eliminada */}
+                                            {onEditOrder && !isDeletedSection && (
+                                                <button
+                                                    onClick={() => onEditOrder(order)}
+                                                    className="p-1 rounded bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                                                    title="Editar Items del Pedido"
+                                                >
+                                                    <Edit className="h-5 w-5" />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => onStatusUpdate(order.id, 'cancelled')}
                                                 className="p-1 rounded bg-red-100 text-red-700 hover:bg-red-200"

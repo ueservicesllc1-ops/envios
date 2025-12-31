@@ -31,6 +31,8 @@ interface CartContextType {
     setEnteredCouponCode: (code: string) => void; // Nuevo
     appliedCoupon: boolean;
     setAppliedCoupon: (applied: boolean) => void;
+    activeCouponId: string | null; // Nuevo
+    setActiveCouponId: (id: string | null) => void; // Nuevo
     couponDiscountAmount: number;
 
     // Envío
@@ -58,10 +60,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [couponDiscount, setCouponDiscount] = useState(0);
     const [couponActive, setCouponActive] = useState(false);
     const [appliedCoupon, setAppliedCoupon] = useState(false);
+    const [activeCouponId, setActiveCouponId] = useState<string | null>(null); // Nuevo
     const [globalDiscount, setGlobalDiscount] = useState(0); // Podrías traerlo de settings
 
     // Constantes
-    const SHIPPING_PRICE_PER_LB = 4;
+    const SHIPPING_PRICE_PER_LB = 5;
     const DEFAULT_PERFUME_WEIGHT_GRAMS = 400;
 
     const addToCart = (item: Product | Perfume, type: 'product' | 'perfume') => {
@@ -139,9 +142,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return sum;
     }, 0);
 
-    const couponDiscountAmount = (appliedCoupon && couponActive)
-        ? Math.round((perfumeSubtotal * (couponDiscount / 100)) * 100) / 100
-        : 0;
+    const couponDiscountAmount = (appliedCoupon && couponActive) ? couponDiscount : 0;
 
     const cartTotal = productSubtotal + perfumeSubtotal - couponDiscountAmount;
     const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -186,8 +187,9 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             cart, addToCart, removeFromCart, updateCartQuantity, clearCart,
             cartTotal, cartItemsCount, perfumeSubtotal, productSubtotal,
             couponCode, setCouponCode, couponDiscount, setCouponDiscount,
-            couponActive, setCouponActive, enteredCouponCode, setEnteredCouponCode, // Nuevo
+            couponActive, setCouponActive, enteredCouponCode, setEnteredCouponCode,
             appliedCoupon, setAppliedCoupon,
+            activeCouponId, setActiveCouponId, // Nuevo
             couponDiscountAmount, shippingCost, shippingWeight, totalWithShipping
         }}>
             {children}

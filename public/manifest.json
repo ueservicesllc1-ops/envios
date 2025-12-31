@@ -1,6 +1,6 @@
 {
-  "short_name": "Envios",
-  "name": "Sistema de Gestión de Envíos",
+  "short_name": "ComprasExpress",
+  "name": "Compras Express - Tienda Online",
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#3b82f6",

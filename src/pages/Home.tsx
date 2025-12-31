@@ -26,7 +26,7 @@ import { couponService } from '../services/couponService';
 import toast from 'react-hot-toast';
 
 // Precio de envío por libra
-const SHIPPING_PRICE_PER_LB = 4;
+const SHIPPING_PRICE_PER_LB = 5;
 const DEFAULT_PERFUME_WEIGHT_GRAMS = 400; // ~0.88 lb
 
 const Home: React.FC = () => {
@@ -138,6 +138,7 @@ const Home: React.FC = () => {
   const [showAddToCartPopup, setShowAddToCartPopup] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<{ productId: string; size?: string; color?: string } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showCart, setShowCart] = useState(false);
@@ -501,6 +502,34 @@ const Home: React.FC = () => {
 
     if (!isValidLocation) return false;
 
+    // Filtro por Categoría
+    if (selectedCategory && selectedCategory !== 'all') {
+      const prodCategory = (product.category || '').toLowerCase();
+      // Mapeo simple: si la categoría seleccionada está contenida en la categoría del producto (o viceversa para flexibilidad)
+      // Ajuste específico para categorías comunes
+      if (selectedCategory === 'electronics' && !prodCategory.includes('electr')) return false;
+      if (selectedCategory === 'perfumes' && !prodCategory.includes('perfum')) return false;
+      if (selectedCategory === 'clothing' && !prodCategory.includes('ropa')) return false;
+      if (selectedCategory === 'shoes' && !prodCategory.includes('zapatos')) return false;
+      if (selectedCategory === 'beauty' && !prodCategory.includes('belleza') && !prodCategory.includes('cosm')) return false;
+      if (selectedCategory === 'home' && !prodCategory.includes('hogar')) return false;
+      if (selectedCategory === 'toys' && !prodCategory.includes('juguet')) return false;
+      if (selectedCategory === 'vitamins' && !prodCategory.includes('vitamin')) return false;
+
+      // Fallback genérico por si acaso
+      if (
+        !prodCategory.includes(selectedCategory) &&
+        selectedCategory !== 'electronics' &&
+        selectedCategory !== 'perfumes' &&
+        selectedCategory !== 'clothing' &&
+        selectedCategory !== 'shoes' &&
+        selectedCategory !== 'beauty' &&
+        selectedCategory !== 'home' &&
+        selectedCategory !== 'toys' &&
+        selectedCategory !== 'vitamins'
+      ) return false;
+    }
+
     // Filtro Precio
     if (priceFilter === 'under25') {
       const price = product.salePrice2 || product.salePrice1 || product.originalPrice || 0;
@@ -616,10 +645,53 @@ const Home: React.FC = () => {
 
               {/* Barra de Búsqueda Central (Visible md up) */}
               <div className="hidden md:flex flex-1 max-w-3xl mx-4">
-                <div className="flex w-full bg-white rounded-md overflow-hidden shadow-sm h-10">
-                  <button className="px-3 bg-gray-100 text-gray-600 text-sm border-r border-gray-200 flex items-center gap-1 hover:bg-gray-200 transition-colors">
-                    Todos <ChevronDown className="h-3 w-3" />
-                  </button>
+                <div className="flex w-full bg-white rounded-md shadow-sm h-10 relative">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                      className="h-full px-3 bg-gray-100 text-gray-700 text-sm border-r border-gray-200 flex items-center gap-1 hover:bg-gray-200 transition-colors whitespace-nowrap font-medium rounded-l-md"
+                    >
+                      {selectedCategory === 'all' ? 'Todos' :
+                        selectedCategory === 'electronics' ? 'Electrónicos' :
+                          selectedCategory === 'perfumes' ? 'Perfumes' :
+                            selectedCategory === 'clothing' ? 'Ropa' :
+                              selectedCategory === 'shoes' ? 'Zapatos' :
+                                selectedCategory === 'beauty' ? 'Belleza' :
+                                  selectedCategory === 'home' ? 'Hogar' :
+                                    selectedCategory === 'toys' ? 'Juguetes' :
+                                      selectedCategory === 'vitamins' ? 'Vitaminas' : 'Todos'}
+                      <ChevronDown className={`h-3 w-3 transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {showCategoryDropdown && (
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-100 py-1 z-50">
+                        {[
+                          { id: 'all', name: 'Todos' },
+                          { id: 'electronics', name: 'Electrónicos' },
+                          { id: 'perfumes', name: 'Perfumes' },
+                          { id: 'clothing', name: 'Ropa' },
+                          { id: 'shoes', name: 'Zapatos' },
+                          { id: 'beauty', name: 'Belleza' },
+                          { id: 'home', name: 'Hogar' },
+                          { id: 'toys', name: 'Juguetes' },
+                          { id: 'vitamins', name: 'Vitaminas' }
+                        ].map((cat) => (
+                          <button
+                            key={cat.id}
+                            onClick={() => {
+                              setSelectedCategory(cat.id);
+                              setShowCategoryDropdown(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-blue-50 hover:text-blue-900 transition-colors ${selectedCategory === cat.id ? 'bg-blue-50 text-blue-900 font-bold' : 'text-gray-700'
+                              }`}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <input
                     type="text"
                     placeholder="Buscar productos, marcas y más..."
@@ -627,7 +699,7 @@ const Home: React.FC = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  <button className="px-5 text-gray-500 hover:text-blue-900 transition-colors">
+                  <button className="px-5 text-gray-500 hover:text-blue-900 transition-colors rounded-r-md">
                     <Search className="h-5 w-5" />
                   </button>
                 </div>
