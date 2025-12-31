@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, Search, Menu, X, LogIn, Star, Truck, Shield, Heart, MapPin, CheckCircle, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Copy, Wallet, DollarSign, Users, Clock } from 'lucide-react';
+import { Package, ShoppingCart, Search, Menu, X, LogIn, Star, Truck, Shield, Heart, MapPin, CheckCircle, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Copy, Wallet, DollarSign, Users, Clock, Ticket } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageSelector from '../components/LanguageSelector';
 import { productService } from '../services/productService';
@@ -147,6 +147,8 @@ const Home: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [walletBalance, setWalletBalance] = useState(10.00); // Bono inicial por registro
   const [pendingBalance, setPendingBalance] = useState(0);
+  const [userCoupons, setUserCoupons] = useState<any[]>([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
 
   const referralLink = user ? `https://comprasexpress.us/?ref=${user.uid}` : '';
 
@@ -264,6 +266,19 @@ const Home: React.FC = () => {
 
     checkAndShowRewardModal();
   }, [user]);
+
+  // Cargar cupones cuando se abre la wallet
+  useEffect(() => {
+    if (showReferralModal && user) {
+      setLoadingCoupons(true);
+      couponService.getUserCoupons(user.uid)
+        .then(coupons => {
+          setUserCoupons(coupons);
+        })
+        .catch(err => console.error('Error loading coupons:', err))
+        .finally(() => setLoadingCoupons(false));
+    }
+  }, [showReferralModal, user]);
 
 
   // Función para limpiar HTML y convertir a texto plano o renderizar HTML de forma segura
@@ -1948,6 +1963,38 @@ const Home: React.FC = () => {
 
               <div className="mt-8 text-center text-xs text-gray-400">
                 * Los bonos aplican como descuento del 20% sobre el valor del envío.
+              </div>
+
+              {/* Sección de Cupones */}
+              <div className="mt-6 border-t pt-4">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-3">
+                  <Ticket className="h-5 w-5 text-purple-600" />
+                  Mis Cupones Disponibles
+                </h3>
+
+                {loadingCoupons ? (
+                  <div className="text-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                  </div>
+                ) : userCoupons.length > 0 ? (
+                  <div className="space-y-3 max-h-40 overflow-y-auto">
+                    {userCoupons.map((coupon) => (
+                      <div key={coupon.id} className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-lg p-3 flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-purple-700">${coupon.amount} OFF</p>
+                          <p className="text-xs text-gray-500">Compra mínima: ${coupon.minPurchase}</p>
+                        </div>
+                        <div className="bg-white px-2 py-1 rounded text-xs font-mono font-bold text-gray-600 border border-gray-200">
+                          {coupon.code}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <p className="text-gray-400 text-sm">No tienes cupones disponibles aún.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
