@@ -175,6 +175,13 @@ const CartPage: React.FC = () => {
     const validateCartStock = async () => {
         for (const item of cart) {
             if (item.type === 'product' && item.product) {
+                const product = item.product;
+                const isFBorWG = product.origin === 'fivebelow' || product.origin === 'walgreens';
+                const isSpecialPrice = product.salePrice2 === -10 || product.salePrice1 === -10;
+
+                // Estos productos son bajo pedido y no requieren validación de stock físico
+                if (isFBorWG || isSpecialPrice) continue;
+
                 // Buscar stock globalmente por producto 
                 const inventory = await inventoryService.getByProductId(item.product.id);
                 if (!inventory || inventory.quantity < item.quantity) {
@@ -248,7 +255,10 @@ const CartPage: React.FC = () => {
                         subtotal: (product.salePrice2 || product.salePrice1) * item.quantity,
                         name: product.name,
                         image: product.imageUrl,
-                        type: 'product'
+                        type: 'product',
+                        origin: product.origin,
+                        salePrice1: product.salePrice1,
+                        salePrice2: product.salePrice2
                     };
                 } else if (perfume) {
                     return {

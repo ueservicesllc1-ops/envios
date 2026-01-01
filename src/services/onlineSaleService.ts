@@ -59,6 +59,9 @@ export interface OnlineSaleItem {
   totalPrice: number;
   location: string; // Bodega USA o Bodega Ecuador
   imageUrl?: string; // URL de la imagen del producto
+  origin?: string; // Nuevo: origen del producto
+  salePrice1?: number; // Nuevo: precio 1
+  salePrice2?: number; // Nuevo: precio 2
 }
 
 // Utilidades para conversión de fechas
@@ -87,12 +90,25 @@ export const onlineSaleService = {
 
       // Actualizar inventario para cada producto
       for (const item of sale.items) {
-        await inventoryService.updateStockAfterExit(
-          item.productId,
-          item.quantity,
-          docRef.id,
-          undefined // No hay sellerId para ventas en línea
-        );
+        try {
+          await inventoryService.updateStockAfterExit(
+            item.productId,
+            item.quantity,
+            docRef.id,
+            undefined // No hay sellerId para ventas en línea
+          );
+        } catch (error: any) {
+          // Si es un producto "bajo pedido", ignoramos el error de stock
+          const isFBorWG = item.origin === 'fivebelow' || item.origin === 'walgreens';
+          const isSpecialPrice = item.salePrice2 === -10 || item.salePrice1 === -10;
+
+          if (isFBorWG || isSpecialPrice) {
+            console.log(`📦 Stock insuficiente para producto bajo pedido (${item.productName}), continuando sin reducir stock.`);
+          } else {
+            // Si es un producto normal, relanzamos el error
+            throw error;
+          }
+        }
       }
 
       // Crear entrada de contabilidad
