@@ -74,11 +74,25 @@ const convertTimestamp = (timestamp: any): Date => {
 
 const convertToTimestamp = (date: Date) => Timestamp.fromDate(date);
 
+// Utilidad para limpiar objetos de valores undefined (Firebase no los soporta)
+const cleanData = (obj: any): any => {
+  if (Array.isArray(obj)) {
+    return obj.map(v => cleanData(v));
+  } else if (obj !== null && typeof obj === 'object' && !(obj instanceof Date) && !(obj instanceof Timestamp)) {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .filter(([_, v]) => v !== undefined)
+        .map(([k, v]) => [k, cleanData(v)])
+    );
+  }
+  return obj;
+};
+
 export const onlineSaleService = {
   // Crear venta en línea
   async create(sale: Omit<OnlineSale, 'id'>): Promise<string> {
     try {
-      const docRef = await addDoc(collection(db, 'onlineSales'), {
+      const cleanedSale = cleanData({
         ...sale,
         createdAt: convertToTimestamp(sale.createdAt),
         confirmedAt: sale.confirmedAt ? convertToTimestamp(sale.confirmedAt) : null,
@@ -88,26 +102,35 @@ export const onlineSaleService = {
         deliveredAt: sale.deliveredAt ? convertToTimestamp(sale.deliveredAt) : null
       });
 
+      const docRef = await addDoc(collection(db, 'onlineSales'), cleanedSale);
+
       // Actualizar inventario para cada producto
       for (const item of sale.items) {
+        const isFBorWG = item.origin === 'fivebelow' || item.origin === 'walgreens';
+        const isSpecialPrice = item.salePrice2 === -10 || item.salePrice1 === -10;
+
+        if (isFBorWG || isSpecialPrice) {
+          // Para productos bajo pedido, validamos si hay stock antes de intentar restarlo
+          // para evitar el Error/Toast de "Stock insuficiente" del servicio de inventario.
+          const currentInv = await inventoryService.getByProductId(item.productId);
+          if (!currentInv || currentInv.quantity < item.quantity) {
+            console.log(`📦 Producto bajo pedido (${item.productName}) sin stock físico suficiente, continuando venta sin reducir inventario.`);
+            continue; // Saltamos la reducción para este item
+          }
+        }
+
         try {
           await inventoryService.updateStockAfterExit(
             item.productId,
             item.quantity,
             docRef.id,
-            undefined // No hay sellerId para ventas en línea
+            undefined, // No hay sellerId para ventas en línea
+            undefined, // location
+            true // silent: true para no mostrar notificaciones al cliente
           );
         } catch (error: any) {
-          // Si es un producto "bajo pedido", ignoramos el error de stock
-          const isFBorWG = item.origin === 'fivebelow' || item.origin === 'walgreens';
-          const isSpecialPrice = item.salePrice2 === -10 || item.salePrice1 === -10;
-
-          if (isFBorWG || isSpecialPrice) {
-            console.log(`📦 Stock insuficiente para producto bajo pedido (${item.productName}), continuando sin reducir stock.`);
-          } else {
-            // Si es un producto normal, relanzamos el error
-            throw error;
-          }
+          // Si por alguna razón falla el stock en un producto normal, lo relanzamos
+          throw error;
         }
       }
 
@@ -120,13 +143,12 @@ export const onlineSaleService = {
           date: sale.createdAt,
           status: sale.status,
           notes: sale.notes
-        });
+        }, true); // silent: true
       } catch (accountingError) {
         console.error('Error creating accounting entry:', accountingError);
         // No lanzar error para no interrumpir la creación de la venta
       }
 
-      toast.success('Venta registrada exitosamente');
       return docRef.id;
     } catch (error) {
       console.error('Error creating online sale:', error);
@@ -231,7 +253,8 @@ export const onlineSaleService = {
           console.log(`  📦 Devolviendo ${item.quantity}x ${item.productName} (ID: ${item.productId})`);
           await inventoryService.returnStockAfterDelete(
             item.productId,
-            item.quantity
+            item.quantity,
+            true // silent: true
           );
         } catch (inventoryError) {
           console.error(`Error devolviendo stock del producto ${item.productId}:`, inventoryError);
@@ -329,11 +352,11 @@ export const onlineSaleService = {
 
         if (!newItem) {
           // Item eliminado -> Devolver todo el stock
-          await inventoryService.returnStockAfterDelete(originalItem.productId, originalItem.quantity);
+          await inventoryService.returnStockAfterDelete(originalItem.productId, originalItem.quantity, true);
         } else if (newItem.quantity < originalItem.quantity) {
           // Cantidad reducida -> Devolver diferencia
           const diff = originalItem.quantity - newItem.quantity;
-          await inventoryService.returnStockAfterDelete(originalItem.productId, diff);
+          await inventoryService.returnStockAfterDelete(originalItem.productId, diff, true);
         }
       }
 
@@ -344,7 +367,7 @@ export const onlineSaleService = {
         if (originalItem && newItem.quantity > originalItem.quantity) {
           const diff = newItem.quantity - originalItem.quantity;
           // updateStockAfterExit reduce el stock
-          await inventoryService.updateStockAfterExit(newItem.productId, diff, saleId, undefined);
+          await inventoryService.updateStockAfterExit(newItem.productId, diff, saleId, undefined, undefined, true);
         }
         // Nota: No manejamos items totalmente nuevos aquí sin buscador, asumimos edición de existentes.
       }

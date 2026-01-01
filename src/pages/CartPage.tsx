@@ -102,6 +102,7 @@ const CartPage: React.FC = () => {
     const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     const [showAddressSelector, setShowAddressSelector] = useState(false);
     const [showAddressModal, setShowAddressModal] = useState(false);
+    const [stockErrors, setStockErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (user) loadAddresses();
@@ -174,25 +175,69 @@ const CartPage: React.FC = () => {
 
     const validateCartStock = async () => {
         for (const item of cart) {
-            if (item.type === 'product' && item.product) {
-                const product = item.product;
-                const isFBorWG = product.origin === 'fivebelow' || product.origin === 'walgreens';
-                const isSpecialPrice = product.salePrice2 === -10 || product.salePrice1 === -10;
+            const product = item.product || item.perfume;
+            if (!product) continue;
 
-                // Estos productos son bajo pedido y no requieren validación de stock físico
-                if (isFBorWG || isSpecialPrice) continue;
+            const isProduct = item.type === 'product';
+            const isFBorWG = isProduct && ((product as any).origin === 'fivebelow' || (product as any).origin === 'walgreens');
+            const isSpecialPrice = isProduct && ((product as any).salePrice2 === -10 || (product as any).salePrice1 === -10);
 
-                // Buscar stock globalmente por producto 
-                const inventory = await inventoryService.getByProductId(item.product.id);
-                if (!inventory || inventory.quantity < item.quantity) {
-                    return {
-                        valid: false,
-                        message: `Stock insuficiente para ${item.product?.name || 'producto'}. Disponible: ${inventory?.quantity || 0}`
-                    };
-                }
+            // Estos productos son bajo pedido y no requieren validación de stock físico
+            if (isFBorWG || isSpecialPrice) continue;
+
+            // Buscar stock globalmente por producto 
+            const inventory = await inventoryService.getByProductId(product.id);
+            if (inventory && inventory.quantity < item.quantity) {
+                return {
+                    valid: false,
+                    message: `Stock insuficiente para ${product.name}. Disponible: ${inventory.quantity}`
+                };
             }
         }
         return { valid: true };
+    };
+
+    const handleUpdateQuantity = async (itemId: string, newQuantity: number, type: 'product' | 'perfume') => {
+        const currentItem = cart.find(i => (type === 'product' && i.product?.id === itemId) || (type === 'perfume' && i.perfume?.id === itemId));
+        if (!currentItem) return;
+
+        if (newQuantity <= 0) {
+            removeFromCart(itemId, type);
+            // Limpiar error si se elimina
+            const newErrors = { ...stockErrors };
+            delete newErrors[itemId];
+            setStockErrors(newErrors);
+            return;
+        }
+
+        // Si estamos incrementando, validar stock
+        if (newQuantity > currentItem.quantity) {
+            const product = currentItem.product || currentItem.perfume;
+            const isProduct = currentItem.type === 'product';
+            const isFBorWG = isProduct && ((product as any).origin === 'fivebelow' || (product as any).origin === 'walgreens');
+            const isSpecialPrice = isProduct && ((product as any).salePrice2 === -10 || (product as any).salePrice1 === -10);
+
+            // Solo validar si NO es bajo pedido
+            if (!isFBorWG && !isSpecialPrice) {
+                const inventory = await inventoryService.getByProductId(itemId);
+                if (inventory && inventory.quantity < newQuantity) {
+                    setStockErrors(prev => ({
+                        ...prev,
+                        [itemId]: `Solo ${inventory.quantity} disponible(s)`
+                    }));
+                    return;
+                }
+            }
+        }
+
+        // Si llegamos aquí, la cantidad es válida, limpiamos el error si existía
+        if (stockErrors[itemId]) {
+            const newErrors = { ...stockErrors };
+            delete newErrors[itemId];
+            setStockErrors(newErrors);
+        }
+
+        updateCartQuantity(itemId, newQuantity, type);
     };
 
     const handleCheckout = async (paypalTransactionId?: string) => {
@@ -226,7 +271,21 @@ const CartPage: React.FC = () => {
         // Validar stock antes de procesar cualquier cosa
         const stockCheck = await validateCartStock();
         if (!stockCheck.valid) {
-            toast.error(stockCheck.message!);
+            // Si hay errores de stock, volver a la vista del carrito para que los vean
+            setShowCheckoutForm(false);
+
+            // Poblar stockErrors para que se vean los mensajitos inline
+            const newErrors: Record<string, string> = {};
+            for (const item of cart) {
+                const product = item.product || item.perfume;
+                if (!product) continue;
+
+                const inventory = await inventoryService.getByProductId(product.id);
+                if (inventory && inventory.quantity < item.quantity) {
+                    newErrors[product.id] = `Solo ${inventory.quantity} disponible(s)`;
+                }
+            }
+            setStockErrors(newErrors);
             return;
         }
 
@@ -243,39 +302,42 @@ const CartPage: React.FC = () => {
                 receiptUrl = await getDownloadURL(storageRef);
             }
 
-            const saleItems: any[] = cart.map(item => {
+            const saleItems = cart.map((item) => {
                 const product = item.product;
                 const perfume = item.perfume;
 
                 if (product) {
                     return {
                         productId: product.id,
+                        productName: product.name,
+                        productSku: product.sku || '',
                         quantity: item.quantity,
-                        unitPrice: product.salePrice2 || product.salePrice1,
-                        subtotal: (product.salePrice2 || product.salePrice1) * item.quantity,
-                        name: product.name,
-                        image: product.imageUrl,
+                        unitPrice: Number(product.salePrice2 || product.salePrice1),
+                        totalPrice: Number((product.salePrice2 || product.salePrice1) * item.quantity),
+                        imageUrl: product.imageUrl || '',
                         type: 'product',
-                        origin: product.origin,
-                        salePrice1: product.salePrice1,
-                        salePrice2: product.salePrice2
+                        origin: product.origin || '',
+                        location: 'Bodega USA',
+                        salePrice1: product.salePrice1 || 0,
+                        salePrice2: product.salePrice2 || 0
                     };
                 } else if (perfume) {
                     return {
                         productId: perfume.id,
+                        productName: `${perfume.brand} - ${perfume.name}`,
+                        productSku: 'PERFUME',
                         quantity: item.quantity,
-                        unitPrice: perfume.price,
-                        subtotal: perfume.price * item.quantity,
-                        name: `${perfume.brand} - ${perfume.name}`,
-                        image: perfume.imageUrl,
-                        type: 'perfume'
+                        unitPrice: Number(perfume.price),
+                        totalPrice: Number(perfume.price * item.quantity),
+                        imageUrl: perfume.imageUrl || '',
+                        type: 'perfume',
+                        location: 'Bodega USA'
                     };
                 }
                 return null;
-            }).filter(Boolean) as any[];
+            }).filter(Boolean);
 
             const saleNumber = `VENTA-${Date.now()}`;
-            // totalWithShipping ya incluye el descuento del cupón aplicado en el Provider
             const finalTotal = Math.max(0, totalWithShipping);
 
             // Determinar estado basado en método de pago
@@ -290,26 +352,31 @@ const CartPage: React.FC = () => {
 
             const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-            await onlineSaleService.create({
+            const saleData: any = {
                 securityCode,
                 number: saleNumber,
                 items: saleItems,
                 totalAmount: finalTotal,
-                shippingCost,
-                shippingWeight,
-                customerName: `${customerInfo.name} ${customerInfo.lastName}`,
-                customerEmail: customerInfo.email,
-                customerPhone: customerInfo.phone,
-                customerAddress: customerInfo.address,
+                shippingCost: shippingCost || 0,
+                shippingWeight: shippingWeight || 0,
+                customerName: `${customerInfo.name} ${customerInfo.lastName}`.trim(),
+                customerEmail: customerInfo.email || '',
+                customerPhone: customerInfo.phone || '',
+                customerAddress: customerInfo.address || '',
                 status: saleStatus,
                 paymentMethod: selectedPaymentMethod || 'banco_pichincha',
-                paypalTransactionId: paypalTransactionId,
-                receiptUrl,
+                receiptUrl: receiptUrl || '',
                 notes: appliedCoupon && couponCode
                     ? `Venta desde Tienda Online - Cupón aplicado: ${couponCode} (-$${couponDiscountAmount})`
                     : 'Venta desde Tienda Online',
                 createdAt: new Date()
-            });
+            };
+
+            if (paypalTransactionId) {
+                saleData.paypalTransactionId = paypalTransactionId;
+            }
+
+            await onlineSaleService.create(saleData);
 
             // Marcar cupón como usado
             // Marcar cupón como usado
@@ -546,21 +613,32 @@ const CartPage: React.FC = () => {
 
                                                 <div className="flex justify-between items-end mt-4">
                                                     <div className="flex items-center gap-3">
-                                                        <button
-                                                            onClick={() => updateCartQuantity(item.product?.id || item.perfume?.id || '', item.quantity - 1, item.type)}
-                                                            className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-600 font-bold"
-                                                        >
-                                                            -
-                                                        </button>
-                                                        <span>{item.quantity}</span>
-                                                        <button
-                                                            onClick={() => updateCartQuantity(item.product?.id || item.perfume?.id || '', item.quantity + 1, item.type)}
-                                                            className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-600 font-bold"
-                                                        >
-                                                            +
-                                                        </button>
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-3">
+                                                                <button
+                                                                    onClick={() => handleUpdateQuantity(item.product?.id || item.perfume?.id || '', item.quantity - 1, item.type)}
+                                                                    className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-600 font-bold hover:bg-gray-200 transition-colors"
+                                                                >
+                                                                    -
+                                                                </button>
+                                                                <span className="w-4 text-center font-medium">{item.quantity}</span>
+                                                                <button
+                                                                    onClick={() => handleUpdateQuantity(item.product?.id || item.perfume?.id || '', item.quantity + 1, item.type)}
+                                                                    className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-600 font-bold hover:bg-gray-200 transition-colors"
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            </div>
+                                                            {stockErrors[item.product?.id || item.perfume?.id || ''] && (
+                                                                <span className="text-[10px] text-red-500 font-medium animate-pulse">
+                                                                    {stockErrors[item.product?.id || item.perfume?.id || '']}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <p className="font-bold text-lg">${(price * item.quantity).toFixed(2)}</p>
+                                                    <div className="text-right leading-tight">
+                                                        <p className="font-bold text-lg text-blue-900">${(price * item.quantity).toFixed(2)}</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

@@ -34,7 +34,7 @@ const convertToTimestamp = (date: Date) => Timestamp.fromDate(date);
 
 export const onlineSaleAccountingService = {
   // Crear entrada de contabilidad para venta en línea
-  async create(sale: Omit<OnlineSaleAccounting, 'id' | 'createdAt'>): Promise<string> {
+  async create(sale: Omit<OnlineSaleAccounting, 'id' | 'createdAt'>, silent: boolean = false): Promise<string> {
     try {
       const docRef = await addDoc(collection(db, 'onlineSaleAccounting'), {
         ...sale,
@@ -42,11 +42,11 @@ export const onlineSaleAccountingService = {
         createdAt: convertToTimestamp(new Date())
       });
 
-      toast.success('Venta en línea registrada en contabilidad');
+      if (!silent) toast.success('Venta en línea registrada en contabilidad');
       return docRef.id;
     } catch (error) {
       console.error('Error creating online sale accounting:', error);
-      toast.error('Error al registrar la venta en contabilidad');
+      if (!silent) toast.error('Error al registrar la venta en contabilidad');
       throw error;
     }
   },

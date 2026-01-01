@@ -95,7 +95,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setCart([...cart, { perfume, type: 'perfume', quantity: 1 }]);
             }
         }
-        toast.success('Agregado al carrito');
     };
 
     const removeFromCart = (itemId: string, type: 'product' | 'perfume') => {
@@ -106,7 +105,6 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 return !(cartItem.type === 'perfume' && cartItem.perfume?.id === itemId);
             }
         }));
-        toast.success('Eliminado del carrito');
     };
 
     const updateCartQuantity = (itemId: string, quantity: number, type: 'product' | 'perfume') => {

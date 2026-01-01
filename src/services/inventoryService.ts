@@ -26,7 +26,7 @@ const convertToTimestamp = (date: Date) => Timestamp.fromDate(date);
 
 export const inventoryService = {
   // Crear item de inventario
-  async create(item: Omit<InventoryItem, 'id' | 'lastUpdated'>): Promise<string> {
+  async create(item: Omit<InventoryItem, 'id' | 'lastUpdated'>, silent: boolean = false): Promise<string> {
     try {
       const now = new Date();
       const docRef = await addDoc(collection(db, 'inventory'), {
@@ -34,17 +34,17 @@ export const inventoryService = {
         lastUpdated: convertToTimestamp(now)
       });
 
-      toast.success('Item de inventario creado exitosamente');
+      if (!silent) toast.success('Item de inventario creado exitosamente');
       return docRef.id;
     } catch (error) {
       console.error('Error creating inventory item:', error);
-      toast.error('Error al crear el item de inventario');
+      if (!silent) toast.error('Error al crear el item de inventario');
       throw error;
     }
   },
 
   // Actualizar item de inventario
-  async update(id: string, item: Partial<InventoryItem>): Promise<void> {
+  async update(id: string, item: Partial<InventoryItem>, silent: boolean = false): Promise<void> {
     try {
       const docRef = doc(db, 'inventory', id);
 
@@ -63,10 +63,10 @@ export const inventoryService = {
         lastUpdated: convertToTimestamp(new Date())
       });
 
-      toast.success('Inventario actualizado exitosamente');
+      if (!silent) toast.success('Inventario actualizado exitosamente');
     } catch (error) {
       console.error('Error updating inventory item:', error);
-      toast.error('Error al actualizar el inventario');
+      if (!silent) toast.error('Error al actualizar el inventario');
       throw error;
     }
   },
@@ -141,7 +141,7 @@ export const inventoryService = {
 
   // Actualizar stock después de entrada
   // Actualizar stock después de entrada
-  async updateStockAfterEntry(productId: string, quantity: number, cost: number, unitPrice: number, location: string = 'Bodega Principal'): Promise<void> {
+  async updateStockAfterEntry(productId: string, quantity: number, cost: number, unitPrice: number, location: string = 'Bodega Principal', silent: boolean = false): Promise<void> {
     try {
       // Obtener el producto para usar su salePrice1
       const { productService } = await import('./productService');
@@ -164,7 +164,7 @@ export const inventoryService = {
           totalValue: newTotalValue,
           cost: newTotalCost / newQuantity, // Costo promedio
           unitPrice: actualUnitPrice // Usar siempre salePrice1
-        });
+        }, silent);
       } else {
         // Crear nuevo item de inventario
         await this.create({
@@ -181,16 +181,16 @@ export const inventoryService = {
         });
       }
 
-      toast.success('Stock actualizado exitosamente');
+      if (!silent) toast.success('Stock actualizado exitosamente');
     } catch (error) {
       console.error('Error updating stock:', error);
-      toast.error('Error al actualizar el stock');
+      if (!silent) toast.error('Error al actualizar el stock');
       throw error;
     }
   },
 
   // Actualizar stock después de salida (pasa a estado in-transit)
-  async updateStockAfterExit(productId: string, quantity: number, exitNoteId?: string, sellerId?: string, location?: string): Promise<void> {
+  async updateStockAfterExit(productId: string, quantity: number, exitNoteId?: string, sellerId?: string, location?: string, silent: boolean = false): Promise<void> {
     try {
       // Si se especifica una ubicación, buscar específicamente en esa ubicación
       // Si no, buscar en cualquier ubicación (comportamiento anterior)
@@ -221,15 +221,15 @@ export const inventoryService = {
           status: 'in-transit',
           sellerId: sellerId,
           exitNoteId: exitNoteId
-        });
+        }, silent);
 
-        toast.success('Stock actualizado exitosamente');
+        if (!silent) toast.success('Stock actualizado exitosamente');
       } else {
         throw new Error('Stock insuficiente');
       }
     } catch (error) {
       console.error('Error updating stock after exit:', error);
-      toast.error('Error al actualizar el stock');
+      if (!silent) toast.error('Error al actualizar el stock');
       throw error;
     }
   },
@@ -263,7 +263,7 @@ export const inventoryService = {
   },
 
   // Remover stock del inventario
-  async removeStock(productId: string, quantity: number, location?: string): Promise<void> {
+  async removeStock(productId: string, quantity: number, location?: string, silent: boolean = false): Promise<void> {
     try {
       let existingItem: InventoryItem | null = null;
 
@@ -293,15 +293,15 @@ export const inventoryService = {
           totalCost: newTotalCost,
           totalPrice: newTotalPrice,
           totalValue: newTotalValue
-        });
+        }, silent);
 
-        toast.success('Stock removido exitosamente');
+        if (!silent) toast.success('Stock removido exitosamente');
       } else {
         throw new Error('Stock insuficiente para remover');
       }
     } catch (error) {
       console.error('Error removing stock:', error);
-      toast.error('Error al remover stock');
+      if (!silent) toast.error('Error al remover stock');
       throw error;
     }
   },
@@ -312,7 +312,7 @@ export const inventoryService = {
   },
 
   // Devolver stock al inventario después de eliminar/cancelar pedido
-  async returnStockAfterDelete(productId: string, quantity: number): Promise<void> {
+  async returnStockAfterDelete(productId: string, quantity: number, silent: boolean = false): Promise<void> {
     try {
       const existingItem = await this.getByProductId(productId);
 
@@ -331,7 +331,7 @@ export const inventoryService = {
           totalPrice: newTotalPrice,
           totalValue: newTotalValue,
           status: 'stock' // Devolver a estado stock
-        });
+        }, silent);
 
         console.log(`✅ Stock devuelto: ${quantity} unidades de producto ${productId}`);
       } else {
