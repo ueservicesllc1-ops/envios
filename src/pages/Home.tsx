@@ -183,6 +183,7 @@ const Home: React.FC = () => {
     setContextCouponCode(couponCode);
     setContextCouponDiscount(couponDiscount);
     setContextCouponActive(couponActive);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [couponCode, couponDiscount, couponActive]);
 
   // Cargar configuración de la tienda
@@ -243,6 +244,7 @@ const Home: React.FC = () => {
         setIndex((prev) => (prev + 1) % banners.length);
       }, 4000);
       return () => clearInterval(timer);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -900,7 +902,7 @@ const Home: React.FC = () => {
               >
                 Cómo Comprar
               </button>
-              <a href="#" onClick={(e) => { e.preventDefault(); navigate('/my-orders'); }} className="hover:text-yellow-300 whitespace-nowrap font-bold text-yellow-400">Mis pedidos</a>
+              <button onClick={(e) => { e.preventDefault(); navigate('/my-orders'); }} className="hover:text-yellow-300 whitespace-nowrap font-bold text-yellow-400">Mis pedidos</button>
               <button
                 onClick={(e) => {
                   e.preventDefault();

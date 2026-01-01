@@ -105,6 +105,7 @@ const CartPage: React.FC = () => {
 
     useEffect(() => {
         if (user) loadAddresses();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const loadAddresses = async () => {
@@ -119,6 +120,7 @@ const CartPage: React.FC = () => {
             const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
             handleSelectAddress(def.id);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [savedAddresses]);
 
     const handleSelectAddress = (id: string) => {

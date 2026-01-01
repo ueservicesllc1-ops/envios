@@ -5,6 +5,9 @@
   "private": true,
   "dependencies": {
     "@aws-sdk/client-s3": "^3.490.0",
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
     "@emailjs/browser": "^4.4.1",
     "@paypal/react-paypal-js": "^8.9.2",
     "@types/node": "^16.18.0",

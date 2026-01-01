@@ -15,6 +15,7 @@ const UserAddresses: React.FC = () => {
 
     useEffect(() => {
         if (user) loadAddresses();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const loadAddresses = async () => {

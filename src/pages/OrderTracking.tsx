@@ -22,6 +22,7 @@ const OrderTracking: React.FC = () => {
 
     useEffect(() => {
         loadOrder();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orderId]);
 
     useEffect(() => {
