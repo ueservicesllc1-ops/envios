@@ -1,20 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.comprasexpress.app',
-  appName: 'Compras Express',
-  webDir: 'build',
-  server: {
-    androidScheme: 'https'
-  },
-  plugins: {
-    CapacitorHttp: {
-      enabled: true,
-    },
-  },
-  android: {
-    allowMixedContent: true
-  }
+  appId: 'com.envios.ecuador',
+  appName: 'Envios Ecuador',
+  webDir: 'build'
 };
 
 export default config;

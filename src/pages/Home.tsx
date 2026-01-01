@@ -379,11 +379,12 @@ const Home: React.FC = () => {
       console.log('🛒 CARGANDO TIENDA PRINCIPAL (HOME)');
       console.log('========================================');
 
-      const [productsData, perfumesData, inventoryData, settings] = await Promise.all([
+      const [productsData, perfumesData, inventoryData, settings, storeSettingsData] = await Promise.all([
         productService.getAll(),
         perfumeService.getActive(),
         inventoryService.getAll(),
-        perfumeSettingsService.getSettings()
+        perfumeSettingsService.getSettings(),
+        storeSettingsService.getSettings()
       ]);
 
       console.log('📦 Inventario cargado:', inventoryData.length, 'items');
@@ -429,6 +430,7 @@ const Home: React.FC = () => {
       setCouponCode(settings.couponCode || '');
       setCouponDiscount(settings.couponDiscountPercentage || 0);
       setCouponActive(settings.couponActive || false);
+      setStoreSettings(storeSettingsData);
 
       console.log('✅ Tienda principal cargada');
     } catch (error) {
@@ -492,7 +494,8 @@ const Home: React.FC = () => {
   useEffect(() => {
     const rankProducts = async () => {
       let baseItems = [
-        ...products.map(p => ({ type: 'product' as const, item: p }))
+        ...products.map(p => ({ type: 'product' as const, item: p })),
+        ...perfumes.map(p => ({ type: 'perfume' as const, item: p }))
       ];
 
       try {
@@ -541,37 +544,46 @@ const Home: React.FC = () => {
   const allItems = rankedItems;
 
   const filteredProducts = allItems.filter(({ type, item }) => {
-    const product = item as Product;
+    const isProduct = type === 'product';
+    const product = isProduct ? item as Product : null;
+    const perfume = !isProduct ? item as Perfume : null;
 
     // Filtro por ubicación (Solo Bodega USA/General y Bodega Ecuador)
     let isValidLocation = false;
 
-    // Para productos consolidados, verificar ubicación de sus variantes hijas
-    const variants = consolidatedVariantsMap.get(product.id);
-    if (variants && variants.length > 0) {
-      // Es un producto consolidado con variantes - verificar ubicación de variantes
-      isValidLocation = variants.some(variant => {
-        const variantLocation = getProductLocation(variant.id)?.toLowerCase() || '';
-        return variantLocation.includes('usa') || variantLocation.includes('general') || variantLocation.includes('ecuador');
-      });
-    } else {
-      // Producto normal - verificar su propia ubicación
-      // Si es Five Below o Walgreens, siempre es válido (se asume ubicación USA virtual)
-      if (product.origin === 'fivebelow' || product.origin === 'walgreens') {
-        isValidLocation = true;
+    if (isProduct && product) {
+      // Para productos consolidados, verificar ubicación de sus variantes hijas
+      const variants = consolidatedVariantsMap.get(product.id);
+      if (variants && variants.length > 0) {
+        // Es un producto consolidado con variantes - verificar ubicación de variantes
+        isValidLocation = variants.some(variant => {
+          const variantLocation = getProductLocation(variant.id)?.toLowerCase() || '';
+          return variantLocation.includes('usa') || variantLocation.includes('general') || variantLocation.includes('ecuador');
+        });
       } else {
-        const location = getProductLocation(product.id)?.toLowerCase() || '';
-        isValidLocation = location.includes('usa') || location.includes('general') || location.includes('ecuador');
+        // Producto normal - verificar su propia ubicación
+        // Si es Five Below o Walgreens, siempre es válido (se asume ubicación USA virtual)
+        if (product.origin === 'fivebelow' || product.origin === 'walgreens') {
+          isValidLocation = true;
+        } else {
+          const location = getProductLocation(product.id)?.toLowerCase() || '';
+          isValidLocation = location.includes('usa') || location.includes('general') || location.includes('ecuador');
+        }
       }
+    } else {
+      // Perfumes siempre son válidos para ubicación (bodega USA)
+      isValidLocation = true;
     }
 
     if (!isValidLocation) return false;
 
     // Filtro por Categoría
     if (selectedCategory && selectedCategory !== 'all') {
-      const prodCategory = (product.category || '').toLowerCase();
-      // Mapeo simple: si la categoría seleccionada está contenida en la categoría del producto (o viceversa para flexibilidad)
-      // Ajuste específico para categorías comunes
+      const prodCategory = isProduct
+        ? (product?.category || '').toLowerCase()
+        : 'perfumes'; // Los perfumes siempre pertenecen a la categoría perfumes
+
+      // Mapeo simple
       if (selectedCategory === 'electronics' && !prodCategory.includes('electr')) return false;
       if (selectedCategory === 'perfumes' && !prodCategory.includes('perfum')) return false;
       if (selectedCategory === 'clothing' && !prodCategory.includes('ropa')) return false;
@@ -581,46 +593,44 @@ const Home: React.FC = () => {
       if (selectedCategory === 'toys' && !prodCategory.includes('juguet')) return false;
       if (selectedCategory === 'vitamins' && !prodCategory.includes('vitamin')) return false;
 
-      // Fallback genérico por si acaso
+      // Fallback genérico
       if (
         !prodCategory.includes(selectedCategory) &&
-        selectedCategory !== 'electronics' &&
-        selectedCategory !== 'perfumes' &&
-        selectedCategory !== 'clothing' &&
-        selectedCategory !== 'shoes' &&
-        selectedCategory !== 'beauty' &&
-        selectedCategory !== 'home' &&
-        selectedCategory !== 'toys' &&
-        selectedCategory !== 'vitamins'
+        !['electronics', 'perfumes', 'clothing', 'shoes', 'beauty', 'home', 'toys', 'vitamins'].includes(selectedCategory)
       ) return false;
     }
 
     // Filtro Precio
-    if (priceFilter === 'under25') {
-      const price = product.salePrice2 || product.salePrice1 || product.originalPrice || 0;
-      if (price >= 25) return false;
-    } else if (priceFilter === 'discounts') {
-      const price = product.salePrice2 || product.salePrice1 || product.originalPrice || 0;
-      const originalPrice = product.originalPrice || 0;
-      // Mostrar solo si tiene precio original mayor al precio de venta (tiene descuento)
-      if (!originalPrice || originalPrice <= price) return false;
+    let currentPrice = 0;
+    let originalPriceVal = 0;
+
+    if (isProduct && product) {
+      currentPrice = product.salePrice2 || product.salePrice1 || product.originalPrice || 0;
+      originalPriceVal = product.originalPrice || 0;
+    } else if (perfume) {
+      currentPrice = perfume.price;
+      originalPriceVal = perfume.originalPrice || 0;
+    }
+
+    if (priceFilter === 'under25' && currentPrice >= 25) return false;
+    if (priceFilter === 'discounts') {
+      if (!originalPriceVal || originalPriceVal <= currentPrice) return false;
     }
 
     // Filtro Búsqueda
+    const name = (isProduct ? product?.name : perfume?.name) || '';
+    const sku = (isProduct ? product?.sku : perfume?.sku) || '';
+    const category = isProduct ? (product?.category || '') : 'perfumes';
+
     const matchesSearch =
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.category?.toLowerCase().includes(searchTerm.toLowerCase());
+      name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      category.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Filtro Categoría
-    const normalizeCategory = (cat: string) => cat.trim().toLowerCase().replace(/\s+/g, ' ');
-    const matchesCategory = selectedCategory === 'all' ||
-      (product.category && normalizeCategory(product.category) === normalizeCategory(selectedCategory));
+    // Filtro Consolidados - Ocultar productos hijos
+    if (isProduct && product?.parentConsolidatedId) return false;
 
-    // Filtro Consolidados - Ocultar productos hijos (ya que se muestran como variantes del padre)
-    if (product.parentConsolidatedId) return false;
-
-    return matchesSearch && matchesCategory;
+    return matchesSearch;
   });
 
   // Paginación
@@ -630,14 +640,15 @@ const Home: React.FC = () => {
     setVisibleProducts(24);
   }, [searchTerm, selectedCategory, priceFilter]);
 
-  const handleAddToCart = (item: Product | Perfume, type: 'product' | 'perfume' = 'product') => {
+  const handleAddToCart = (item: Product | Perfume, type: 'product' | 'perfume' = 'product', ignoreStock: boolean = false) => {
     if (type === 'product') {
       const product = item as Product;
 
-      // Five Below (FB) y Walgreens (WG) son productos bajo pedido - no validar stock
+      // Five Below (FB) y Walgreens (WG) y productos con precio especial (-10) son bajo pedido
       const isFBorWG = product.origin === 'fivebelow' || product.origin === 'walgreens';
+      const isSpecialPrice = product.salePrice2 === -10 || product.salePrice1 === -10;
 
-      if (!isFBorWG) {
+      if (!isFBorWG && !isSpecialPrice && !ignoreStock) {
         const availableQty = getAvailableQuantity(product.id);
 
         if (availableQty <= 0) {
@@ -921,6 +932,23 @@ const Home: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Mobile Search Bar - Visible only on mobile */}
+      <div className="md:hidden bg-white border-b border-gray-200 p-2 sticky top-[56px] z-30 shadow-sm">
+        <div className="flex w-full bg-gray-100 rounded-md h-10 relative items-center">
+          <input
+            type="text"
+            placeholder="Buscar productos, marcas y más..."
+            className="flex-1 px-4 text-sm text-gray-700 placeholder-gray-500 bg-transparent focus:outline-none h-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <button className="px-4 text-gray-500">
+            <Search className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+
       {/* Main Content con fondo gris claro */}
       <main className="bg-gray-100 min-h-screen pb-12">
 
@@ -933,7 +961,6 @@ const Home: React.FC = () => {
             *Este bono se usará para pagos de envíos y se deducirá 20% de este bono por cada envío hasta alcanzar el total.
           </p>
         </div>
-
         {/* Hero Carousel Container */}
         <div className="container mx-auto px-4 py-6">
           <div className="relative group max-w-[1200px] mx-auto">
@@ -946,6 +973,7 @@ const Home: React.FC = () => {
                       src={slide.imageUrl || 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&q=80'}
                       alt={slide.title || `Banner ${index + 1}`}
                       className="w-full h-full object-contain"
+                      loading="lazy"
                     />
                   </div>
                 </div>
@@ -1062,6 +1090,7 @@ const Home: React.FC = () => {
                                 src={getImageUrl(product.imageUrl)}
                                 alt={product.name}
                                 className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                                loading="lazy"
                               />
                             ) : (
                               <Package className="h-10 w-10 text-gray-300" />
@@ -1084,7 +1113,7 @@ const Home: React.FC = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleAddToCart(product, 'product');
+                                  handleAddToCart(product, 'product', true);
                                 }}
                                 className="w-full mt-2 bg-white border border-blue-900 text-blue-900 hover:bg-blue-900 hover:text-white text-xs font-bold py-1.5 rounded transition-colors flex items-center justify-center gap-1 cursor-pointer relative z-30"
                               >
@@ -1199,6 +1228,7 @@ const Home: React.FC = () => {
                                   src={getImageUrl(product.imageUrl)}
                                   alt={product.name}
                                   className="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
+                                  loading="lazy"
                                 />
                               ) : (
                                 <Package className="h-10 w-10 text-gray-300" />
@@ -1221,7 +1251,7 @@ const Home: React.FC = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleAddToCart(product, 'product');
+                                    handleAddToCart(product, 'product', true);
                                   }}
                                   className="w-full mt-2 bg-white border border-green-600 text-green-700 hover:bg-green-600 hover:text-white text-xs font-bold py-1.5 rounded transition-colors flex items-center justify-center gap-1 cursor-pointer relative z-30"
                                 >
@@ -1280,15 +1310,17 @@ const Home: React.FC = () => {
               ) : (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {filteredProducts.slice(0, visibleProducts).map(({ item }, index) => {
-                      const product = item as Product;
-                      const displayItem = product;
+                    {filteredProducts.slice(0, visibleProducts).map(({ type, item }, index) => {
+                      const isProduct = type === 'product';
+                      const product = isProduct ? item as Product : null;
+                      const perfume = !isProduct ? item as Perfume : null;
+                      const displayItem = item;
 
                       if (!displayItem) return null;
 
                       // Precio y descuento
-                      let price = product.salePrice2 || product.salePrice1 || 0;
-                      let originalPrice = product.originalPrice || 0;
+                      let price = isProduct && product ? (product.salePrice2 || product.salePrice1 || 0) : (perfume?.price || 0);
+                      let originalPrice = isProduct && product ? (product.originalPrice || 0) : (perfume?.originalPrice || 0);
                       let discountPercentage = 0;
 
                       if (originalPrice && originalPrice > price) {
@@ -1296,192 +1328,134 @@ const Home: React.FC = () => {
                         discountPercentage = Math.round(((originalPrice - price) / originalPrice) * 100);
                       }
 
-                      const isProduct = true;
-
-                      // Para productos consolidados, verificar stock de las variantes
+                      // Lógica de disponibilidad y stock
                       let isDisabled = false;
                       let stockInfo = '';
+
                       if (isProduct && product) {
+                        const isSpecialPrice = product.salePrice2 === -10 || product.salePrice1 === -10;
+                        const isOrderBasis = product.origin === 'fivebelow' || product.origin === 'walgreens' || isSpecialPrice;
+
                         if (product.isConsolidated && product.consolidatedProducts) {
-                          // Verificar si al menos una variante tiene stock
-                          const hasStock = product.consolidatedProducts.some(productId => {
-                            return getAvailableQuantity(productId) > 0;
-                          });
-                          isDisabled = !hasStock && product.origin !== 'fivebelow' && product.origin !== 'walgreens';
-                          // Contar variantes con stock
-                          const variantsWithStock = product.consolidatedProducts.filter(productId => {
-                            return getAvailableQuantity(productId) > 0;
-                          }).length;
-                          stockInfo = `${variantsWithStock}/${product.consolidatedProducts.length} ${t('home.variants')} ${t('home.available')}`;
+                          const hasStock = product.consolidatedProducts.some(id => getAvailableQuantity(id) > 0);
+                          isDisabled = !hasStock && !isOrderBasis;
+                          const variantsWithStock = product.consolidatedProducts.filter(id => getAvailableQuantity(id) > 0).length;
+                          stockInfo = `${variantsWithStock}/${product.consolidatedProducts.length} ${t('home.variants')} disponibles`;
+                          if (isOrderBasis && !hasStock) stockInfo = 'Bajo pedido';
                         } else {
-                          // Producto normal - verificar stock directo
                           const availableQty = getAvailableQuantity(product.id);
-                          // Permitir compra si es de Five Below o Walgreens aunque no tenga stock
-                          if (product.origin === 'fivebelow' || product.origin === 'walgreens') {
+                          if (isOrderBasis) {
                             isDisabled = false;
-                            // Si hay stock real lo mostramos, si no (0) mostramos info de disponible pero sin cantidad
-                            stockInfo = availableQty > 0
-                              ? `${availableQty} ${t('home.available')}`
-                              : 'Disponible';
+                            stockInfo = availableQty > 0 ? `${availableQty} disponibles` : 'Bajo pedido';
                           } else {
                             isDisabled = availableQty === 0;
-                            stockInfo = availableQty > 0 ? `${availableQty} ${t('home.available')}` : t('home.outOfStockLabel');
+                            stockInfo = availableQty > 0 ? `${availableQty} disponibles` : t('home.outOfStockLabel');
                           }
                         }
+                      } else {
+                        // Perfumes siempre disponibles
+                        isDisabled = false;
+                        stockInfo = 'Disponible';
                       }
 
                       return (
-
                         <React.Fragment key={displayItem.id}>
                           <div
                             onClick={() => {
-                              setSelectedProduct(displayItem);
+                              setSelectedProduct(displayItem as any);
                               setCurrentImageIndex(0);
-                              // Registrar vista (categoría)
-                              if (user && isProduct && displayItem.category) {
-                                userService.logProductView(user.uid, displayItem.id, displayItem.category);
+                              if (user && isProduct && (displayItem as Product).category) {
+                                userService.logProductView(user.uid, displayItem.id, (displayItem as Product).category);
                               }
                             }}
                             className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col cursor-pointer"
                           >
-                            {/* Imagen */}
                             <div className="w-full h-48 bg-white flex items-center justify-center overflow-hidden relative">
-                              {/* ... (código existente de imagen) ... */}
                               {isProduct && product?.origin === 'fivebelow' && (
-                                <div className="absolute top-2 right-2 z-10 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md border-2 border-white">
-                                  FB
-                                </div>
+                                <div className="absolute top-2 right-2 z-10 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md border-2 border-white">FB</div>
                               )}
                               {isProduct && product?.origin === 'walgreens' && (
-                                <div className="absolute top-2 right-2 z-10 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md border-2 border-white">
-                                  W
-                                </div>
+                                <div className="absolute top-2 right-2 z-10 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md border-2 border-white">W</div>
                               )}
                               {displayItem.imageUrl ? (
                                 <img
                                   src={getImageUrl(displayItem.imageUrl)}
                                   alt={displayItem.name}
                                   className="w-full h-full object-contain p-3 hover:scale-105 transition-transform duration-300"
+                                  loading="lazy"
                                 />
                               ) : (
                                 <Package className="h-12 w-12 text-gray-300" />
                               )}
                             </div>
 
-                            {/* Información */}
-                            <div className="p-3 flex flex-col flex-grow bg-gray-200">
-                              {/* ... (código existente de contenido) ... */}
-                              <div className="flex items-start justify-between mb-2">
-                                <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 flex-1 mr-2">
+                            <div className="p-3 flex flex-col flex-grow bg-gray-50">
+                              <div className="flex items-start justify-between mb-1">
+                                <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 flex-1 mr-2 leading-tight">
                                   {displayItem.name}
                                 </h3>
                                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                   {isProduct && product?.isConsolidated && (
-                                    <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded whitespace-nowrap">
-                                      {t('home.variants')}
-                                    </span>
+                                    <span className="px-2 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded font-bold">{t('home.variants')}</span>
                                   )}
-                                  {getProductLocation(product.id)?.toLowerCase().includes('ecuador') && (
-                                    <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded whitespace-nowrap flex items-center gap-1 font-medium border border-green-200">
+                                  {isProduct && product && getProductLocation(product.id)?.toLowerCase().includes('ecuador') && (
+                                    <span className="px-2 py-0.5 text-[10px] bg-green-100 text-green-800 rounded flex items-center gap-1 font-bold border border-green-200">
                                       <Truck className="h-3 w-3" /> 24h
                                     </span>
+                                  )}
+                                  {!isProduct && perfume && (
+                                    <span className="px-2 py-0.5 text-[10px] bg-purple-100 text-purple-700 rounded font-bold">Perfume</span>
                                   )}
                                 </div>
                               </div>
 
-                              {/* Tallas disponibles */}
-                              {/* ... (código existente variantes) ... */}
-                              {isProduct && (
+                              {isProduct && product && (
                                 (() => {
                                   const variants = consolidatedVariantsMap.get(product.id) || [];
-                                  const sizes = Array.from(new Set(variants.map(v => v.size).filter(Boolean))).sort();
-
-                                  if (sizes.length > 0) {
-                                    return (
-                                      <p className="text-xs text-blue-800 mb-2 font-medium">
-                                        Tallas: {sizes.join(', ')}
-                                      </p>
-                                    );
-                                  }
-
                                   if (variants.length > 0) {
-                                    return (
-                                      <p className="text-xs text-blue-800 mb-2 font-medium">
-                                        Ver opciones ({variants.length})
-                                      </p>
-                                    );
+                                    const sizes = Array.from(new Set(variants.map(v => v.size).filter(Boolean))).sort();
+                                    return sizes.length > 0
+                                      ? <p className="text-[10px] text-blue-600 mb-1 font-medium italic">Tallas: {sizes.join(', ')}</p>
+                                      : <p className="text-[10px] text-blue-600 mb-1 font-medium italic">Opciones disponibles: {variants.length}</p>;
                                   }
-
                                   return null;
                                 })()
                               )}
 
-                              {/* Información de stock */}
-                              {isProduct && product && stockInfo && (
-                                <p className={`text-xs mb-1 font-medium ${isDisabled ? 'text-red-600' : 'text-green-600'}`}>
-                                  {stockInfo}
-                                </p>
+                              {!isProduct && perfume && (
+                                <p className="text-[10px] text-purple-600 mb-1 font-medium italic">Marca: {perfume.brand}</p>
                               )}
 
-                              {/* Precio */}
-                              <div className="mt-auto">
-                                <div className="mb-2">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-lg font-bold text-primary-600">
-                                      ${price.toLocaleString()}
-                                    </span>
-                                    {originalPrice && originalPrice > 0 && originalPrice > price && (
-                                      <>
-                                        <span className="text-xs text-gray-500 line-through">
-                                          ${originalPrice.toLocaleString()}
-                                        </span>
-                                        {discountPercentage > 0 && (
-                                          <span className="text-xs font-bold bg-red-500 text-white px-1.5 py-0.5 rounded">
-                                            -{discountPercentage}% {t('home.discount')}
-                                          </span>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
+                              <p className={`text-[10px] mb-2 font-bold ${isDisabled ? 'text-red-500' : 'text-green-600'}`}>
+                                {stockInfo}
+                              </p>
+
+                              <div className="mt-auto pt-2 border-t border-gray-100">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-base font-bold text-blue-900">${price.toLocaleString()}</span>
+                                  {originalPrice > price && (
+                                    <span className="text-[10px] text-gray-400 line-through">${originalPrice.toLocaleString()}</span>
+                                  )}
                                 </div>
 
-                                {/* Botón agregar al carrito */}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    // Si es consolidado, abrir modal de detalles para seleccionar variante
-                                    if (product!.isConsolidated) {
-                                      setSelectedProduct(product!);
-                                      setCurrentImageIndex(0);
-                                    } else {
-                                      addToCart(product!, 'product');
-                                    }
+                                    handleAddToCart(displayItem as any, isProduct ? 'product' : 'perfume');
                                   }}
                                   disabled={isDisabled}
-                                  className={`w-full py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1 ${!isDisabled
-                                    ? 'bg-primary-600 text-white hover:bg-primary-700'
-                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  className={`w-full py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${!isDisabled ? 'bg-blue-900 text-white hover:bg-blue-800 active:scale-95' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     }`}
                                 >
-                                  <ShoppingCart className="h-4 w-4" />
-                                  <span>
-                                    {isDisabled
-                                      ? t('home.outOfStock')
-                                      : (isProduct && (product?.origin === 'fivebelow' || product?.origin === 'walgreens') && getAvailableQuantity(product.id) === 0)
-                                        ? t('home.addToCartButton')
-                                        : (isProduct && product?.isConsolidated)
-                                          ? t('home.viewDetails')
-                                          : t('home.addToCartButton')
-                                    }
-                                  </span>
+                                  <ShoppingCart className="h-3.5 w-3.5" />
+                                  <span>{isDisabled ? 'Agotado' : 'Lo quiero'}</span>
                                 </button>
                               </div>
                             </div>
                           </div>
-                          {/* Insertar Banner Publicitario después del 12vo producto */}
-                          {index === 11 && (
-                            <div className="col-span-full my-6 bg-gray-900 rounded-lg shadow-md overflow-hidden h-20 relative group">
-                              <AdvertCarousel />
+                          {index % 12 === 11 && (
+                            <div className="col-span-full py-4 my-2 border-y border-gray-100">
+                              <AdvertisingCarousel banners={storeSettings?.advertisingBanners || []} />
                             </div>
                           )}
                         </React.Fragment>
@@ -1503,6 +1477,18 @@ const Home: React.FC = () => {
               )
             }
           </div>
+
+          {/* Pagination Button at the bottom of Grid */}
+          {!loading && filteredProducts.length > visibleProducts && (
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={() => setVisibleProducts(prev => prev + 24)}
+                className="bg-white text-blue-900 border border-blue-900 px-6 py-2 rounded-full font-bold shadow-sm hover:bg-blue-50 transition-colors flex items-center gap-2"
+              >
+                Cargar más productos <ChevronDown className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Sección de Estadísticas / Información Adicional */}
@@ -1543,9 +1529,11 @@ const Home: React.FC = () => {
         </div>
 
         {/* Carrusel de Publicidad */}
-        {storeSettings && (
-          <AdvertisingCarousel banners={storeSettings.advertisingBanners} />
-        )}
+        {
+          storeSettings && (
+            <AdvertisingCarousel banners={storeSettings.advertisingBanners} />
+          )
+        }
 
         {/* Modal de Detalles del Producto/Perfume */}
         {
@@ -2064,109 +2052,113 @@ const Home: React.FC = () => {
         }
 
 
-      </main >
+      </main>
 
       {/* Modal Address */}
-      {showAddressModal && (
-        <AddressModal
-          onClose={() => setShowAddressModal(false)}
-          onAddressSaved={handleAddressSaved}
-        />
-      )}
+      {
+        showAddressModal && (
+          <AddressModal
+            onClose={() => setShowAddressModal(false)}
+            onAddressSaved={handleAddressSaved}
+          />
+        )
+      }
 
       {/* Modal de Contacto */}
-      {showContactModal && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in duration-200">
-            <button
-              onClick={() => setShowContactModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-6 w-6" />
-            </button>
-
-            <h2 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
-              <MessageSquare className="h-6 w-6 text-blue-600" />
-              Contáctanos
-            </h2>
-            <p className="text-gray-500 mb-6 text-sm">Estamos aquí para ayudarte. Déjanos tu mensaje.</p>
-
-            <form onSubmit={handleContactSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    required
-                    value={contactForm.name}
-                    onChange={e => setContactForm({ ...contactForm, name: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    placeholder="Tu nombre"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="email"
-                    required
-                    value={contactForm.email}
-                    onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    placeholder="tucorreo@ejemplo.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="tel"
-                    required
-                    value={contactForm.phone}
-                    onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    placeholder="099 999 9999"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
-                <textarea
-                  required
-                  value={contactForm.message}
-                  onChange={e => setContactForm({ ...contactForm, message: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
-                  placeholder="Escribe tu mensaje o consulta aquí..."
-                ></textarea>
-              </div>
-
+      {
+        showContactModal && (
+          <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in duration-200">
               <button
-                type="submit"
-                disabled={sendingContact}
-                className="w-full bg-blue-900 text-white py-3 rounded-lg font-bold hover:bg-blue-800 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+                onClick={() => setShowContactModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
               >
-                {sendingContact ? (
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <Send className="h-5 w-5" />
-                    Enviar Mensaje
-                  </>
-                )}
+                <X className="h-6 w-6" />
               </button>
-            </form>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+                <MessageSquare className="h-6 w-6 text-blue-600" />
+                Contáctanos
+              </h2>
+              <p className="text-gray-500 mb-6 text-sm">Estamos aquí para ayudarte. Déjanos tu mensaje.</p>
+
+              <form onSubmit={handleContactSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      required
+                      value={contactForm.name}
+                      onChange={e => setContactForm({ ...contactForm, name: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="Tu nombre"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="email"
+                      required
+                      value={contactForm.email}
+                      onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="tucorreo@ejemplo.com"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="tel"
+                      required
+                      value={contactForm.phone}
+                      onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                      placeholder="099 999 9999"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
+                  <textarea
+                    required
+                    value={contactForm.message}
+                    onChange={e => setContactForm({ ...contactForm, message: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+                    placeholder="Escribe tu mensaje o consulta aquí..."
+                  ></textarea>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={sendingContact}
+                  className="w-full bg-blue-900 text-white py-3 rounded-lg font-bold hover:bg-blue-800 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+                >
+                  {sendingContact ? (
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      <Send className="h-5 w-5" />
+                      Enviar Mensaje
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Modal Invita y Gana (Wallet) */}
       {
@@ -2378,67 +2370,65 @@ const Home: React.FC = () => {
         )
       }
       {/* Mobile Menu Drawer */}
-      {
-        showMobileMenu && (
-          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 md:hidden" onClick={() => setShowMobileMenu(false)} style={{ margin: 0 }}>
-            <div className="bg-white w-72 h-full shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center p-4 border-b bg-blue-900 text-white">
-                <span className="font-bold text-lg">Menú</span>
-                <button onClick={() => setShowMobileMenu(false)} className="text-white hover:text-gray-200">
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {user ? (
-                  <div className="mb-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="bg-blue-200 p-2 rounded-full"><User className="h-5 w-5 text-blue-800" /></div>
-                      <div>
-                        <p className="font-bold text-gray-900 text-sm">{user.displayName}</p>
-                        <p className="text-xs text-gray-500 truncate max-w-[180px]">{user.email}</p>
-                      </div>
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 md:hidden" onClick={() => setShowMobileMenu(false)} style={{ margin: 0 }}>
+          <div className="bg-white w-72 h-full shadow-lg transform transition-transform duration-300 ease-in-out flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-4 border-b bg-blue-900 text-white">
+              <span className="font-bold text-lg">Menú</span>
+              <button onClick={() => setShowMobileMenu(false)} className="text-white hover:text-gray-200">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {user ? (
+                <div className="mb-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-blue-200 p-2 rounded-full"><User className="h-5 w-5 text-blue-800" /></div>
+                    <div>
+                      <p className="font-bold text-gray-900 text-sm">{user.displayName}</p>
+                      <p className="text-xs text-gray-500 truncate max-w-[180px]">{user.email}</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="mb-6">
-                    <button onClick={() => navigate('/login')} className="w-full bg-blue-900 text-white flex items-center justify-center gap-2 py-3 rounded-lg shadow-sm font-bold">
-                      <User className="h-5 w-5" /> Iniciar Sesión
-                    </button>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <button onClick={() => { setShowMobileMenu(false); setSelectedCategory('all'); }} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
-                    Todas las Categorías
-                  </button>
-                  <button onClick={() => { setShowMobileMenu(false); setShowHowToBuy(true); }} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
-                    Cómo Comprar
-                  </button>
-                  {user && (
-                    <>
-                      <button onClick={() => navigate('/my-orders')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
-                        <Package className="h-5 w-5 text-gray-400" /> Mis Pedidos
-                      </button>
-                      {(isVerifiedSeller || isAdmin) && (
-                        <button onClick={() => navigate('/dashboard')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
-                          <LayoutDashboard className="h-5 w-5 text-yellow-500" /> Panel Vendedor
-                        </button>
-                      )}
-                      <button onClick={() => { setShowMobileMenu(false); setShowReferralModal(true); }} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
-                        <Wallet className="h-5 w-5 text-green-500" /> Billetera (${walletBalance.toFixed(2)})
-                      </button>
-                      <div className="my-2 border-t border-gray-100"></div>
-                      <button onClick={handleLogout} className="w-full text-left p-3 hover:bg-red-50 rounded-lg flex items-center gap-3 font-medium text-red-600">
-                        <LogOut className="h-5 w-5" /> Cerrar Sesión
-                      </button>
-                    </>
-                  )}
                 </div>
+              ) : (
+                <div className="mb-6">
+                  <button onClick={() => navigate('/login')} className="w-full bg-blue-900 text-white flex items-center justify-center gap-2 py-3 rounded-lg shadow-sm font-bold">
+                    <User className="h-5 w-5" /> Iniciar Sesión
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <button onClick={() => { setShowMobileMenu(false); setSelectedCategory('all'); }} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
+                  Todas las Categorías
+                </button>
+                <button onClick={() => { setShowMobileMenu(false); setShowHowToBuy(true); }} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
+                  Cómo Comprar
+                </button>
+                {user && (
+                  <>
+                    <button onClick={() => navigate('/my-orders')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
+                      <Package className="h-5 w-5 text-gray-400" /> Mis Pedidos
+                    </button>
+                    {(isVerifiedSeller || isAdmin) && (
+                      <button onClick={() => navigate('/dashboard')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
+                        <LayoutDashboard className="h-5 w-5 text-yellow-500" /> Panel Vendedor
+                      </button>
+                    )}
+                    <button onClick={() => { setShowMobileMenu(false); setShowReferralModal(true); }} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
+                      <Wallet className="h-5 w-5 text-green-500" /> Billetera (${walletBalance.toFixed(2)})
+                    </button>
+                    <div className="my-2 border-t border-gray-100"></div>
+                    <button onClick={handleLogout} className="w-full text-left p-3 hover:bg-red-50 rounded-lg flex items-center gap-3 font-medium text-red-600">
+                      <LogOut className="h-5 w-5" /> Cerrar Sesión
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
 
       {/* Chat Bubble */}
       <ChatBubble />
@@ -2448,9 +2438,8 @@ const Home: React.FC = () => {
         isOpen={showRewardModal}
         onClose={() => setShowRewardModal(false)}
       />
-    </div >
+    </div>
   );
 };
 
 export default Home;
-

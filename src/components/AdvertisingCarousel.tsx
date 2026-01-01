@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface AdvertisingBanner {
@@ -13,6 +13,7 @@ interface AdvertisingCarouselProps {
 
 const AdvertisingCarousel: React.FC<AdvertisingCarouselProps> = ({ banners }) => {
     const [selectedBanners, setSelectedBanners] = useState<AdvertisingBanner[]>([]);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         // Validar que banners exista y sea un array
@@ -23,54 +24,83 @@ const AdvertisingCarousel: React.FC<AdvertisingCarouselProps> = ({ banners }) =>
 
         if (enabledBanners.length === 0) return;
 
-        // Seleccionar 4 aleatorios
+        // Mostrar todos los disponibles aleatoriamente
         const shuffled = [...enabledBanners].sort(() => Math.random() - 0.5);
-        setSelectedBanners(shuffled.slice(0, 4));
+        setSelectedBanners(shuffled);
     }, [banners]);
+
+    // Efecto de Autoplay
+    useEffect(() => {
+        if (selectedBanners.length <= 1) return;
+
+        const interval = setInterval(() => {
+            const el = scrollRef.current;
+            if (el) {
+                const scrollAmount = el.clientWidth > 500 ? 500 : 320;
+                // Si llegamos cerca del final, volvemos al principio, si no, avanzamos
+                if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 50) {
+                    el.scrollTo({ left: 0, behavior: 'smooth' });
+                } else {
+                    el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                }
+            }
+        }, 4000); // Cada 4 segundos para que dé tiempo a verlo
+
+        return () => clearInterval(interval);
+    }, [selectedBanners]);
 
     if (selectedBanners.length === 0) return null;
 
     return (
-        <div className="container mx-auto px-4 py-6 mb-8">
-            <div className="relative group">
+        <div className="w-full py-4 overflow-hidden">
+            <div className="container mx-auto px-4 relative group">
                 <div
-                    id="advertising-carousel"
-                    className="flex overflow-x-auto gap-4 snap-x scrollbar-hide scroll-smooth"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    ref={scrollRef}
+                    className="flex overflow-x-auto gap-4 snap-x scrollbar-hide scroll-smooth py-2"
+                    style={{
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none',
+                        justifyContent: selectedBanners.length < 3 ? 'center' : 'start'
+                    }}
                 >
-                    {selectedBanners.map((banner) => (
+                    {selectedBanners.map((banner, index) => (
                         <div
-                            key={banner.id}
-                            className="min-w-[250px] md:min-w-[280px] flex-shrink-0 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow snap-start"
+                            key={`${banner.id}-${index}`}
+                            className="min-w-[220px] md:min-w-[350px] h-36 md:h-48 flex-shrink-0 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all snap-start border border-gray-100"
                         >
                             <img
                                 src={banner.imageUrl}
                                 alt="Publicidad"
-                                className="w-full h-40 md:h-48 object-cover hover:scale-105 transition-transform duration-300"
+                                className="w-full h-full object-cover"
+                                loading="lazy"
                             />
                         </div>
                     ))}
                 </div>
 
-                {/* Flechas de navegación */}
-                <button
-                    onClick={() => {
-                        const el = document.getElementById('advertising-carousel');
-                        if (el) el.scrollBy({ left: -300, behavior: 'smooth' });
-                    }}
-                    className="absolute -left-3 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full shadow-lg text-gray-800 z-10 hover:bg-white transition-all opacity-0 group-hover:opacity-100"
-                >
-                    <ChevronDown className="h-5 w-5 transform rotate-90" />
-                </button>
-                <button
-                    onClick={() => {
-                        const el = document.getElementById('advertising-carousel');
-                        if (el) el.scrollBy({ left: 300, behavior: 'smooth' });
-                    }}
-                    className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full shadow-lg text-gray-800 z-10 hover:bg-white transition-all opacity-0 group-hover:opacity-100"
-                >
-                    <ChevronDown className="h-5 w-5 transform -rotate-90" />
-                </button>
+                {/* Flechas de navegación (solo si hay suficientes banners) */}
+                {selectedBanners.length > 1 && (
+                    <>
+                        <button
+                            onClick={() => {
+                                const el = scrollRef.current;
+                                if (el) el.scrollBy({ left: -400, behavior: 'smooth' });
+                            }}
+                            className="absolute left-0 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full shadow-lg text-blue-900 z-10 hover:bg-white transition-all opacity-0 group-hover:opacity-100 -ml-2"
+                        >
+                            <ChevronDown className="h-5 w-5 transform rotate-90" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                const el = scrollRef.current;
+                                if (el) el.scrollBy({ left: 400, behavior: 'smooth' });
+                            }}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 bg-white/90 p-2 rounded-full shadow-lg text-blue-900 z-10 hover:bg-white transition-all opacity-0 group-hover:opacity-100 -mr-2"
+                        >
+                            <ChevronDown className="h-5 w-5 transform -rotate-90" />
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );

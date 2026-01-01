@@ -1,4 +1,4 @@
-package com.comprasexpress.app;
+package com.envios.ecuador;
 
 import com.getcapacitor.BridgeActivity;
 
