@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Calendar, CreditCard, Truck, MapPin, Menu, Search, ChevronDown, ChevronUp, User, LogOut, LayoutDashboard, ShoppingCart, Wallet, Eye, Truck as TruckIcon } from 'lucide-react';
+import { Package, Calendar, CreditCard, Truck, MapPin, Menu, Search, ChevronDown, ChevronUp, User, LogOut, LayoutDashboard, ShoppingCart, Wallet, Eye, Truck as TruckIcon, Shield } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { onlineSaleService } from '../services/onlineSaleService';
 import { sellerService } from '../services/sellerService';
@@ -38,6 +38,7 @@ interface Order {
     notes?: string;
     createdAt: Date;
     estimatedDelivery?: Date;
+    securityCode?: string;
 }
 
 const CustomerOrders: React.FC = () => {
@@ -431,6 +432,24 @@ const CustomerOrders: React.FC = () => {
                                                     </div>
                                                 ))}
                                             </div>
+
+                                            {/* Security Code Badge */}
+                                            {order.securityCode && (
+                                                <div className="mb-4 p-3 bg-gradient-to-r from-yellow-50 to-white border border-yellow-200 rounded-lg flex items-center justify-between shadow-sm">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="bg-yellow-100 p-2 rounded-full">
+                                                            <Shield className="h-5 w-5 text-yellow-700" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs text-yellow-800 font-bold uppercase">Código de Seguridad para Retiro</p>
+                                                            <p className="text-sm text-gray-500">Presenta este código al recibir tu pedido</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-2xl font-black text-gray-900 tracking-widest px-4">
+                                                        {order.securityCode}
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             {/* Order Details */}
                                             <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">

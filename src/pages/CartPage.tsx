@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Trash2, Plus, Minus, CreditCard, ShoppingCart, User, X, Check, Upload, CheckCircle, Menu, Package, LayoutDashboard, LogOut, Wallet, Truck, Search, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, ShoppingCart, User, X, Check, Upload, CheckCircle, Menu, Package, LayoutDashboard, LogOut, Wallet, Truck, Search, ChevronDown, MapPin, Phone } from 'lucide-react';
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import Footer from '../components/Layout/Footer';
 import { useCart } from '../contexts/CartContext';
@@ -16,6 +16,10 @@ import { storage, auth } from '../firebase/config';
 import { signOut } from 'firebase/auth';
 import CouponSelector from '../components/CouponSelector';
 import { Coupon } from '../services/couponService';
+import { userService, SavedAddress } from '../services/userPreferencesService';
+import AddressModal from '../components/AddressModal';
+import { emailService } from '../services/emailService';
+import { format, addDays } from 'date-fns';
 
 const CartPage: React.FC = () => {
     const navigate = useNavigate();
@@ -93,6 +97,46 @@ const CartPage: React.FC = () => {
     const [rewardCoupon, setRewardCoupon] = useState<Coupon | null>(null);
     const [termsAccepted, setTermsAccepted] = useState(false);
 
+    // Direcciones guardadas
+    const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+    const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+    const [showAddressSelector, setShowAddressSelector] = useState(false);
+    const [showAddressModal, setShowAddressModal] = useState(false);
+
+    useEffect(() => {
+        if (user) loadAddresses();
+    }, [user]);
+
+    const loadAddresses = async () => {
+        if (!user) return;
+        const addrs = await userService.getAddresses(user.uid);
+        setSavedAddresses(addrs);
+    };
+
+    // Auto-seleccionar dirección default o primera
+    useEffect(() => {
+        if (savedAddresses.length > 0 && !selectedAddressId) {
+            const def = savedAddresses.find(a => a.isDefault) || savedAddresses[0];
+            handleSelectAddress(def.id);
+        }
+    }, [savedAddresses]);
+
+    const handleSelectAddress = (id: string) => {
+        const addr = savedAddresses.find(a => a.id === id);
+        if (addr) {
+            setSelectedAddressId(id);
+            // Actualizar customerInfo para el checkout (backend compatibilidad)
+            setCustomerInfo({
+                name: addr.fullName.split(' ')[0],
+                lastName: addr.fullName.split(' ').slice(1).join(' '),
+                email: user?.email || '',
+                phone: addr.phone,
+                address: `${addr.address}\n${addr.city}, ${addr.province}\nRef: ${addr.reference || ''}\nCI: ${addr.identityCard || ''}`
+            });
+            setShowAddressSelector(false);
+        }
+    };
+
     const handleApplyCoupon = async () => {
         if (!enteredCouponCode.trim()) return;
 
@@ -157,8 +201,9 @@ const CartPage: React.FC = () => {
         }
 
         // Validar información del cliente
-        if (!customerInfo.name || !customerInfo.email || !customerInfo.phone || !customerInfo.address) {
-            toast.error('Por favor complete todos los datos de envío');
+        if (!customerInfo.address || !customerInfo.phone) {
+            toast.error('Por favor selecciona una dirección de envío válida');
+            // Si estuviéramos en modo lista, ir al checkout (aunque ya deberíamos estar ahí)
             setShowCheckoutForm(true);
             return;
         }
@@ -231,7 +276,10 @@ const CartPage: React.FC = () => {
                 saleStatus = 'confirmed'; // Otros métodos
             }
 
+            const securityCode = Math.floor(100000 + Math.random() * 900000).toString();
+
             await onlineSaleService.create({
+                securityCode,
                 number: saleNumber,
                 items: saleItems,
                 totalAmount: finalTotal,
@@ -264,10 +312,34 @@ const CartPage: React.FC = () => {
                 setActiveCouponId(null);
             }
 
+            // 🎯 ENVIAR EMAIL DE CONFIRMACIÓN (solo si pago confirmado)
+            if (saleStatus === 'confirmed' && customerInfo.email) {
+                try {
+                    await emailService.sendCompraExitosa({
+                        customerName: `${customerInfo.name} ${customerInfo.lastName}`,
+                        customerEmail: customerInfo.email,
+                        orderNumber: saleNumber,
+                        securityCode: securityCode,
+                        totalAmount: finalTotal,
+                        items: cart.map(item => ({
+                            name: item.type === 'product' ? item.product!.name : item.perfume!.name,
+                            quantity: item.quantity,
+                            price: item.type === 'product' ? item.product!.salePrice1 : item.perfume!.price
+                        })),
+                        deliveryAddress: customerInfo.address,
+                        estimatedDate: format(addDays(new Date(), 7), 'dd/MM/yyyy')
+                    });
+                    console.log('✅ Email de confirmación enviado');
+                } catch (emailError) {
+                    console.error('Error enviando email:', emailError);
+                    // No bloqueamos el flujo si falla el email
+                }
+            }
+
             // ÉXITO
             clearCart();
             // Redirigir a página de éxito
-            navigate('/order-success', { state: { orderNumber: saleNumber } });
+            navigate('/order-success', { state: { orderNumber: saleNumber, securityCode } });
 
         } catch (error: any) {
             console.error(error);
@@ -371,6 +443,12 @@ const CartPage: React.FC = () => {
                                             </div>
                                             <button onClick={() => navigate('/my-orders')} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
                                                 <Package className="h-4 w-4" /> Mis pedidos
+                                            </button>
+                                            <button onClick={() => navigate('/my-addresses')} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
+                                                <MapPin className="h-4 w-4" /> Mis direcciones
+                                            </button>
+                                            <button onClick={() => navigate('/profile')} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
+                                                <User className="h-4 w-4" /> Configuración
                                             </button>
                                             {(isVerifiedSeller || isAdmin) && (
                                                 <button
@@ -479,55 +557,89 @@ const CartPage: React.FC = () => {
                             </>
                         ) : (
                             /* Formulario de Checkout */
+                            /* Formulario de Checkout Simplificado (Amazon Style) */
                             <div className="bg-white p-6 rounded-xl shadow-sm space-y-6">
                                 <h2 className="text-xl font-bold mb-4">Información de Envío</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Nombre</label>
-                                        <input
-                                            type="text"
-                                            value={customerInfo.name}
-                                            onChange={e => setCustomerInfo({ ...customerInfo, name: e.target.value })}
-                                            className="w-full border rounded-lg p-2"
-                                        />
+
+                                {savedAddresses.length === 0 ? (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center mb-6">
+                                        <MapPin className="h-12 w-12 text-yellow-600 mx-auto mb-3" />
+                                        <h3 className="text-lg font-bold text-gray-900 mb-2">No tienes direcciones guardadas</h3>
+                                        <p className="text-gray-600 mb-6">Para continuar, necesitas agregar una dirección de envío.</p>
+                                        <button
+                                            onClick={() => setShowAddressModal(true)}
+                                            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 mx-auto"
+                                        >
+                                            <Plus className="h-5 w-5" /> Agregar Dirección
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Apellido</label>
-                                        <input
-                                            type="text"
-                                            value={customerInfo.lastName}
-                                            onChange={e => setCustomerInfo({ ...customerInfo, lastName: e.target.value })}
-                                            className="w-full border rounded-lg p-2"
-                                        />
+                                ) : (
+                                    <div className="mb-6">
+                                        {showAddressSelector ? (
+                                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <h3 className="font-bold text-gray-700">Selecciona una dirección:</h3>
+                                                <div className="grid grid-cols-1 gap-3">
+                                                    {savedAddresses.map(addr => (
+                                                        <div
+                                                            key={addr.id}
+                                                            onClick={() => handleSelectAddress(addr.id)}
+                                                            className={`border-2 rounded-xl p-4 cursor-pointer hover:bg-gray-50 flex items-start gap-3 transition-all ${selectedAddressId === addr.id ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-gray-200'}`}
+                                                        >
+                                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-1 flex-shrink-0 transition-colors ${selectedAddressId === addr.id ? 'border-blue-600' : 'border-gray-300'}`}>
+                                                                {selectedAddressId === addr.id && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-gray-900">{addr.alias}</span>
+                                                                    {addr.isDefault && <span className="text-[10px] bg-gray-200 px-1.5 rounded-full text-gray-600 font-bold">Default</span>}
+                                                                </div>
+                                                                <p className="font-medium text-gray-800">{addr.fullName}</p>
+                                                                <p className="text-sm text-gray-600">{addr.address}</p>
+                                                                <p className="text-sm text-gray-600">{addr.city}, {addr.province}</p>
+                                                                <p className="text-xs text-gray-500 mt-1">Tel: {addr.phone}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <button onClick={() => setShowAddressModal(true)} className="text-blue-600 font-bold text-sm flex items-center gap-1 mt-2 hover:underline">
+                                                    <Plus className="h-4 w-4" /> Agregar nueva dirección
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            // Resumen Selected (Amazon Style)
+                                            <div className="border border-gray-200 rounded-xl p-4 flex justify-between items-center bg-gray-50 hover:bg-white hover:shadow-md transition-all">
+                                                <div className="flex items-start gap-4">
+                                                    <div className="pt-1">
+                                                        <MapPin className="h-5 w-5 text-gray-500" />
+                                                    </div>
+                                                    <div>
+                                                        {(() => {
+                                                            const addr = savedAddresses.find(a => a.id === selectedAddressId);
+                                                            if (!addr) return <span className="text-red-500 font-medium">Selecciona una dirección de envío</span>;
+                                                            return (
+                                                                <>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-gray-900 text-sm">Enviar a {addr.fullName}</span>
+                                                                        {addr.alias && <span className="text-xs bg-gray-200 px-1.5 rounded text-gray-600">{addr.alias}</span>}
+                                                                    </div>
+                                                                    <p className="text-sm text-gray-600 mt-1">{addr.address}</p>
+                                                                    <p className="text-sm text-gray-600">{addr.city}, {addr.province}</p>
+                                                                    <p className="text-xs text-gray-500 mt-1">Tel: {addr.phone}</p>
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowAddressSelector(true)}
+                                                    className="text-blue-600 text-sm font-bold hover:underline px-4 py-2 hover:bg-blue-50 rounded-lg transition-colors"
+                                                >
+                                                    Cambiar
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Teléfono</label>
-                                        <input
-                                            type="tel"
-                                            value={customerInfo.phone}
-                                            onChange={e => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
-                                            className="w-full border rounded-lg p-2"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Email</label>
-                                        <input
-                                            type="email"
-                                            value={customerInfo.email}
-                                            onChange={e => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                                            className="w-full border rounded-lg p-2"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium mb-1">Dirección Completa</label>
-                                        <textarea
-                                            value={customerInfo.address}
-                                            onChange={e => setCustomerInfo({ ...customerInfo, address: e.target.value })}
-                                            className="w-full border rounded-lg p-2"
-                                            rows={3}
-                                        />
-                                    </div>
-                                </div>
+                                )}
 
                                 <h2 className="text-xl font-bold mt-8 mb-4">Método de Pago</h2>
                                 <div className="space-y-3">
@@ -653,9 +765,25 @@ const CartPage: React.FC = () => {
                                                 className="mt-1 h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                                             />
                                             <label htmlFor="terms-checkbox" className="text-sm text-gray-700 cursor-pointer">
-                                                He leído y acepto los <Link to="/terminos" target="_blank" className="text-blue-600 font-medium hover:underline">Términos y Condiciones</Link>,
-                                                la <Link to="/politica" target="_blank" className="text-blue-600 font-medium hover:underline">Política de Privacidad</Link> y
-                                                la <Link to="/devoluciones" target="_blank" className="text-blue-600 font-medium hover:underline">Política de Devoluciones</Link>.
+                                                He leído y acepto los{' '}
+                                                <span
+                                                    onClick={(e) => { e.preventDefault(); window.open('/legal/terminos.html', '_blank'); }}
+                                                    className="text-blue-600 font-medium hover:underline cursor-pointer"
+                                                >
+                                                    Términos y Condiciones
+                                                </span>, la{' '}
+                                                <span
+                                                    onClick={(e) => { e.preventDefault(); window.open('/legal/politica.html', '_blank'); }}
+                                                    className="text-blue-600 font-medium hover:underline cursor-pointer"
+                                                >
+                                                    Política de Privacidad
+                                                </span>{' '}y la{' '}
+                                                <span
+                                                    onClick={(e) => { e.preventDefault(); window.open('/legal/devoluciones.html', '_blank'); }}
+                                                    className="text-blue-600 font-medium hover:underline cursor-pointer"
+                                                >
+                                                    Política de Devoluciones
+                                                </span>.
                                             </label>
                                         </div>
 
@@ -812,6 +940,12 @@ const CartPage: React.FC = () => {
                                         <button onClick={() => navigate('/my-orders')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
                                             <Package className="h-5 w-5 text-gray-400" /> Mis Pedidos
                                         </button>
+                                        <button onClick={() => navigate('/my-addresses')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
+                                            <MapPin className="h-5 w-5 text-gray-400" /> Mis Direcciones
+                                        </button>
+                                        <button onClick={() => navigate('/profile')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
+                                            <User className="h-5 w-5 text-gray-400" /> Configuración
+                                        </button>
                                         {(isVerifiedSeller || isAdmin) && (
                                             <button onClick={() => navigate('/dashboard')} className="w-full text-left p-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 font-medium text-gray-700">
                                                 <LayoutDashboard className="h-5 w-5 text-yellow-500" /> Panel Vendedor
@@ -832,6 +966,13 @@ const CartPage: React.FC = () => {
                 </div>
             )}
             <Footer />
+            {/* Modal de Dirección */}
+            {showAddressModal && (
+                <AddressModal
+                    onClose={() => setShowAddressModal(false)}
+                    onAddressSaved={loadAddresses}
+                />
+            )}
         </div>
     );
 };

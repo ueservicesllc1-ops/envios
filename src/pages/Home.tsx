@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, Search, Menu, X, LogIn, Star, Truck, Shield, Heart, MapPin, CheckCircle, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Copy, Wallet, DollarSign, Users, Clock, Ticket } from 'lucide-react';
+import { Package, ShoppingCart, Search, Menu, X, LogIn, Star, Truck, Shield, Heart, MapPin, CheckCircle, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Copy, Wallet, DollarSign, Users, Clock, Ticket, Mail, Phone, MessageSquare, Send, Bell, Settings } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageSelector from '../components/LanguageSelector';
 import { productService } from '../services/productService';
@@ -9,7 +9,8 @@ import { onlineSaleService, OnlineSaleItem } from '../services/onlineSaleService
 import { perfumeService } from '../services/perfumeService';
 import { perfumeSettingsService } from '../services/perfumeSettingsService';
 import { sellerService } from '../services/sellerService';
-import { userService } from '../services/userPreferencesService';
+import { userService, SavedAddress } from '../services/userPreferencesService';
+import AddressModal from '../components/AddressModal';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../contexts/CartContext';
 
@@ -23,6 +24,8 @@ import AdvertisingCarousel from '../components/AdvertisingCarousel';
 import ChatBubble from '../components/ChatBubble';
 import RewardGameModal from '../components/RewardGameModal';
 import { couponService } from '../services/couponService';
+import { contactService } from '../services/contactService';
+
 import toast from 'react-hot-toast';
 
 // Precio de envío por libra
@@ -36,6 +39,66 @@ const Home: React.FC = () => {
 
   // Estado para verificación de vendedor
   const [isVerifiedSeller, setIsVerifiedSeller] = useState(false);
+
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', message: '' });
+  const [sendingContact, setSendingContact] = useState(false);
+
+  // Estados para dirección
+  const [userAddresses, setUserAddresses] = useState<SavedAddress[]>([]);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+
+  // Cargar direcciones del usuario
+  useEffect(() => {
+    if (user) {
+      userService.getAddresses(user.uid).then(addrs => {
+        setUserAddresses(addrs);
+        // Si no tiene direcciones, mostrar sugerencia después de un tiempo
+        if (addrs.length === 0) {
+          setTimeout(() => setShowAddressModal(true), 3500);
+        }
+      });
+    }
+  }, [user]);
+
+  const handleAddressSaved = async () => {
+    if (user) {
+      const addrs = await userService.getAddresses(user.uid);
+      setUserAddresses(addrs);
+    }
+  };
+
+  // Inicializar formulario con datos de usuario si existe
+  useEffect(() => {
+    if (user && showContactModal) {
+      setContactForm(prev => ({
+        ...prev,
+        name: user.displayName || '',
+        email: user.email || ''
+      }));
+    }
+  }, [user, showContactModal]);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactForm.message.trim()) {
+      toast.error('Por favor escribe un mensaje');
+      return;
+    }
+
+    setSendingContact(true);
+    try {
+      await contactService.createMessage(contactForm);
+      toast.success('Mensaje enviado correctamente. Te contactaremos pronto.');
+      setShowContactModal(false);
+      setContactForm({ name: '', email: '', phone: '', message: '' });
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al enviar el mensaje');
+    } finally {
+      setSendingContact(false);
+    }
+  };
 
   // Verificar si el usuario es vendedor real
   useEffect(() => {
@@ -606,28 +669,42 @@ const Home: React.FC = () => {
           <div className="container mx-auto px-4 py-3">
             <div className="flex items-center justify-between gap-4">
 
-              {/* MOBILE HEADER: Menu + Compact Logo + Cart */}
+              {/* MOBILE HEADER: Menu + Compact Logo + Notifications + Cart */}
               <div className="md:hidden flex items-center justify-between w-full">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button onClick={() => setShowMobileMenu(true)} className="p-1 text-white">
                     <Menu className="h-6 w-6" />
                   </button>
                   <div className="flex flex-col cursor-pointer" onClick={() => navigate('/')}>
                     <img src="/logo-compras-nuevo.png" alt="Compras Express" className="h-8 object-contain" />
-                    <span className="text-[9px] text-yellow-400 font-medium tracking-wide mt-1">USA - Ecuador</span>
                   </div>
                 </div>
-                <button
-                  className="flex items-center gap-1 relative group p-1 text-white"
-                  onClick={() => navigate('/cart')}
-                >
-                  <ShoppingCart className="h-6 w-6" />
-                  {cartItemsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                      {cartItemsCount}
-                    </span>
+
+                <div className="flex items-center gap-2">
+                  {/* Campanita Mobile */}
+                  {user && userAddresses.length === 0 && (
+                    <button
+                      onClick={() => setShowAddressModal(true)}
+                      className="relative p-1 text-white animate-pulse"
+                      title="Agrega tu dirección"
+                    >
+                      <Bell className="h-6 w-6" />
+                      <span className="absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-blue-900"></span>
+                    </button>
                   )}
-                </button>
+
+                  <button
+                    className="flex items-center gap-1 relative group p-1 text-white"
+                    onClick={() => navigate('/cart')}
+                  >
+                    <ShoppingCart className="h-6 w-6" />
+                    {cartItemsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                        {cartItemsCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* DESKTOP Logo (Visible md up) */}
@@ -641,6 +718,21 @@ const Home: React.FC = () => {
                   </div>
                   <span className="text-[10px] text-yellow-400 leading-none tracking-wide mt-1">Compra en USA y recíbelo en Ecuador</span>
                 </div>
+
+                {/* Campanita Desktop */}
+                {user && userAddresses.length === 0 && (
+                  <button
+                    onClick={() => setShowAddressModal(true)}
+                    className="flex items-center gap-2 bg-red-500/10 border border-red-500/50 rounded-full px-3 py-1 animate-pulse ml-4"
+                    title="Necesitamos tu dirección para envíos"
+                  >
+                    <div className="relative">
+                      <Bell className="h-5 w-5 text-red-200" />
+                      <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+                    </div>
+                    <span className="text-xs font-bold text-red-200 hidden lg:inline">Agrega tu dirección</span>
+                  </button>
+                )}
               </div>
 
               {/* Barra de Búsqueda Central (Visible md up) */}
@@ -723,6 +815,12 @@ const Home: React.FC = () => {
                       </div>
                       <button onClick={() => navigate('/my-orders')} className="w-full text-left px-4 py-2 hover:bg-gray-50 hover:text-blue-900 flex items-center gap-2">
                         <Package className="h-4 w-4" /> Mis pedidos
+                      </button>
+                      <button onClick={() => navigate('/my-addresses')} className="w-full text-left px-4 py-2 hover:bg-gray-50 hover:text-blue-900 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" /> Mis direcciones
+                      </button>
+                      <button onClick={() => navigate('/profile')} className="w-full text-left px-4 py-2 hover:bg-gray-50 hover:text-blue-900 flex items-center gap-2">
+                        <Settings className="h-4 w-4" /> Configuración
                       </button>
                       <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2">
                         <LogOut className="h-4 w-4" /> Cerrar sesión
@@ -1929,9 +2027,16 @@ const Home: React.FC = () => {
               </div>
               <div>
                 <h4 className="font-semibold mb-4">{t('home.footer.contact')}</h4>
-                <p className="text-sm text-blue-200">
+                <p className="text-sm text-blue-200 mb-4">
                   {t('home.footer.description')}
                 </p>
+                <button
+                  onClick={() => setShowContactModal(true)}
+                  className="bg-yellow-400 text-blue-900 px-6 py-2 rounded-full font-bold hover:bg-yellow-300 transition-colors flex items-center gap-2"
+                >
+                  <Mail className="h-4 w-4" />
+                  Escríbenos
+                </button>
               </div>
             </div>
             <div className="border-t border-blue-800 mt-8 pt-8 text-center">
@@ -1958,6 +2063,108 @@ const Home: React.FC = () => {
 
 
       </main >
+
+      {/* Modal Address */}
+      {showAddressModal && (
+        <AddressModal
+          onClose={() => setShowAddressModal(false)}
+          onAddressSaved={handleAddressSaved}
+        />
+      )}
+
+      {/* Modal de Contacto */}
+      {showContactModal && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setShowContactModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            <h2 className="text-2xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+              <MessageSquare className="h-6 w-6 text-blue-600" />
+              Contáctanos
+            </h2>
+            <p className="text-gray-500 mb-6 text-sm">Estamos aquí para ayudarte. Déjanos tu mensaje.</p>
+
+            <form onSubmit={handleContactSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    value={contactForm.name}
+                    onChange={e => setContactForm({ ...contactForm, name: e.target.value })}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="Tu nombre"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="email"
+                    required
+                    value={contactForm.email}
+                    onChange={e => setContactForm({ ...contactForm, email: e.target.value })}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="tucorreo@ejemplo.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="tel"
+                    required
+                    value={contactForm.phone}
+                    onChange={e => setContactForm({ ...contactForm, phone: e.target.value })}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="099 999 9999"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
+                <textarea
+                  required
+                  value={contactForm.message}
+                  onChange={e => setContactForm({ ...contactForm, message: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+                  placeholder="Escribe tu mensaje o consulta aquí..."
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                disabled={sendingContact}
+                className="w-full bg-blue-900 text-white py-3 rounded-lg font-bold hover:bg-blue-800 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+              >
+                {sendingContact ? (
+                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <Send className="h-5 w-5" />
+                    Enviar Mensaje
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal Invita y Gana (Wallet) */}
       {

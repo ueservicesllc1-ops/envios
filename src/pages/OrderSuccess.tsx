@@ -51,6 +51,14 @@ const OrderSuccess = () => {
                         <span className="text-sm text-gray-500 block">Número de Orden</span>
                         <span className="font-mono font-bold text-xl text-blue-900">{orderNumber}</span>
                     </div>
+
+                    {location.state?.securityCode && (
+                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-4">
+                            <p className="text-sm text-yellow-800 font-bold mb-1 uppercase">Código de Retiro</p>
+                            <p className="text-3xl font-black text-gray-900 tracking-widest">{location.state.securityCode}</p>
+                            <p className="text-xs text-gray-500 mt-1">Preséntalo al retirar tu pedido</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="pt-4 space-y-3">

@@ -41,6 +41,7 @@ export interface OnlineSale {
   trackingStage?: 'order_received' | 'preparing' | 'airport_departure' | 'airport_arrival' | 'customs' | 'warehouse_ecuador' | 'ready_pickup' | 'delivered';
   trackingHistory?: TrackingEvent[];
   notificationSent?: boolean; // Si ya se envió notificación de llegada a Ecuador
+  securityCode?: string; // Código de seguridad para retiro
 }
 
 export interface TrackingEvent {

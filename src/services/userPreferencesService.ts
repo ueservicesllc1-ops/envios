@@ -5,6 +5,11 @@ export interface UserPreferences {
     viewedCategories: { [category: string]: number }; // Categoría -> Contador de vistas
     viewedProducts: string[]; // IDs de productos vistos recientemente
     lastViewedAt: any;
+    savedAddresses?: SavedAddress[];
+    profile?: {
+        phone?: string;
+        identityCard?: string;
+    };
 }
 
 export const userService = {
@@ -61,5 +66,88 @@ export const userService = {
             console.error('Error getting user preferences:', error);
             return null;
         }
+    },
+
+    // Guardar una nueva dirección
+    async saveAddress(userId: string, address: SavedAddress) {
+        if (!userId) return;
+        try {
+            const userRef = doc(db, 'userPreferences', userId);
+            const userDoc = await getDoc(userRef);
+
+            let addresses: SavedAddress[] = [];
+            if (userDoc.exists()) {
+                const data = userDoc.data() as UserPreferences;
+                addresses = data.savedAddresses || [];
+            }
+
+            // Si es default, quitar default a las otras
+            if (address.isDefault) {
+                addresses = addresses.map(addr => ({ ...addr, isDefault: false }));
+            }
+
+            // Añadir o actualizar si tiene ID y ya existe
+            const existingIndex = addresses.findIndex(a => a.id === address.id);
+            if (existingIndex >= 0) {
+                addresses[existingIndex] = address;
+            } else {
+                addresses.push(address);
+            }
+
+            // Si es la primera, hacerla default
+            if (addresses.length === 1) {
+                addresses[0].isDefault = true;
+            }
+
+            await setDoc(userRef, { savedAddresses: addresses }, { merge: true });
+        } catch (error) {
+            console.error('Error saving address:', error);
+            throw error;
+        }
+    },
+
+    // Obtener direcciones
+    async getAddresses(userId: string): Promise<SavedAddress[]> {
+        if (!userId) return [];
+        const prefs = await this.getUserPreferences(userId);
+        return prefs?.savedAddresses || [];
+    },
+
+    // Eliminar dirección
+    async deleteAddress(userId: string, addressId: string) {
+        if (!userId) return;
+        try {
+            const userRef = doc(db, 'userPreferences', userId);
+            const userDoc = await getDoc(userRef);
+            if (!userDoc.exists()) return;
+
+            const data = userDoc.data() as UserPreferences;
+            const addresses = (data.savedAddresses || []).filter(a => a.id !== addressId);
+
+            await updateDoc(userRef, { savedAddresses: addresses });
+        } catch (error) {
+            console.error('Error deleting address:', error);
+            throw error;
+        }
+    },
+
+    // Actualizar perfil
+    async updateProfile(userId: string, profile: { phone?: string; identityCard?: string }) {
+        if (!userId) return;
+        const userRef = doc(db, 'userPreferences', userId);
+        await setDoc(userRef, { profile }, { merge: true });
     }
 };
+
+export interface SavedAddress {
+    id: string;
+    alias: string;
+    fullName: string;
+    phone: string;
+    province: string;
+    city: string;
+    address: string;
+    reference?: string;
+    identityCard?: string;
+    isDefault: boolean;
+}

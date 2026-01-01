@@ -5,14 +5,19 @@ import { productService } from '../services/productService';
 import { inventoryService } from '../services/inventoryService';
 import { InventoryItem } from '../types';
 import toast from 'react-hot-toast';
+import { contactService, ContactMessage } from '../services/contactService';
+import { MessageSquare, Mail, Phone, Trash } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
+import { emailService } from '../services/emailService';
+import { format, addDays } from 'date-fns';
 
 const AdminStore: React.FC = () => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'orders' | 'stock'>('orders');
+    const [activeTab, setActiveTab] = useState<'orders' | 'stock' | 'messages'>('orders');
     const [orders, setOrders] = useState<OnlineSale[]>([]);
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [messages, setMessages] = useState<ContactMessage[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [showTrackingModal, setShowTrackingModal] = useState(false);
@@ -26,6 +31,7 @@ const AdminStore: React.FC = () => {
     useEffect(() => {
         if (activeTab === 'orders') loadOrders();
         if (activeTab === 'stock') loadStock();
+        if (activeTab === 'messages') loadMessages();
     }, [activeTab]);
 
     const loadOrders = async () => {
@@ -46,10 +52,66 @@ const AdminStore: React.FC = () => {
         finally { setLoading(false); }
     };
 
+    const loadMessages = async () => {
+        setLoading(true);
+        try {
+            const data = await contactService.getAllMessages();
+            setMessages(data);
+        } catch (e) { toast.error('Error cargando mensajes'); }
+        finally { setLoading(false); }
+    };
+
+    const handleDeleteMessage = async (id: string) => {
+        if (!window.confirm('¿Estás seguro de eliminar este mensaje?')) return;
+        try {
+            await contactService.deleteMessage(id);
+            toast.success('Mensaje eliminado');
+            loadMessages();
+        } catch (e) {
+            toast.error('Error eliminando mensaje');
+        }
+    };
+
+    const handleMarkAsRead = async (id: string, currentStatus: boolean) => {
+        if (currentStatus) return;
+        try {
+            await contactService.markAsRead(id);
+            loadMessages();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const handleStatusUpdate = async (id: string, newStatus: OnlineSale['status']) => {
         if (!window.confirm(`¿Confirmar cambio de estado a: ${newStatus === 'confirmed' ? 'CONFIRMADO' : newStatus}?`)) return;
         try {
+            const order = orders.find(o => o.id === id);
             await onlineSaleService.updateStatus(id, newStatus);
+
+            // ENVIAR EMAIL cuando se aprueba un depósito bancario (pending -> confirmed)
+            if (newStatus === 'confirmed' && order && order.customerEmail) {
+                try {
+                    await emailService.sendCompraExitosa({
+                        customerName: order.customerName || 'Cliente',
+                        customerEmail: order.customerEmail,
+                        orderNumber: order.number,
+                        securityCode: order.securityCode || '------',
+                        totalAmount: order.totalAmount,
+                        items: order.items.map(item => ({
+                            name: item.productName,
+                            quantity: item.quantity,
+                            price: item.unitPrice
+                        })),
+                        deliveryAddress: order.customerAddress || 'Retiro en tienda',
+                        estimatedDate: format(addDays(new Date(), 7), 'dd/MM/yyyy')
+                    });
+                    console.log('✅ Email de aprobación enviado');
+                } catch (emailError) {
+                    console.error('Error enviando email:', emailError);
+                    // No bloqueamos el flujo si falla el email
+                }
+            }
+
             await loadOrders(); // Recargar datos
         } catch (e) {
             // Error ya manejado en servicio
@@ -148,6 +210,83 @@ const AdminStore: React.FC = () => {
         setEditedItems(newItems);
     };
 
+    // Componente RenderMessagesTab
+    const RenderMessagesTab = () => (
+        <div className="bg-white rounded-lg shadowoverflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contacto</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mensaje</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {messages.length === 0 ? (
+                            <tr>
+                                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                                    No hay mensajes de contacto
+                                </td>
+                            </tr>
+                        ) : (
+                            messages.map((msg) => (
+                                <tr key={msg.id} className={msg.read ? 'bg-white' : 'bg-blue-50'}>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {msg.createdAt.toLocaleDateString()}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        <div className="flex items-center">
+                                            <User className="h-4 w-4 mr-2 text-gray-400" />
+                                            {msg.name}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <div className="flex flex-col space-y-1">
+                                            <div className="flex items-center">
+                                                <Mail className="h-3 w-3 mr-1" />
+                                                {msg.email}
+                                            </div>
+                                            <div className="flex items-center">
+                                                <Phone className="h-3 w-3 mr-1" />
+                                                {msg.phone}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-700 min-w-[300px] whitespace-pre-wrap">
+                                        {msg.message}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <div className="flex space-x-2">
+                                            {!msg.read && (
+                                                <button
+                                                    onClick={() => handleMarkAsRead(msg.id, msg.read)}
+                                                    className="text-blue-600 hover:text-blue-900 font-medium"
+                                                    title="Marcar como leído"
+                                                >
+                                                    <CheckCircle className="h-5 w-5" />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleDeleteMessage(msg.id)}
+                                                className="text-red-600 hover:text-red-900"
+                                                title="Eliminar mensaje"
+                                            >
+                                                <Trash2 className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+
     // Protección de ruta: Solo admin autorizado
     if (user && user.email !== 'ueservicesllc1@gmail.com') {
         return (
@@ -191,6 +330,12 @@ const AdminStore: React.FC = () => {
                     >
                         <Package className="h-4 w-4" /> Stock Global
                     </button>
+                    <button
+                        onClick={() => setActiveTab('messages')}
+                        className={`pb-4 px-2 font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'messages' ? 'border-blue-900 text-blue-900' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                        <MessageSquare className="h-4 w-4" /> Contacto ({messages ? messages.filter(m => !m.read).length : 0})
+                    </button>
                 </div>
 
                 {/* Content */}
@@ -211,6 +356,7 @@ const AdminStore: React.FC = () => {
                                 title="Pedidos Activos"
                             />}
                             {activeTab === 'stock' && <StockTable items={inventory} onUnconsolidate={handleUnconsolidate} />}
+                            {activeTab === 'messages' && <RenderMessagesTab />}
                         </div>
 
                         {/* Pedidos Eliminados - Solo mostrar si hay pedidos cancelados */}

@@ -42,6 +42,9 @@ import OrderSuccess from './pages/OrderSuccess';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import ReturnsPolicyPage from './pages/ReturnsPolicyPage';
+import UserAddresses from './pages/UserAddresses';
+import UserProfile from './pages/UserProfile';
+import TestEmail from './pages/TestEmail';
 
 import SplashScreen from './components/Layout/SplashScreen';
 
@@ -53,10 +56,11 @@ function App() {
   const [showSplash, setShowSplash] = React.useState(!isLegalPage);
 
   const paypalOptions = {
-    clientId: "AaFORp_eG8-oLREmVF57r42xWO7H05jm4O0hBzu35NsUDrCwDnw0iAAD985NrCfkgDmU8-ft6wusaZIC",
+    clientId: process.env.REACT_APP_PAYPAL_CLIENT_ID || "AbCHUsAow9Bslu5dvHkHVNpo6GWK0vEpp-bU0lW2YIhGYNVrI23YS--rCeFeVImMag1rI_4hUFYrNrKN",
     currency: "USD",
     intent: "capture",
-    "disable-funding": "venmo,paylater"
+    "disable-funding": "venmo,paylater",
+    "brand-name": "ComprasEx" // Nombre que aparece en PayPal
   };
 
   if (showSplash) {
@@ -84,6 +88,8 @@ function App() {
 
               {/* Ruta para pedidos del cliente (requiere login) */}
               <Route path="/my-orders" element={<CustomerOrders />} />
+              <Route path="/my-addresses" element={<UserAddresses />} />
+              <Route path="/profile" element={<UserProfile />} />
 
               {/* Ruta para rastreo de pedido */}
               <Route path="/track-order/:orderId" element={<OrderTracking />} />
@@ -120,6 +126,7 @@ function App() {
               <Route path="/store-editor-access" element={<AuthWrapper><Layout><StoreEditorAccessConfig /></Layout></AuthWrapper>} />
               {/* Ruta para chat de soporte (sin Layout ni AuthWrapper - maneja auth internamente) */}
               <Route path="/chats" element={<AdminChats />} />
+              <Route path="/test-email" element={<AuthWrapper><Layout><TestEmail /></Layout></AuthWrapper>} />
               <Route path="/settings" element={<AuthWrapper><Layout><Settings /></Layout></AuthWrapper>} />
               <Route path="/mobile-scanner" element={<AuthWrapper><Layout><MobileScanner /></Layout></AuthWrapper>} />
             </Routes>

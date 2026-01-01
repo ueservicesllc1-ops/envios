@@ -17,7 +17,8 @@ import {
   RotateCcw,
   Sparkles,
   Receipt,
-  ShoppingBag
+  ShoppingBag,
+  Mail
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -41,6 +42,7 @@ const navigation = [
   { name: 'Vendedores', href: '/sellers', icon: Users },
   { name: 'Saldo Vendedores', href: '/seller-balances', icon: CreditCard },
   { name: 'Acceso Editor Tienda', href: '/store-editor-access', icon: ShoppingBag },
+  { name: 'Test Email', href: '/test-email', icon: Mail },
   { name: 'Configuración', href: '/settings', icon: Settings },
 ];
 

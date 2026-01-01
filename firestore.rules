@@ -189,6 +189,12 @@ service cloud.firestore {
       allow update: if request.auth != null;
     }
 
+    // Reglas para mensajes de contacto
+    match /contact_messages/{messageId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
     // Regla por defecto - denegar todo lo demás
     match /{document=**} {
       allow read, write: if false;
