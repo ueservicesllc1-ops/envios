@@ -56,11 +56,11 @@ function App() {
   const [showSplash, setShowSplash] = React.useState(!isLegalPage);
 
   const paypalOptions = {
-    clientId: process.env.REACT_APP_PAYPAL_CLIENT_ID || "AbCHUsAow9Bslu5dvHkHVNpo6GWK0vEpp-bU0lW2YIhGYNVrI23YS--rCeFeVImMag1rI_4hUFYrNrKN",
+    clientId: process.env.REACT_APP_PAYPAL_CLIENT_ID || "AfU-04zHwad560P4nU6LVMd7qnrY41c0TOdA9LUbN_6-lmztaHfxJz1p7-ByIt6-uoqSGr6OcdaO3b3m",
     currency: "USD",
     intent: "capture",
-    "disable-funding": "venmo,paylater",
-    "brand-name": "ComprasEx" // Nombre que aparece en PayPal
+    "disable-funding": "venmo,paylater"
+    // NOTA: brand-name se configura en PayPal Dashboard, NO aquí
   };
 
   if (showSplash) {
