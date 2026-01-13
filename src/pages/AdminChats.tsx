@@ -4,8 +4,14 @@ import { MessageCircle, Send, X, User, Clock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { chatService, type Conversation, type ChatMessage } from '../services/chatService';
 import toast from 'react-hot-toast';
+import { db } from '../firebase/config';
+import { doc, getDoc } from 'firebase/firestore';
 
-const AdminChats: React.FC = () => {
+interface AdminChatsProps {
+    initialChatUserId?: string | null;
+}
+
+const AdminChats: React.FC<AdminChatsProps> = ({ initialChatUserId }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -14,6 +20,32 @@ const AdminChats: React.FC = () => {
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Auto-select conversation based on prop
+    // Auto-select conversation based on prop
+    useEffect(() => {
+        if (!initialChatUserId || loading) return;
+
+        const targetConv = conversations.find(c => c.userId === initialChatUserId);
+        if (targetConv) {
+            setSelectedConversation(targetConv);
+        } else {
+            // Si no existe, crearla
+            const createConv = async () => {
+                try {
+                    const userRef = doc(db, 'userPreferences', initialChatUserId);
+                    const userSnap = await getDoc(userRef);
+                    if (userSnap.exists()) {
+                        const userData = userSnap.data();
+                        await chatService.startConversation(initialChatUserId, userData.displayName || 'Usuario', userData.email || '');
+                    }
+                } catch (e) {
+                    console.error("Error creating chat", e);
+                }
+            };
+            createConv();
+        }
+    }, [initialChatUserId, conversations, loading]);
 
     console.log('AdminChats component rendering, user:', user);
 
@@ -43,7 +75,7 @@ const AdminChats: React.FC = () => {
             };
         } catch (error) {
             console.error('Error in subscribeToConversations:', error);
-            setLoading(false);
+            setLoading(false); // Ensure loading stops on error
         }
     }, [user]);
 
@@ -115,13 +147,19 @@ const AdminChats: React.FC = () => {
             <div className="flex items-center justify-center h-screen bg-gray-50">
                 <div className="text-center">
                     <MessageCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-xl font-bold text-gray-900 mb-2">Acceso Restringido</p>
-                    <p className="text-gray-600">Debes iniciar sesión para acceder al chat</p>
+                    <p className="text-xl font-bold text-gray-900 mb-2">Acceso Requerido</p>
+                    <p className="text-gray-600">Por favor inicia sesión para ver el panel de chat</p>
                     <button
                         onClick={() => navigate('/login')}
                         className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
-                        Iniciar Sesión
+                        Ir a Iniciar Sesión
+                    </button>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 ml-2 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    >
+                        Recargar
                     </button>
                 </div>
             </div>
@@ -131,6 +169,8 @@ const AdminChats: React.FC = () => {
     return (
         <div className="h-screen bg-gray-50 flex flex-col">
             {/* Header */}
+            {/* Header - Only show if standalone page (detectable via props, but for now we simplify) */}
+            {/* Si se usa dentro de tabs, el header puede sobrar o modificarse. Vamos a ocultar el botón de volver si estamos en modo "embedded" que deduciremos si no hay history? No, mejor pasamos prop. */}
             <div className="bg-white border-b px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">

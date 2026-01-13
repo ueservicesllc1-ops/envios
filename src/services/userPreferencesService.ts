@@ -1,5 +1,5 @@
 import { db } from '../firebase/config';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
 
 export interface UserPreferences {
     viewedCategories: { [category: string]: number }; // Categoría -> Contador de vistas
@@ -10,9 +10,32 @@ export interface UserPreferences {
         phone?: string;
         identityCard?: string;
     };
+    // Informacion basica de usuario
+    email?: string;
+    displayName?: string;
+    photoURL?: string;
+    lastLoginAt?: any;
+    lastActiveAt?: any; // Timestamp de última actividad (tracking online)
+    role?: 'admin' | 'advisor' | 'user';
 }
 
 export const userService = {
+    // Sincronizar datos básicos del usuario al login
+    async syncUser(user: { uid: string; email: string | null; displayName: string | null; photoURL: string | null }) {
+        if (!user.uid) return;
+        try {
+            const userRef = doc(db, 'userPreferences', user.uid);
+            await setDoc(userRef, {
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                lastLoginAt: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error('Error syncing user:', error);
+        }
+    },
+
     // Registrar vista de un producto y actualizar preferencias
     async logProductView(userId: string, productId: string, category: string) {
         if (!userId || !productId) return;
@@ -136,6 +159,21 @@ export const userService = {
         if (!userId) return;
         const userRef = doc(db, 'userPreferences', userId);
         await setDoc(userRef, { profile }, { merge: true });
+    },
+
+    // Obtener todos los usuarios (preferencias) - Para Admin
+    async getAllUsers(): Promise<(UserPreferences & { id: string })[]> {
+        try {
+            const q = collection(db, 'userPreferences');
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            } as UserPreferences & { id: string }));
+        } catch (error) {
+            console.error('Error getting all users:', error);
+            return [];
+        }
     }
 };
 

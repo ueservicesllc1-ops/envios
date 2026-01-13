@@ -13,6 +13,7 @@ import { userService, SavedAddress } from '../services/userPreferencesService';
 import AddressModal from '../components/AddressModal';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../contexts/CartContext';
+import { getApiUrl } from '../config/api.config';
 
 import { Product, InventoryItem, Perfume } from '../types';
 import { getImageUrl } from '../utils/imageUtils';
@@ -44,9 +45,29 @@ const Home: React.FC = () => {
   const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [sendingContact, setSendingContact] = useState(false);
 
-  // Estados para dirección
+  // Estado para dirección
   const [userAddresses, setUserAddresses] = useState<SavedAddress[]>([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [visits, setVisits] = useState<number>(1);
+
+  // Cargar visitas
+  useEffect(() => {
+    const fetchVisits = async () => {
+      try {
+        const response = await fetch(getApiUrl('/api/visits'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setVisits(data.count);
+        }
+      } catch (error) {
+        console.error('Error fetching visits:', error);
+      }
+    };
+    fetchVisits();
+  }, []);
 
   // Cargar direcciones del usuario
   useEffect(() => {
@@ -1387,6 +1408,11 @@ const Home: React.FC = () => {
                               ) : (
                                 <Package className="h-12 w-12 text-gray-300" />
                               )}
+                              {discountPercentage > 0 && (
+                                <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm z-10">
+                                  -{discountPercentage}%
+                                </span>
+                              )}
                             </div>
 
                             <div className="p-3 flex flex-col flex-grow bg-gray-50">
@@ -1462,17 +1488,7 @@ const Home: React.FC = () => {
                       );
                     })}
                   </div>
-                  {/* Botón Ver Más */}
-                  {visibleProducts < filteredProducts.length && (
-                    <div className="flex justify-center mt-8">
-                      <button
-                        onClick={() => setVisibleProducts(prev => prev + 24)}
-                        className="px-8 py-3 bg-white border-2 border-primary-600 text-primary-600 font-bold rounded-full hover:bg-primary-50 transition-colors shadow-sm flex items-center gap-2"
-                      >
-                        Ver más productos <ChevronDown className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
+
                 </>
               )
             }
@@ -1542,18 +1558,13 @@ const Home: React.FC = () => {
             const product = isProduct ? selectedProduct as Product : null;
             const perfume = !isProduct ? selectedProduct as Perfume : null;
 
-            // Para perfumes, aplicar descuento global
+            // Precio y descuento
             let price = product ? (product.salePrice2 || product.salePrice1) : (perfume?.price || 0);
-            let originalPrice = product ? product.originalPrice : 0;
+            let originalPrice = product ? (product.originalPrice || 0) : (perfume?.originalPrice || 0);
             let discountPercentage = 0;
 
-            if (perfume && globalDiscount > 0) {
-              // Aplicar descuento global a perfumes
-              originalPrice = perfume.price;
-              price = Math.round((perfume.price * (1 - globalDiscount / 100)) * 100) / 100;
-              discountPercentage = globalDiscount;
-            } else if (product && originalPrice && originalPrice > price) {
-              // Descuento para productos regulares
+            if (originalPrice && originalPrice > price) {
+              // Descuento para productos regulares y perfumes (basado en precio original vs actual)
               discountPercentage = Math.round(((originalPrice - price) / originalPrice) * 100);
             }
 
@@ -2029,11 +2040,19 @@ const Home: React.FC = () => {
                 </button>
               </div>
             </div>
-            <div className="border-t border-blue-800 mt-8 pt-8 text-center">
+            <div className="border-t border-blue-800 mt-8 pt-8 text-center flex flex-col items-center">
               <p className="font-bold text-lg text-white mb-2">Compras Express 2025</p>
-              <p className="text-xs text-blue-200 uppercase tracking-wider">
+              <p className="text-xs text-blue-200 uppercase tracking-wider mb-4">
                 Potenciado y diseñado por <a href="https://freedomlabs.dev/" target="_blank" rel="noopener noreferrer" className="text-yellow-400 font-bold hover:text-yellow-300 transition-colors">Freedom Labs</a>
               </p>
+
+              <div className="flex flex-col items-center justify-center pt-2 border-t border-blue-800/50 w-full max-w-[200px]">
+                <span className="text-[10px] text-blue-300 uppercase tracking-widest mb-1">Visitas Totales</span>
+                <span className="font-mono text-lg text-yellow-400 font-bold tracking-wider relative group cursor-default">
+                  {visits.toLocaleString()}
+                  <div className="absolute -bottom-1 left-0 w-full h-[1px] bg-yellow-400/50 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+                </span>
+              </div>
             </div>
           </div>
         </footer>

@@ -184,5 +184,10 @@ export const chatService = {
             console.error('Error closing conversation:', error);
             throw error;
         }
+    },
+
+    // Alias para iniciar nueva conversación desde admin
+    async startConversation(userId: string, userName: string, userEmail: string): Promise<string> {
+        return this.getOrCreateConversation(userId, userName, userEmail);
     }
 };

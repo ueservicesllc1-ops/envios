@@ -35,6 +35,7 @@ import AdminStore from './pages/AdminStore';
 import StoreEditor from './pages/StoreEditor';
 import StoreEditorAccessConfig from './pages/StoreEditorAccessConfig';
 import AdminChats from './pages/AdminChats';
+import AdvisorPanel from './pages/AdvisorPanel';
 
 import { CartProvider } from './contexts/CartContext';
 import CartPage from './pages/CartPage';
@@ -46,12 +47,11 @@ import UserAddresses from './pages/UserAddresses';
 import UserProfile from './pages/UserProfile';
 import TestEmail from './pages/TestEmail';
 
+import OnlineTracker from './components/Layout/OnlineTracker';
 import SplashScreen from './components/Layout/SplashScreen';
-
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 function App() {
-  // Omitir splash screen en páginas legales
   const isLegalPage = ['/terminos', '/politica', '/devoluciones'].includes(window.location.pathname);
   const [showSplash, setShowSplash] = React.useState(!isLegalPage);
 
@@ -60,7 +60,6 @@ function App() {
     currency: "USD",
     intent: "capture",
     "disable-funding": "venmo,paylater"
-    // NOTA: brand-name se configura en PayPal Dashboard, NO aquí
   };
 
   if (showSplash) {
@@ -71,6 +70,7 @@ function App() {
     <PayPalScriptProvider options={paypalOptions}>
       <Router>
         <CartProvider>
+          <OnlineTracker /> {/* Tracking de presencia */}
           <div className="App">
             <Routes>
               {/* Ruta pública para la página de inicio (tienda en línea) */}
@@ -124,8 +124,11 @@ function App() {
               <Route path="/store-editor" element={<AuthWrapper><StoreEditor /></AuthWrapper>} />
               {/* Configuración de acceso al editor (con Layout) */}
               <Route path="/store-editor-access" element={<AuthWrapper><Layout><StoreEditorAccessConfig /></Layout></AuthWrapper>} />
-              {/* Ruta para chat de soporte (sin Layout ni AuthWrapper - maneja auth internamente) */}
-              <Route path="/chats" element={<AdminChats />} />
+              {/* Ruta para chat de soporte */}
+              {/* Ruta para el Panel de Asesor */}
+              <Route path="/asesor" element={<AdvisorPanel />} />
+
+              <Route path="/admin/chats" element={<AuthWrapper><Layout><AdminChats /></Layout></AuthWrapper>} />
               <Route path="/test-email" element={<AuthWrapper><Layout><TestEmail /></Layout></AuthWrapper>} />
               <Route path="/settings" element={<AuthWrapper><Layout><Settings /></Layout></AuthWrapper>} />
               <Route path="/mobile-scanner" element={<AuthWrapper><Layout><MobileScanner /></Layout></AuthWrapper>} />

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { getProductsFromCollection, getProductStats } from './services/shopifyScraper';
 import { getImageFromB2, uploadImageToB2 } from './services/b2Service';
+import { getVisits, recordVisit } from './services/visitService';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -128,6 +129,22 @@ app.get('/api/shopify/stats', async (req, res) => {
       error: error.message || 'Error al obtener estadísticas',
     });
   }
+});
+
+
+// Endpoint para el contador de visitas
+app.get('/api/visits', (req, res) => {
+  res.json({ count: getVisits() });
+});
+
+app.post('/api/visits', (req, res) => {
+  // Obtener IP real considerando proxies (Railway, Nginx, etc)
+  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown';
+  // En caso de múltiples IPs en x-forwarded-for, tomar la primera
+  const cleanIp = ip.split(',')[0].trim();
+
+  const count = recordVisit(cleanIp);
+  res.json({ count });
 });
 
 // Health check

@@ -3,7 +3,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyCn5b43XaNvTg56ErYYazHaCLc8Ntbx2tw",
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "envios-aaf94.firebaseapp.com",
   projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "envios-aaf94",
@@ -21,8 +21,8 @@ export const DOMAIN_CONFIG = {
 
 // Obtener la URL base según el entorno
 export const getBaseUrl = () => {
-  return process.env.NODE_ENV === 'production' 
-    ? DOMAIN_CONFIG.production 
+  return process.env.NODE_ENV === 'production'
+    ? DOMAIN_CONFIG.production
     : DOMAIN_CONFIG.development;
 };
 
