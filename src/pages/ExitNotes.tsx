@@ -191,6 +191,8 @@ const ExitNotes: React.FC = () => {
     loadDraft(draft);
   };
 
+  // ... (previous code)
+
   const loadNotes = async () => {
     try {
       setLoading(true);
@@ -215,9 +217,28 @@ const ExitNotes: React.FC = () => {
         return note;
       });
 
+      // Crear vendedor ficticio para Bodega Ecuador
+      const bodegaEcuadorSeller: Seller = {
+        id: 'bodega-ecuador',
+        name: 'Bodega Ecuador',
+        email: 'bodega@ecuador.com',
+        phone: '',
+        address: 'Bodega Central Ecuador',
+        city: 'Ecuador',
+        role: 'user',
+        commission: 0,
+        isActive: true,
+        createdAt: new Date()
+      } as unknown as Seller;
+
+      // Asegurarse de que no exista ya un vendedor con ese ID real (improbable)
+      const finalSellers = sellersData.some(s => s.id === 'bodega-ecuador')
+        ? sellersData
+        : [bodegaEcuadorSeller, ...sellersData];
+
       setNotes(updatedNotes);
       setProducts(productsData);
-      setSellers(sellersData);
+      setSellers(finalSellers);
       setInventory(inventoryData);
     } catch (error) {
       toast.error('Error al cargar datos');
@@ -225,6 +246,8 @@ const ExitNotes: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // ... (previous code)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -261,8 +284,14 @@ const ExitNotes: React.FC = () => {
   };
 
   const getAvailableStock = (productId: string): number => {
-    const inventoryItem = inventory.find(item => item.productId === productId);
-    return inventoryItem ? inventoryItem.quantity : 0;
+    // Sumar stock de todas las ubicaciones que NO son Bodega Ecuador
+    // Esto asegura que si hay múltiples entradas o el orden es incorrecto, sumamos todo el stock "disponible" para venta
+    const availableItems = inventory.filter(item =>
+      item.productId === productId &&
+      (!item.location || (!item.location.toLowerCase().includes('ecuador') && item.location !== 'Bodega Ecuador'))
+    );
+
+    return availableItems.reduce((sum, item) => sum + item.quantity, 0);
   };
 
   // Obtener stock disponible considerando la nota que se está editando
@@ -685,7 +714,7 @@ const ExitNotes: React.FC = () => {
         return;
       }
 
-      // Validar stock disponible
+      // Validar stock disponible (Validación Local)
       for (const item of items) {
         const availableStock = getAvailableStock(item.productId);
         if (availableStock < item.quantity) {
@@ -698,6 +727,39 @@ const ExitNotes: React.FC = () => {
           toast.error(`${product?.name} no tiene stock disponible. Debe crear una nota de entrada primero.`);
           return;
         }
+      }
+
+      // Validar stock REAL en servidor (Validación Estricta)
+      // Esto es crucial para evitar fallos parciales durante la creación de la nota.
+      // Si inventoryService.updateStockAfterExit falla a la mitad, se descuadra el inventario.
+      const toastId = toast.loading('Verificando disponibilidad real de stock...');
+      try {
+        for (const item of items) {
+          // Consultamos directamente al inventario para asegurar que el dato es fresco y coincide con la lógica del backend
+          let inventoryItem;
+
+          // La lógica de updateStockAfterExit usa getByProductId si no hay location explítica.
+          // Para Bodega Ecuador, ExitNotes usa la lógica especial, pero updateStockAfterExit recibe location=undefined en la llamada loop (line 786).
+          // Para otros vendedores, location también es undefined en la llamada loop (line 816).
+          // Por tanto, debemos validar contra getByProductId (primera coincidencia) que es lo que usará el servicio.
+
+          inventoryItem = await inventoryService.getByProductId(item.productId);
+
+          const realStock = inventoryItem ? inventoryItem.quantity : 0;
+
+          if (realStock < item.quantity) {
+            const product = products.find(p => p.id === item.productId);
+            toast.dismiss(toastId);
+            toast.error(`STOCK INSUFICIENTE EN SERVIDOR para "${product?.name}".\nDisponible Real: ${realStock}\nSolicitado: ${item.quantity}\nPor favor actualice la página.`);
+            return;
+          }
+        }
+        toast.dismiss(toastId);
+      } catch (err) {
+        toast.dismiss(toastId);
+        console.error("Error verificando stock real: ", err);
+        toast.error(`Error de conexión al verificar el stock. Intente nuevamente.`);
+        return;
       }
 
       const { exitNoteItems, totalPrice, totalWeightInGrams } = buildExitNoteItems(selectedSeller);
@@ -750,26 +812,56 @@ const ExitNotes: React.FC = () => {
         notes: `${formData.notes || ''} - Envío: ${shippingId}`.trim()
       });
 
-      // Determinar si la nota es de Ecuador basándose en el número de nota
-      // Si el número contiene "ECU" o empieza con "NS-ECU-", es de Ecuador
-      const isEcuadorNote = exitNoteData.number?.includes('ECU') || exitNoteData.number?.startsWith('NS-ECU-');
-      const location = isEcuadorNote ? 'Bodega Ecuador' : undefined;
+      // Lógica especial para Bodega Ecuador
+      if (selectedSeller.id === 'bodega-ecuador') {
+        // Reducir de bodega principal
+        for (const item of exitNoteItems) {
+          await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id);
+        }
 
-      for (const item of exitNoteItems) {
-        await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id, location);
+        // Agregar a Bodega Ecuador
+        // Usamos updateStockAfterEntry para sumar stock en la nueva ubicación
+        for (const item of exitNoteItems) {
+          // item.product debe tener los datos
+          const cost = item.product.cost || 0;
+          const unitPrice = item.unitPrice; // El precio de venta acordado
+
+          await inventoryService.updateStockAfterEntry(
+            item.productId,
+            item.quantity,
+            cost,
+            unitPrice,
+            'Bodega Ecuador' // Ubicación específica
+          );
+        }
+
+        toast.success('Nota de salida para Bodega Ecuador creada. Stock transferido.');
+
+      } else {
+        // Comportamiento normal para otros vendedores
+
+        // Determinar si la nota es de Ecuador basándose en el número de nota (Legacy check or specific logic)
+        // Si el número contiene "ECU" o empieza con "NS-ECU-", es de Ecuador
+        const isEcuadorNote = exitNoteData.number?.includes('ECU') || exitNoteData.number?.startsWith('NS-ECU-');
+        const location = isEcuadorNote ? 'Bodega Ecuador' : undefined;
+
+        for (const item of exitNoteItems) {
+          await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id, location);
+        }
+
+        for (const item of exitNoteItems) {
+          await sellerInventoryService.addToSellerInventory(
+            selectedSeller.id,
+            item.productId,
+            item.product,
+            item.quantity,
+            item.unitPrice
+          );
+        }
+
+        toast.success('Nota de salida y paquete de envío creados correctamente');
       }
 
-      for (const item of exitNoteItems) {
-        await sellerInventoryService.addToSellerInventory(
-          selectedSeller.id,
-          item.productId,
-          item.product,
-          item.quantity,
-          item.unitPrice
-        );
-      }
-
-      toast.success('Nota de salida y paquete de envío creados correctamente');
       closeModal();
       loadNotes();
     } catch (error) {
@@ -840,6 +932,44 @@ const ExitNotes: React.FC = () => {
           quantity: newItem.quantity,
           item: newItem
         });
+      }
+
+      // VALIDACIÓN ESTRICTA DE STOCK (SERVER-SIDE)
+      const toastId = toast.loading('Verificando disponibilidad real de stock...');
+      try {
+        for (const newItem of exitNoteItems) {
+          const originalItem = originalItemsMap.get(newItem.productId);
+          let quantityNeeded = 0;
+
+          if (!originalItem) {
+            // Producto nuevo en la nota
+            quantityNeeded = newItem.quantity;
+          } else if (newItem.quantity > originalItem.quantity) {
+            // Producto con cantidad aumentada
+            quantityNeeded = newItem.quantity - originalItem.quantity;
+          }
+
+          if (quantityNeeded > 0) {
+            // Consultar stock REAL
+            const inventoryItem = await inventoryService.getByProductId(newItem.productId);
+            const realStock = inventoryItem ? inventoryItem.quantity : 0;
+
+            if (realStock < quantityNeeded) {
+              const product = products.find(p => p.id === newItem.productId);
+              toast.dismiss(toastId);
+              toast.error(`STOCK INSUFICIENTE REAL: "${product?.name}".\nDisponible Real: ${realStock}\nSolicitado Adicional: ${quantityNeeded}\nPor favor actualice la página.`);
+              setIsSaving(false);
+              return;
+            }
+          }
+        }
+        toast.dismiss(toastId);
+      } catch (err) {
+        toast.dismiss(toastId);
+        console.error("Error verificando stock real en edición: ", err);
+        toast.error(`Error de conexión al verificar el stock.`);
+        setIsSaving(false);
+        return;
       }
 
       // Determinar si la nota es de Ecuador basándose en el número de nota
@@ -2152,10 +2282,10 @@ const ExitNotes: React.FC = () => {
                       <span className="text-lg font-medium text-gray-900">Peso Total:</span>
                       <div className="text-right">
                         <span className={`text-xl font-bold ${(totalWeight / 453.592) > 8.5
-                            ? 'text-red-600'
-                            : (totalWeight / 453.592) > 7.5
-                              ? 'text-yellow-600'
-                              : 'text-green-600'
+                          ? 'text-red-600'
+                          : (totalWeight / 453.592) > 7.5
+                            ? 'text-yellow-600'
+                            : 'text-green-600'
                           }`}>
                           {(totalWeight / 453.592).toFixed(2)} lbs
                         </span>
@@ -2848,28 +2978,35 @@ const ExitNotes: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                 {products
                   .filter(product => {
-                    if (!skuSearch.trim()) return true;
-                    return product.sku.toLowerCase().includes(skuSearch.toLowerCase());
+                    const search = skuSearch.trim().toLowerCase();
+                    if (!search) return true;
+                    return (
+                      product.sku.toLowerCase().includes(search) ||
+                      product.name.toLowerCase().includes(search)
+                    );
                   })
                   .map((product) => {
-                    // Determinar si la nota es de Ecuador basándose en el número
+                    // Usar la lógica robusta de stock
                     const noteNumber = editingNote?.number || '';
-                    const isEcuadorNote = noteNumber.includes('ECU') || noteNumber.startsWith('NS-ECU-');
+                    const isLegacyEcuadorSourceNote = noteNumber.includes('ECU') || noteNumber.startsWith('NS-ECU-');
 
-                    // Verificar stock según la bodega correcta
-                    const productInInventory = inventory.find(item => {
-                      if (item.productId !== product.id) return false;
+                    let availableStock = 0;
 
-                      // Si es nota de Ecuador, buscar en Bodega Ecuador
-                      if (isEcuadorNote) {
-                        return item.location?.toLowerCase().includes('ecuador') || item.location === 'Bodega Ecuador';
-                      }
+                    if (isLegacyEcuadorSourceNote) {
+                      // Lógica legacy: Buscar en Bodega Ecuador (solo si es una nota antigua explícita de Ecuador)
+                      const productInInventory = inventory.find(item =>
+                        item.productId === product.id &&
+                        (item.location?.toLowerCase().includes('ecuador') || item.location === 'Bodega Ecuador')
+                      );
+                      availableStock = productInInventory ? productInInventory.quantity : 0;
+                    } else {
+                      // Lógica estándar: Usar getAvailableStock (Suma de Bodega Principal)
+                      availableStock = editingNote
+                        ? getAvailableStockForEdit(product.id, editingNote)
+                        : getAvailableStock(product.id);
+                    }
 
-                      // Si es nota normal, buscar en Bodega Principal (o sin "ecuador")
-                      return !item.location?.toLowerCase().includes('ecuador') && item.location !== 'Bodega Ecuador';
-                    });
-
-                    const isInStock = productInInventory && productInInventory.quantity > 0;
+                    const isInStock = availableStock > 0;
 
                     // Si no hay stock en la bodega correcta, no mostrar el producto
                     if (!isInStock) return null;
@@ -2925,7 +3062,7 @@ const ExitNotes: React.FC = () => {
                           <p className="text-xs font-semibold text-green-600">
                             ${product.salePrice1?.toFixed(2) || '0.00'}
                           </p>
-                          {isEcuadorNote && (
+                          {isLegacyEcuadorSourceNote && (
                             <div className="mt-1 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs rounded-full inline-block">
                               📦 Ecuador
                             </div>

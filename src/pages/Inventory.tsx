@@ -308,6 +308,27 @@ const Inventory: React.FC = () => {
             <Package className="h-4 w-4 mr-2" />
             Limpiar Duplicados
           </button>
+
+          <button
+            onClick={async () => {
+              if (window.confirm('¿Estás seguro de que quieres eliminar todos los registros con STOCK 0? Esto limpiará la vista de productos agotados duplicados.')) {
+                try {
+                  setLoading(true);
+                  await inventoryService.cleanZeroStockItems(); // Nueva función
+                  await loadData();
+                } catch (error) {
+                  console.error('Error cleaning zero stock items:', error);
+                } finally {
+                  setLoading(false);
+                }
+              }
+            }}
+            className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors flex items-center"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Limpiar Stock 0
+          </button>
+
           <button
             onClick={handleRegenerateInventory}
             className="btn-secondary flex items-center"

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     MessageCircle, ShoppingBag, Package, User, CheckCircle, XCircle, Truck, Clock,
     Search, Filter, Ban, Check, Trash2, Edit, Save, Minus, Plus, MessageSquare,
-    Mail, Phone, Lock, Shield, Eye
+    Mail, Phone, Lock, Shield, Eye, Users, RefreshCw
 } from 'lucide-react';
 import { onlineSaleService, OnlineSale } from '../services/onlineSaleService';
 import { productService } from '../services/productService';
@@ -16,6 +16,8 @@ import { emailService } from '../services/emailService';
 import { format, addDays } from 'date-fns';
 import { userService, UserPreferences } from '../services/userPreferencesService';
 import { advisorService } from '../services/advisorService';
+import { sellerService } from '../services/sellerService';
+import { Seller } from '../types';
 
 const AdminStore: React.FC = () => {
     const { user } = useAuth();
@@ -25,6 +27,10 @@ const AdminStore: React.FC = () => {
     const [messages, setMessages] = useState<ContactMessage[]>([]);
     const [usersList, setUsersList] = useState<(UserPreferences & { id: string })[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // Estado para importación de vendedores
+    const [availableSellers, setAvailableSellers] = useState<Seller[]>([]);
+    const [showSellerImportModal, setShowSellerImportModal] = useState(false);
 
     // Estado para asesores
     const [showAdvisorModal, setShowAdvisorModal] = useState(false);
@@ -70,6 +76,49 @@ const AdminStore: React.FC = () => {
             toast.error(error.message || 'Error al crear asesor');
         } finally {
             setCreatingAdvisor(false);
+        }
+    };
+
+    const loadAvailableSellers = async () => {
+        try {
+            const sellers = await sellerService.getAll();
+            // Filtrar vendedores que ya son asesores (si existen en usersList con rol advisor)
+            // O mejor filtrarlos si ya tienen el ID en usersList
+            const existingUserIds = new Set(usersList.map(u => u.id));
+            // Si el seller.id coincide con un usuario existente, no mostrarlo si ya es advisor. 
+            // Si no existe en usersList, mostrarlo para "importar".
+            // Si existe en usersList pero no es advisor, mostrarlo para "promover" (aunque ya se puede desde la tabla usuarios).
+
+            // Simplificación: Mostrar todos los sellers cuyo ID no esté ya como "advisor" en usersList.
+            const advisorIds = new Set(usersList.filter(u => u.role === 'advisor').map(u => u.id));
+
+            setAvailableSellers(sellers.filter(s => !advisorIds.has(s.id)));
+            setShowSellerImportModal(true);
+        } catch (error) {
+            console.error('Error loading sellers:', error);
+            toast.error('Error cargando vendedores');
+        }
+    };
+
+    const handleImportSellerAsAdvisor = async (seller: Seller) => {
+        if (!window.confirm(`¿Convertir al vendedor ${seller.name} en Asesor? Esto creará su perfil de usuario si no existe.`)) return;
+
+        try {
+            // Crear o actualizar el userPreference usando el ID del vendedor
+            // Asumimos que el ID del vendedor ES el ID de usuario (UID) con el que se registran
+            await advisorService.promoteToAdvisor(seller.id, {
+                email: seller.email || '', // Si el vendedor tiene email guardado
+                firstName: seller.name.split(' ')[0],
+                lastName: seller.name.split(' ').slice(1).join(' '),
+                phone: seller.phone || ''
+            });
+
+            toast.success(`Vendedor ${seller.name} convertido en Asesor`);
+            setShowSellerImportModal(false);
+            loadUsers(); // Recargar lista de usuarios/asesores
+        } catch (error) {
+            console.error('Error promoting seller:', error);
+            toast.error('Error al promover vendedor. Asegúrese de que el ID del vendedor corresponda a un usuario válido.');
         }
     };
 
@@ -126,6 +175,25 @@ const AdminStore: React.FC = () => {
             await contactService.markAsRead(id);
             loadMessages();
         } catch (e) { console.error(e); }
+    };
+
+    const handlePromoteToAdvisor = async (user: UserPreferences & { id: string }) => {
+        if (!window.confirm(`¿Estás seguro de promover a ${user.displayName || user.email} como ASESOR? Tendrá acceso al panel de asesores.`)) return;
+
+        try {
+            await advisorService.promoteToAdvisor(user.id, {
+                email: user.email || '',
+                firstName: user.displayName?.split(' ')[0] || '',
+                lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+                phone: user.profile?.phone || '',
+                password: '' // No se cambia contraseña
+            });
+            toast.success('Usuario promovido a Asesor correctamente');
+            loadUsers();
+        } catch (error: any) {
+            console.error(error);
+            toast.error('Error al promover usuario');
+        }
     };
 
     const handleStatusUpdate = async (id: string, newStatus: OnlineSale['status']) => {
@@ -356,14 +424,32 @@ const AdminStore: React.FC = () => {
                             />}
                             {activeTab === 'stock' && <StockTable items={inventory} onUnconsolidate={handleUnconsolidate} />}
                             {activeTab === 'messages' && <RenderMessagesTab />}
-                            {activeTab === 'users' && <UsersTable users={usersList} />}
-                            {activeTab === 'advisors' && (
+                            {activeTab === 'users' && (
                                 <div>
                                     <div className="p-4 bg-white border-b flex justify-between items-center bg-gray-50">
-                                        <h3 className="text-lg font-medium text-gray-900">Equipo de Asesores</h3>
-                                        <button onClick={() => setShowAdvisorModal(true)} className="bg-blue-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-800">
-                                            <Plus className="h-4 w-4" /> Agregar Asesor
+                                        <h3 className="text-lg font-medium text-gray-900">Usuarios Registrados</h3>
+                                        <button onClick={loadUsers} className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
+                                            <RefreshCw className="h-4 w-4" /> Recargar Lista
                                         </button>
+                                    </div>
+                                    <UsersTable users={usersList} onPromote={handlePromoteToAdvisor} />
+                                </div>
+                            )}
+                            {activeTab === 'advisors' && (
+                                <div>
+                                    <div className="p-4 bg-white border-b flex justify-between items-center bg-gray-50 flex-wrap gap-4">
+                                        <div>
+                                            <h3 className="text-lg font-medium text-gray-900">Equipo de Asesores</h3>
+                                            <p className="text-xs text-gray-500 mt-1">Gestione los permisos de asesor</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={loadAvailableSellers} className="px-4 py-2 border border-blue-900 text-blue-900 rounded-lg flex items-center gap-2 hover:bg-blue-50">
+                                                <Users className="h-4 w-4" /> Importar Vendedor
+                                            </button>
+                                            <button onClick={() => setShowAdvisorModal(true)} className="bg-blue-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-800">
+                                                <Plus className="h-4 w-4" /> Nuevo Asesor
+                                            </button>
+                                        </div>
                                     </div>
                                     <UsersTable
                                         users={usersList.filter(u => u.role === 'advisor')}
@@ -505,6 +591,43 @@ const AdminStore: React.FC = () => {
                                 <div className="flex justify-end pt-4">
                                     <button onClick={() => setShowAdvisorDetails(false)} className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors">Cerrar</button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* Seller Import Modal */}
+                {showSellerImportModal && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold text-gray-900">Importar Vendedor como Asesor</h2>
+                                <button onClick={() => setShowSellerImportModal(false)} className="text-gray-400 hover:text-gray-600"><XCircle className="h-6 w-6" /></button>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">Seleccione un vendedor para otorgarle permisos de Asesor. Esto vinculará su cuenta existente si el ID coincide.</p>
+
+                            <div className="space-y-2">
+                                {availableSellers.length === 0 ? (
+                                    <p className="text-center py-4 text-gray-500">No hay vendedores disponibles para importar</p>
+                                ) : (
+                                    availableSellers.map(seller => (
+                                        <div key={seller.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                                            <div>
+                                                <p className="font-bold text-gray-900">{seller.name}</p>
+                                                <p className="text-xs text-gray-500 font-mono">{seller.id}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleImportSellerAsAdvisor(seller)}
+                                                className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center gap-1"
+                                            >
+                                                <Shield className="h-3 w-3" /> Hacer Asesor
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            <div className="flex justify-end pt-4 mt-4 border-t border-gray-100">
+                                <button onClick={() => setShowSellerImportModal(false)} className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg">Cerrar</button>
                             </div>
                         </div>
                     </div>
@@ -686,7 +809,7 @@ const StockTable = ({ items, onUnconsolidate }: { items: InventoryItem[], onUnco
     );
 };
 
-const UsersTable = ({ users, onViewDetails }: { users: (UserPreferences & { id: string })[], onViewDetails?: (user: UserPreferences & { id: string }) => void }) => {
+const UsersTable = ({ users, onViewDetails, onPromote }: { users: (UserPreferences & { id: string })[], onViewDetails?: (user: UserPreferences & { id: string }) => void, onPromote?: (user: UserPreferences & { id: string }) => void }) => {
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -696,12 +819,12 @@ const UsersTable = ({ users, onViewDetails }: { users: (UserPreferences & { id: 
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Información</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Direcciones</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Actividad</th>
-                        {onViewDetails && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>}
+                        {(onViewDetails || onPromote) && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>}
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {users.length === 0 ? (
-                        <tr><td colSpan={onViewDetails ? 5 : 4} className="px-6 py-8 text-center text-gray-500 italic">No hay usuarios registrados con actividad</td></tr>
+                        <tr><td colSpan={onViewDetails || onPromote ? 5 : 4} className="px-6 py-8 text-center text-gray-500 italic">No hay usuarios registrados con actividad</td></tr>
                     ) : users.map(user => {
                         const defaultAddress = user.savedAddresses?.find(a => a.isDefault) || user.savedAddresses?.[0];
                         return (
@@ -738,8 +861,17 @@ const UsersTable = ({ users, onViewDetails }: { users: (UserPreferences & { id: 
                                 </td>
                                 {onViewDetails && (
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <button onClick={() => onViewDetails(user)} className="text-blue-600 hover:text-blue-900 flex items-center gap-1 font-medium bg-blue-50 px-3 py-1 rounded-md">
-                                            <Eye className="h-4 w-4" /> Detalles
+                                        <div className="flex gap-2">
+                                            <button onClick={() => onViewDetails(user)} className="text-blue-600 hover:text-blue-900 flex items-center gap-1 font-medium bg-blue-50 px-3 py-1 rounded-md">
+                                                <Eye className="h-4 w-4" /> Detalles
+                                            </button>
+                                        </div>
+                                    </td>
+                                )}
+                                {onPromote && user.role !== 'advisor' && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <button onClick={() => onPromote(user)} className="text-green-600 hover:text-green-900 flex items-center gap-1 font-medium bg-green-50 px-3 py-1 rounded-md" title="Dar acceso de Asesor">
+                                            <Shield className="h-4 w-4" /> Hacer Asesor
                                         </button>
                                     </td>
                                 )}

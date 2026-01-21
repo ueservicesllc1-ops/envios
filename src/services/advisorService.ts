@@ -48,7 +48,7 @@ export const advisorService = {
         } catch (error: any) {
             console.error('Error creando asesor:', error);
             if (error.code === 'auth/email-already-in-use') {
-                throw new Error('Este correo electrónico ya está registrado por otro usuario.');
+                throw new Error('Este correo ya está registrado (posiblemente en la App de Escritorio). Pídale al usuario que INICIE SESIÓN en esta Web para activar su perfil. Luego podrá promoverlo desde la pestaña "Usuarios".');
             }
             if (error.code === 'auth/weak-password') {
                 throw new Error('La contraseña es muy débil. Debe tener al menos 6 caracteres.');
@@ -60,6 +60,24 @@ export const advisorService = {
         } finally {
             // Intentar limpiar
             try { await deleteApp(secondaryApp); } catch (e) { }
+        }
+    },
+
+    // Promover usuario existente a asesor
+    async promoteToAdvisor(userId: string, data: Partial<AdvisorData>) {
+        if (!userId) throw new Error('ID de usuario requerido');
+
+        try {
+            await updateDoc(doc(db, 'userPreferences', userId), {
+                role: 'advisor',
+                'profile.role': 'advisor',
+                'profile.phone': data.phone ?? '',
+                updatedAt: new Date()
+            });
+            console.log('Usuario promovido a asesor:', userId);
+        } catch (error) {
+            console.error('Error promoviendo usuario:', error);
+            throw error;
         }
     }
 };

@@ -480,6 +480,9 @@ export const inventoryService = {
 
       // Procesar cada nota de entrada
       for (const note of entryNotes) {
+        // Ignorar notas canceladas si existieran (aunque entry notes no suelen tener estado cancelado explícito en este modelo, es buena práctica)
+        // if (note.status === 'cancelled') continue; 
+
         console.log(`   ➕ ${note.number}`);
         for (const item of note.items) {
           const quantity = item.quantity ?? 0;
@@ -494,21 +497,26 @@ export const inventoryService = {
             item.productId,
             quantity,
             cost,
-            unitPrice
+            unitPrice,
+            // Si la nota especifica ubicación, usarla, si no 'Bodega Principal'
+            'Bodega Principal',
+            true // Silent mode
           );
         }
       }
 
       console.log(`✅ Entry Notes procesadas\n`);
 
-      // 3. EXIT NOTES - Restan stock (TODAS)
+      // 3. EXIT NOTES - Restan stock (Solo NO canceladas)
       const { exitNoteService } = await import('./exitNoteService');
       const exitNotes = await exitNoteService.getAll();
-      console.log(`📤 Procesando ${exitNotes.length} notas de SALIDA (restan stock)`);
-      console.log(`   ⚠️  Se restan TODAS las exit notes, estén pendientes o no`);
+      // FILTRAR: No procesar notas canceladas
+      const validExitNotes = exitNotes.filter(note => note.status !== 'cancelled');
+
+      console.log(`📤 Procesando ${validExitNotes.length} notas de SALIDA válidas (restan stock)`);
 
       // Restar stock de las notas de salida
-      for (const note of exitNotes) {
+      for (const note of validExitNotes) {
         console.log(`   ➖ ${note.number}`);
         for (const item of note.items) {
           const quantity = item.quantity ?? 0;
@@ -517,9 +525,15 @@ export const inventoryService = {
           }
 
           try {
-            await this.removeStock(item.productId, quantity);
+            // Intentar remover stock. Si falla (ej. stock negativo), capturar error para no detener el proceso.
+            // Esto permite que el inventario se regenere lo mejor posible aunque haya inconsistencias históricas.
+            await this.removeStock(item.productId, quantity, undefined, true);
           } catch (error) {
-            console.warn(`     ⚠️  No se pudo restar: ${error}`);
+            // Si falla el retiro, es probable que sea porque el cálculo da negativo. 
+            // En una regeneración, preferimos que quede en 0 o negativo lógico (si permitiéramos negativos) 
+            // pero removeStock lanza error.
+            // Simplemente logueamos y contunuamos.
+            console.warn(`     ⚠️  No se pudo restar stock de nota ${note.number} (Prod: ${item.productId}): Posible stock insuficiente histórico.`);
           }
         }
       }
@@ -543,16 +557,10 @@ export const inventoryService = {
               item.productId,
               quantity,
               item.product?.cost || 0,
-              item.unitPrice
+              item.unitPrice,
+              'Bodega Ecuador', // Ubicación
+              true // Silent
             );
-
-            // Cambiar ubicación a Bodega Ecuador
-            const inventoryItem = await this.getByProductId(item.productId);
-            if (inventoryItem) {
-              await this.update(inventoryItem.id, {
-                location: 'Bodega Ecuador'
-              });
-            }
           } catch (error) {
             console.warn(`     ⚠️  Error procesando return: ${error}`);
           }
@@ -560,7 +568,7 @@ export const inventoryService = {
       }
       console.log(`✅ Returns procesados\n`);
 
-      // 5. Obtener todas las ventas online confirmadas (no canceladas)
+      // 5. VENTAS ONLINE - Restan stock (Confirmadas)
       const { onlineSaleService } = await import('./onlineSaleService');
       const onlineSales = await onlineSaleService.getAll();
       const confirmedSales = onlineSales.filter(sale => sale.status !== 'cancelled');
@@ -576,10 +584,9 @@ export const inventoryService = {
           }
 
           try {
-            await this.removeStock(item.productId, quantity);
+            await this.removeStock(item.productId, quantity, undefined, true);
           } catch (error) {
             console.warn(`No se pudo restar stock de venta online ${sale.number}, producto ${item.productId}:`, error);
-            // Continuar con los demás items
           }
         }
       }
@@ -599,8 +606,8 @@ export const inventoryService = {
           if (quantity <= 0) continue;
 
           try {
-            // POS siempre descuenta de Bodega Principal (por defecto en posService, asumimos aquí lo mismo o usamos general)
-            await this.removeStock(item.productId, quantity, 'Bodega Principal');
+            // POS siempre descuenta de Bodega Principal
+            await this.removeStock(item.productId, quantity, 'Bodega Principal', true);
           } catch (error) {
             console.warn(`No se pudo restar stock de venta POS ${sale.saleNumber}, producto ${item.productId}:`, error);
           }
@@ -608,7 +615,7 @@ export const inventoryService = {
       }
       console.log(`✅ Ventas POS procesadas\n`);
 
-      // 6. RESUMEN FINAL
+      // 7. RESUMEN FINAL
       const finalInventory = await this.getAll();
       const usaStock = finalInventory.filter(i => i.location?.includes('USA') || i.location?.includes('Principal'));
       const ecuadorStock = finalInventory.filter(i => i.location?.includes('Ecuador'));
@@ -623,6 +630,31 @@ export const inventoryService = {
     } catch (error) {
       console.error('Error regenerating inventory:', error);
       toast.error('Error al regenerar el inventario');
+      throw error;
+    }
+  },
+
+  // Limpiar productos con stock 0
+  async cleanZeroStockItems(): Promise<void> {
+    try {
+      console.log('🧹 Iniciando limpieza de productos con stock 0...');
+      const allItems = await this.getAll();
+      const zeroStockItems = allItems.filter(item => item.quantity <= 0);
+
+      console.log(`Total encontrados con stock <= 0: ${zeroStockItems.length}`);
+
+      let deletedCount = 0;
+      for (const item of zeroStockItems) {
+        await this.delete(item.id);
+        deletedCount++;
+      }
+
+      console.log(`✅ Eliminados ${deletedCount} registros con stock 0.`);
+      toast.success(`Se eliminaron ${deletedCount} productos con stock 0`);
+
+    } catch (error) {
+      console.error('Error cleaning zero stock items:', error);
+      toast.error('Error al limpiar productos con stock 0');
       throw error;
     }
   }
