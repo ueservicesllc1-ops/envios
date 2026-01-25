@@ -103,8 +103,8 @@ const Products: React.FC = () => {
       }
     };
 
-    // Ejecutar limpieza después de 2 segundos
-    setTimeout(autoClean, 2000);
+    // Ejecutar limpieza después de 2 segundos (DESACTIVADO para evitar consumo de quota y error 400)
+    // setTimeout(autoClean, 2000);
 
     // Exponer función de limpieza en el objeto window para uso manual
     (window as any).cleanInvalidProducts = async () => {

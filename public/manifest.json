@@ -1,8 +1,32 @@
 {
   "short_name": "ComprasExpress",
-  "name": "Compras Express - Tienda Online",
+  "name": "Compras Express App",
   "start_url": ".",
   "display": "standalone",
+  "orientation": "portrait",
   "theme_color": "#3b82f6",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "logo-compras-express.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
 }

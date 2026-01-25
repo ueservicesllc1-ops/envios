@@ -36,9 +36,17 @@ import StoreEditor from './pages/StoreEditor';
 import StoreEditorAccessConfig from './pages/StoreEditorAccessConfig';
 import AdminChats from './pages/AdminChats';
 import AdvisorPanel from './pages/AdvisorPanel';
+import AppMobile from './pages/AppMobile';
+import AppEnCamino from './pages/AppEnCamino';
+import AppEnCaminoDetalle from './pages/AppEnCaminoDetalle';
+import AppBodegaUSA from './pages/AppBodegaUSA';
+import AppBodegaEcuador from './pages/AppBodegaEcuador';
+import AppProductos from './pages/AppProductos';
+import AppVendedorDashboard from './pages/AppVendedorDashboard';
 
 import { CartProvider } from './contexts/CartContext';
 import CartPage from './pages/CartPage';
+import PWAPrompt from './components/PWAPrompt';
 import OrderSuccess from './pages/OrderSuccess';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -71,6 +79,7 @@ function App() {
       <Router>
         <CartProvider>
           <OnlineTracker /> {/* Tracking de presencia */}
+          <PWAPrompt />
           <div className="App">
             <Routes>
               {/* Ruta pública para la página de inicio (tienda en línea) */}
@@ -93,6 +102,15 @@ function App() {
 
               {/* Ruta para rastreo de pedido */}
               <Route path="/track-order/:orderId" element={<OrderTracking />} />
+
+              {/* Ruta para App Mobile - sin Layout ni AuthWrapper */}
+              <Route path="/app" element={<AppMobile />} />
+              <Route path="/app/en-camino" element={<AppEnCamino />} />
+              <Route path="/app/en-camino/:id" element={<AppEnCaminoDetalle />} />
+              <Route path="/app/bodega-usa" element={<AppBodegaUSA />} />
+              <Route path="/app/bodega-ecuador" element={<AppBodegaEcuador />} />
+              <Route path="/app/productos" element={<AppProductos />} />
+              <Route path="/app/vendedor/:id" element={<AppVendedorDashboard />} />
 
               {/* Ruta pública para la tienda del vendedor - sin Layout ni AuthWrapper */}
               <Route path="/store/:slug" element={<PublicStore />} />

@@ -90,6 +90,8 @@ export interface ExitNote {
   trackingNumber?: string; // Número de tracking
   createdAt: Date;
   createdBy: string;
+  paymentStatus?: 'pending' | 'partial' | 'paid'; // Estado de pago
+  amountPaid?: number; // Monto pagado
 }
 
 export interface ExitNoteItem {

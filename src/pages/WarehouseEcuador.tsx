@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 const WarehouseEcuador: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [committedStock, setCommittedStock] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('ecuador');
@@ -75,13 +76,26 @@ const WarehouseEcuador: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [productsData, inventoryData] = await Promise.all([
+      const [productsData, inventoryData, exitNotesData] = await Promise.all([
         productService.getAll(),
-        inventoryService.getAll()
+        inventoryService.getAll(),
+        exitNoteService.getAll()
       ]);
       setProducts(productsData);
-      // Cargar todo el inventario, el filtrado se hace en filteredProducts
       setInventory(inventoryData);
+
+      // Calcular stock comprometido (pending/in-transit)
+      const committed: Record<string, number> = {};
+      exitNotesData.forEach(note => {
+        const s = (note.status || '').toLowerCase();
+        if (s === 'pending' || s === 'in-transit') {
+          note.items.forEach(item => {
+            const pid = item.productId;
+            committed[pid] = (committed[pid] || 0) + (item.quantity || 0);
+          });
+        }
+      });
+      setCommittedStock(committed);
     } catch (error) {
       toast.error('Error al cargar datos de bodega Ecuador');
     } finally {
@@ -102,10 +116,13 @@ const WarehouseEcuador: React.FC = () => {
     }
 
     const inventoryItem = getInventoryForProduct(product.id);
-    return matchesSearch && (
-      inventoryItem?.location?.toLowerCase().includes('ecuador') ||
-      inventoryItem?.location === 'Ecuador'
-    );
+
+    // Verificar si está en Ecuador y si YA LLEGÓ (no está en tránsito ni pendiente)
+    const isEcuador = inventoryItem?.location?.toLowerCase().includes('ecuador') || inventoryItem?.location === 'Ecuador';
+    const status = (inventoryItem?.status || '').toLowerCase();
+    const isArrived = status !== 'in-transit' && status !== 'pending';
+
+    return matchesSearch && isEcuador && isArrived;
   });
 
   const getStockStatus = (quantity: number) => {
@@ -515,11 +532,30 @@ const WarehouseEcuador: React.FC = () => {
     );
   }
 
-  // Filtrar productos que están en Ecuador
-  const ecuadorProducts = inventory.filter(item => {
-    const location = item.location?.toLowerCase() || '';
-    return location.includes('ecuador') || item.location === 'Ecuador';
-  });
+  // Filtrar productos que están en Ecuador y YA LLEGARON, ajustando stock por notas pendientes
+  const ecuadorProducts = inventory
+    .filter(item => {
+      const location = item.location?.toLowerCase() || '';
+      const status = (item.status || '').toLowerCase();
+      const isEcuador = location.includes('ecuador') || item.location === 'Ecuador';
+      const isArrived = status !== 'in-transit' && status !== 'pending';
+      return isEcuador && isArrived;
+    })
+    .map(item => {
+      const committed = committedStock[item.productId] || 0;
+      const realQty = Math.max(0, item.quantity - committed);
+
+      // Ajustar valor proporcionalmente
+      const ratio = item.quantity > 0 ? realQty / item.quantity : 0;
+
+      return {
+        ...item,
+        quantity: realQty,
+        totalValue: (item.totalValue || 0) * ratio
+      };
+    })
+    .filter(item => item.quantity > 0); // Solo contar como producto en bodega si tiene stock real > 0
+
   const lowStockCount = ecuadorProducts.filter(item => item.quantity < 10).length;
   const noStockCount = ecuadorProducts.filter(item => item.quantity === 0).length;
   const totalValue = ecuadorProducts.reduce((sum, item) => sum + (item.totalValue || 0), 0);
@@ -668,6 +704,15 @@ const WarehouseEcuador: React.FC = () => {
                   return null;
                 }
 
+                // Calcular cantidad disponible restando lo comprometido
+                const committed = committedStock[product.id] || 0;
+                const displayQuantity = Math.max(0, (inventoryItem.quantity || 0) - committed);
+
+                // Si el usuario quiere que NO aparezcan los productos de notas pendientes, 
+                // podríamos retornar null aquí si displayQuantity <= 0.
+                // Vamos a probar ocultándolos si quedan en 0 por compromiso.
+                if (displayQuantity <= 0) return null;
+
                 return (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -695,7 +740,14 @@ const WarehouseEcuador: React.FC = () => {
                       <div className="text-sm text-gray-900">{product.sku}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{inventoryItem.quantity} unidades</div>
+                      <div className="text-sm text-gray-900">
+                        {displayQuantity} unidades
+                        {committed > 0 && (
+                          <span className="ml-2 text-xs text-orange-500" title={`${committed} unidades comprometidas en notas pendientes`}>
+                            (-{committed})
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
