@@ -43,6 +43,7 @@ import AppBodegaUSA from './pages/AppBodegaUSA';
 import AppBodegaEcuador from './pages/AppBodegaEcuador';
 import AppProductos from './pages/AppProductos';
 import AppVendedorDashboard from './pages/AppVendedorDashboard';
+import AppInstallPage from './pages/AppInstallPage';
 
 import { CartProvider } from './contexts/CartContext';
 import CartPage from './pages/CartPage';
@@ -111,6 +112,9 @@ function App() {
               <Route path="/app/bodega-ecuador" element={<AppBodegaEcuador />} />
               <Route path="/app/productos" element={<AppProductos />} />
               <Route path="/app/vendedor/:id" element={<AppVendedorDashboard />} />
+
+              {/* Landing de instalación de App */}
+              <Route path="/instalar-app" element={<AppInstallPage />} />
 
               {/* Ruta pública para la tienda del vendedor - sin Layout ni AuthWrapper */}
               <Route path="/store/:slug" element={<PublicStore />} />
