@@ -52,8 +52,6 @@ const AdvisorPanel: React.FC = () => {
     // ... (useEffect for stats)
 
     // ... (render)
-    { activeTab === 'chat' && <div className="h-[calc(100vh-4rem)] bg-white"><AdminChats initialChatUserId={selectedChatUserId} /></div> }
-
 
     const [orders, setOrders] = useState<OnlineSale[]>([]);
     const [loadingOrders, setLoadingOrders] = useState(false);

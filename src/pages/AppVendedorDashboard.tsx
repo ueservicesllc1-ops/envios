@@ -22,13 +22,7 @@ const AppVendedorDashboard: React.FC = () => {
     const [paymentAmount, setPaymentAmount] = useState('');
     const [processingPayment, setProcessingPayment] = useState(false);
 
-    useEffect(() => {
-        if (id) {
-            loadData();
-        }
-    }, [id]);
-
-    const loadData = async () => {
+    const loadData = React.useCallback(async () => {
         try {
             setLoading(true);
             const [sellerData, exitNotesData] = await Promise.all([
@@ -56,7 +50,13 @@ const AppVendedorDashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, navigate]);
+
+    useEffect(() => {
+        if (id) {
+            loadData();
+        }
+    }, [id, loadData]);
 
     const getStatusInfo = (status: string) => {
         switch (status) {

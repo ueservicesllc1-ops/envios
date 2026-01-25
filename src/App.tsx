@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import AuthWrapper from './components/Auth/AuthWrapper';
 import Layout from './components/Layout/Layout';
@@ -59,6 +59,24 @@ import TestEmail from './pages/TestEmail';
 import OnlineTracker from './components/Layout/OnlineTracker';
 import SplashScreen from './components/Layout/SplashScreen';
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { Capacitor } from '@capacitor/core';
+
+function MobileRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Verificar si estamos en una plataforma nativa (Android/iOS)
+    if (Capacitor.isNativePlatform()) {
+      // Solo redirigir si estamos en la raíz
+      if (location.pathname === '/' || location.pathname === '') {
+        navigate('/app', { replace: true });
+      }
+    }
+  }, [navigate, location]);
+
+  return null;
+}
 
 function App() {
   const isLegalPage = ['/terminos', '/politica', '/devoluciones'].includes(window.location.pathname);
@@ -78,6 +96,7 @@ function App() {
   return (
     <PayPalScriptProvider options={paypalOptions}>
       <Router>
+        <MobileRedirect />
         <CartProvider>
           <OnlineTracker /> {/* Tracking de presencia */}
           <PWAPrompt />

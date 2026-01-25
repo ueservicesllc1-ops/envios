@@ -13,28 +13,28 @@ const AppEnCaminoDetalle: React.FC = () => {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     useEffect(() => {
+        const loadNote = async (noteId: string) => {
+            try {
+                setLoading(true);
+                const data = await exitNoteService.getById(noteId);
+                if (data) {
+                    setNote(data);
+                } else {
+                    toast.error('Nota no encontrada');
+                    navigate('/app/en-camino');
+                }
+            } catch (error) {
+                console.error('Error loading note:', error);
+                toast.error('Error al cargar la nota');
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (id) {
             loadNote(id);
         }
-    }, [id]);
-
-    const loadNote = async (noteId: string) => {
-        try {
-            setLoading(true);
-            const data = await exitNoteService.getById(noteId);
-            if (data) {
-                setNote(data);
-            } else {
-                toast.error('Nota no encontrada');
-                navigate('/app/en-camino');
-            }
-        } catch (error) {
-            console.error('Error loading note:', error);
-            toast.error('Error al cargar la nota');
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [id, navigate]);
 
     if (loading) {
         return (
