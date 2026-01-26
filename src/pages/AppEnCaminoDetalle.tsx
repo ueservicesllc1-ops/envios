@@ -4,10 +4,15 @@ import { ArrowLeft, Package, DollarSign } from 'lucide-react';
 import { ExitNote } from '../types';
 import { exitNoteService } from '../services/exitNoteService';
 import toast from 'react-hot-toast';
+import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 
 const AppEnCaminoDetalle: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+
+    // Autenticación anónima
+    const { user, loading: authLoading, error: authError } = useAnonymousAuth();
+
     const [note, setNote] = useState<ExitNote | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -31,12 +36,16 @@ const AppEnCaminoDetalle: React.FC = () => {
             }
         };
 
-        if (id) {
+        if (!authLoading && user && id) {
             loadNote(id);
         }
-    }, [id, navigate]);
 
-    if (loading) {
+        if (authError) {
+            toast.error('Error de autenticación');
+        }
+    }, [id, navigate, authLoading, user, authError]);
+
+    if (loading || authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

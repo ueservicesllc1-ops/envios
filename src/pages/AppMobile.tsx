@@ -4,10 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { sellerService } from '../services/sellerService';
 import { Seller } from '../types';
 import toast from 'react-hot-toast';
+import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 
 const AppMobile: React.FC = () => {
     const [showSplash, setShowSplash] = useState(true);
     const navigate = useNavigate();
+
+    // Autenticación anónima para acceso a Firestore
+    const { user, loading: authLoading, error: authError } = useAnonymousAuth();
 
     // Estados para login de vendedor
     const [showLoginModal, setShowLoginModal] = useState(false);

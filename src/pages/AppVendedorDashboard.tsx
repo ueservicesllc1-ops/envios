@@ -5,10 +5,15 @@ import { Seller, ExitNote } from '../types';
 import { sellerService } from '../services/sellerService';
 import { exitNoteService } from '../services/exitNoteService';
 import toast from 'react-hot-toast';
+import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 
 const AppVendedorDashboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+
+    // Autenticación anónima para acceso a Firestore
+    const { user, loading: authLoading, error: authError } = useAnonymousAuth();
+
     const [seller, setSeller] = useState<Seller | null>(null);
     const [loading, setLoading] = useState(true);
     const [sellerNotes, setSellerNotes] = useState<ExitNote[]>([]);
@@ -25,24 +30,40 @@ const AppVendedorDashboard: React.FC = () => {
     const loadData = React.useCallback(async () => {
         try {
             setLoading(true);
-            const [sellerData, exitNotesData] = await Promise.all([
-                sellerService.getById(id!),
-                exitNoteService.getAll()
-            ]);
 
-            if (!sellerData) {
-                toast.error('Vendedor no encontrado');
+            // Cargar datos del vendedor primero
+            let sellerData: Seller | null = null;
+            try {
+                sellerData = await sellerService.getById(id!);
+                if (!sellerData) {
+                    toast.error('Vendedor no encontrado');
+                    navigate('/app');
+                    return;
+                }
+                setSeller(sellerData);
+            } catch (sellerError) {
+                console.error('Error loading seller:', sellerError);
+                toast.error('Error al cargar datos del vendedor');
                 navigate('/app');
                 return;
             }
-            setSeller(sellerData);
 
-            // Filtrar notas del vendedor y ordenar por fecha descendente
-            const notes = exitNotesData
-                .filter(n => n.sellerId === id)
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            // Cargar notas de salida
+            try {
+                const exitNotesData = await exitNoteService.getAll();
 
-            setSellerNotes(notes);
+                // Filtrar notas del vendedor y ordenar por fecha descendente
+                const notes = exitNotesData
+                    .filter(n => n.sellerId === id)
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                setSellerNotes(notes);
+            } catch (notesError) {
+                console.error('Error loading exit notes:', notesError);
+                toast.error('Error al cargar las notas de salida');
+                // No retornar aquí - permitir que la página se muestre con el vendedor
+                setSellerNotes([]);
+            }
 
         } catch (error) {
             console.error('Error loading data:', error);
@@ -53,10 +74,16 @@ const AppVendedorDashboard: React.FC = () => {
     }, [id, navigate]);
 
     useEffect(() => {
-        if (id) {
+        // Solo cargar datos si la autenticación está completa y hay un usuario
+        if (!authLoading && user && id) {
             loadData();
         }
-    }, [id, loadData]);
+
+        // Si hay error de autenticación, mostrar mensaje
+        if (authError) {
+            toast.error('Error de autenticación. Por favor, recarga la página.');
+        }
+    }, [id, loadData, authLoading, user, authError]);
 
     const getStatusInfo = (status: string) => {
         switch (status) {
@@ -127,7 +154,7 @@ const AppVendedorDashboard: React.FC = () => {
         }
     };
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>

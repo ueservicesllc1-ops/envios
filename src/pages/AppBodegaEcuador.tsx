@@ -6,17 +6,28 @@ import { inventoryService } from '../services/inventoryService';
 import { productService } from '../services/productService';
 import { exitNoteService } from '../services/exitNoteService';
 import toast from 'react-hot-toast';
+import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 
 const AppBodegaEcuador: React.FC = () => {
     const navigate = useNavigate();
+
+    // Autenticación anónima
+    const { user, loading: authLoading, error: authError } = useAnonymousAuth();
+
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     useEffect(() => {
-        loadInventory();
-    }, []);
+        if (!authLoading && user) {
+            loadInventory();
+        }
+
+        if (authError) {
+            toast.error('Error de autenticación. Por favor, recarga la página.');
+        }
+    }, [authLoading, user, authError]);
 
     const loadInventory = async () => {
         try {
@@ -91,7 +102,7 @@ const AppBodegaEcuador: React.FC = () => {
             sku.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

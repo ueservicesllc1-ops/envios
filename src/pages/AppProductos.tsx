@@ -4,17 +4,28 @@ import { ArrowLeft, Package, Search, Tag } from 'lucide-react';
 import { Product } from '../types';
 import { productService } from '../services/productService';
 import toast from 'react-hot-toast';
+import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 
 const AppProductos: React.FC = () => {
     const navigate = useNavigate();
+
+    // Autenticación anónima
+    const { user, loading: authLoading, error: authError } = useAnonymousAuth();
+
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     useEffect(() => {
-        loadProducts();
-    }, []);
+        if (!authLoading && user) {
+            loadProducts();
+        }
+
+        if (authError) {
+            toast.error('Error de autenticación');
+        }
+    }, [authLoading, user, authError]);
 
     const loadProducts = async () => {
         try {
@@ -42,7 +53,7 @@ const AppProductos: React.FC = () => {
         return matchesSearch;
     });
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>

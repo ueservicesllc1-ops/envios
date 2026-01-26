@@ -4,17 +4,29 @@ import { useNavigate } from 'react-router-dom';
 import { ExitNote } from '../types';
 import { exitNoteService } from '../services/exitNoteService';
 import toast from 'react-hot-toast';
+import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 
 const AppEnCamino: React.FC = () => {
     const navigate = useNavigate();
+
+    // Autenticación anónima para acceso a Firestore
+    const { user, loading: authLoading, error: authError } = useAnonymousAuth();
+
     const [exitNotes, setExitNotes] = useState<ExitNote[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in-transit'>('all');
 
     useEffect(() => {
-        loadExitNotes();
-    }, []);
+        // Solo cargar datos si la autenticación está completa
+        if (!authLoading && user) {
+            loadExitNotes();
+        }
+
+        if (authError) {
+            toast.error('Error de autenticación. Por favor, recarga la página.');
+        }
+    }, [authLoading, user, authError]);
 
     const loadExitNotes = async () => {
         try {
@@ -82,7 +94,7 @@ const AppEnCamino: React.FC = () => {
     const pendingCount = exitNotes.filter(n => n.status === 'pending').length;
     const inTransitCount = exitNotes.filter(n => n.status === 'in-transit').length;
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">

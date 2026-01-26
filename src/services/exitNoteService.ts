@@ -190,7 +190,6 @@ export const exitNoteService = {
       })) as ExitNote[];
     } catch (error) {
       console.error('Error getting exit notes:', error);
-      toast.error('Error al cargar las notas de salida');
       throw error;
     }
   },
@@ -237,7 +236,6 @@ export const exitNoteService = {
       return null;
     } catch (error) {
       console.error('Error getting exit note:', error);
-      toast.error('Error al obtener la nota de salida');
       throw error;
     }
   },
