@@ -2,7 +2,7 @@
   "name": "envios-ecuador",
   "version": "1.0.0",
   "description": "Sistema de gestión para empresa de envíos a Ecuador",
-  "homepage": ".",
+  "homepage": "/",
   "private": true,
   "dependencies": {
     "@aws-sdk/client-s3": "^3.490.0",
