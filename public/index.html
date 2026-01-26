@@ -19,6 +19,31 @@
 <body>
   <noscript>Necesitas habilitar JavaScript para ejecutar esta aplicación.</noscript>
   <div id="root"></div>
+
+  <!-- Script de Emergencia: Limpieza de Service Workers y Caché -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (let registration of registrations) {
+          registration.unregister().then(function () {
+            console.log('SW desregistrado en emergencia');
+            // Opcional: Recargar si se detecta un SW antiguo eliminado
+            // window.location.reload(); 
+          });
+        }
+      });
+    }
+    // Intentar limpiar cachés si hay errores de carga persistentes
+    if (window.caches) {
+      caches.keys().then(function (names) {
+        for (let name of names) {
+          // No borrar todo a lo loco, pero si hay sospecha de caché corrupta...
+          // En este caso, dejaremos que el SW unregister haga su trabajo primero.
+          console.log('Caché detectada:', name);
+        }
+      });
+    }
+  </script>
 </body>
 
 </html>
