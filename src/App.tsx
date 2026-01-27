@@ -44,6 +44,7 @@ import AppBodegaEcuador from './pages/AppBodegaEcuador';
 import AppProductos from './pages/AppProductos';
 import AppVendedorDashboard from './pages/AppVendedorDashboard';
 import AppInstallPage from './pages/AppInstallPage';
+import PdfEditor from './pages/PdfEditor';
 
 import { CartProvider } from './contexts/CartContext';
 import CartPage from './pages/CartPage';
@@ -68,8 +69,8 @@ function MobileRedirect() {
   useEffect(() => {
     // Verificar si estamos en una plataforma nativa (Android/iOS)
     if (Capacitor.isNativePlatform()) {
-      // Solo redirigir si estamos en la raíz
-      if (location.pathname === '/' || location.pathname === '') {
+      // Redirigir si estamos en la raíz o si no estamos en una ruta de la app móvil
+      if (location.pathname === '/' || location.pathname === '' || (!location.pathname.startsWith('/app') && location.pathname !== '/login')) {
         navigate('/app', { replace: true });
       }
     }
@@ -137,6 +138,8 @@ function App() {
 
               {/* Ruta pública para la tienda del vendedor - sin Layout ni AuthWrapper */}
               <Route path="/store/:slug" element={<PublicStore />} />
+
+              <Route path="/pdf" element={<AuthWrapper><PdfEditor /></AuthWrapper>} />
 
               {/* Rutas protegidas con AuthWrapper y Layout */}
               <Route path="/dashboard" element={<AuthWrapper><Layout><Dashboard /></Layout></AuthWrapper>} />

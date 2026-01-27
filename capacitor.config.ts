@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.envios.ecuador',
+  appId: 'comm.freedomlabs.enviosapp',
   appName: 'Envios Ecuador',
   webDir: 'build'
 };

@@ -36,6 +36,7 @@ const navigation = [
   { name: 'Facturación', href: '/billing', icon: Receipt },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
   { name: 'Admin Tienda', href: '/admin-store', icon: ShoppingBag },
+  { name: 'Editor PDF', href: '/pdf', icon: FileText },
   { name: 'Devoluciones', href: '/returns', icon: RotateCcw },
   { name: 'Perfumes', href: '/perfumes', icon: Sparkles },
   { name: 'Interes Compuesto', href: '/compound-interest', icon: Percent },

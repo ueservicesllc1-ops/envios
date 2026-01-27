@@ -148,7 +148,9 @@ export const inventoryService = {
       const product = await productService.getById(productId);
       const actualUnitPrice = product?.salePrice1 || unitPrice; // Usar salePrice1 del producto
 
-      const existingItem = await this.getByProductIdAndLocation(productId, location);
+      const cleanLocation = location.trim(); // Asegurar ubicación limpia
+
+      const existingItem = await this.getByProductIdAndLocation(productId, cleanLocation);
 
       if (existingItem) {
         // Actualizar stock existente
@@ -176,7 +178,7 @@ export const inventoryService = {
           totalCost: cost * quantity,
           totalPrice: actualUnitPrice * quantity,
           totalValue: cost * quantity,
-          location: location,
+          location: cleanLocation,
           status: 'stock' // Estado inicial
         });
       }
@@ -259,7 +261,7 @@ export const inventoryService = {
 
   // Agregar stock (alias para updateStockAfterEntry)
   async addStock(productId: string, quantity: number, cost: number, unitPrice: number, location: string): Promise<void> {
-    return this.updateStockAfterEntry(productId, quantity, cost, unitPrice);
+    return this.updateStockAfterEntry(productId, quantity, cost, unitPrice, location);
   },
 
   // Remover stock del inventario

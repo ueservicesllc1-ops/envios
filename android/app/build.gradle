@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.envios.ecuador"
+    namespace = "comm.freedomlabs.enviosapp"
     compileSdk = rootProject.ext.compileSdkVersion
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
     defaultConfig {
-        applicationId "com.envios.ecuador"
+        applicationId "comm.freedomlabs.enviosapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2

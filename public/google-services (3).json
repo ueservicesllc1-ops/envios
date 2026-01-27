@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "301889994673",
+    "project_id": "envios-aaf94",
+    "storage_bucket": "envios-aaf94.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:301889994673:android:5313a5c9cf071492890790",
+        "android_client_info": {
+          "package_name": "comm.freedomlabs.enviosapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "301889994673-cn949080j3dppchahajejt1b0413mvh9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaPRQEibEf7rpwvd9g-APfTad0JCVVFHw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "301889994673-cn949080j3dppchahajejt1b0413mvh9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
