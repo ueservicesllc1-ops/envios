@@ -114,20 +114,20 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                 </div>
 
                 {/* Contenido */}
-                <div className="relative p-8 md:p-12">
+                <div className="relative p-4 md:p-12">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center justify-between mb-4 md:mb-8">
                         <div className="flex items-center gap-4">
                             <div className="relative">
-                                <Trophy className="h-12 w-12 text-yellow-400 animate-pulse" />
-                                <Sparkles className="h-6 w-6 text-yellow-300 absolute -top-1 -right-1 animate-spin-slow" />
+                                <Trophy className="h-10 w-10 md:h-12 md:w-12 text-yellow-400 animate-pulse" />
+                                <Sparkles className="h-5 w-5 md:h-6 md:w-6 text-yellow-300 absolute -top-1 -right-1 animate-spin-slow" />
                             </div>
                             <div>
-                                <h2 className="text-4xl font-black text-white drop-shadow-lg">
+                                <h2 className="text-2xl md:text-4xl font-black text-white drop-shadow-lg leading-tight">
                                     ¡Regalo de Bienvenida!
                                 </h2>
-                                <p className="text-yellow-300 text-sm font-medium mt-1 flex items-center gap-2">
-                                    <Award className="h-4 w-4" />
+                                <p className="text-yellow-300 text-xs md:text-sm font-medium mt-1 flex items-center gap-2">
+                                    <Award className="h-3 w-3 md:h-4 md:w-4" />
                                     Gana hasta $100 en cupones
                                 </p>
                             </div>
@@ -135,7 +135,7 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                         {!showPrize && (
                             <button
                                 onClick={onClose}
-                                className="text-white hover:bg-white hover:bg-opacity-20 p-2 rounded-full transition-all hover:rotate-90 duration-300"
+                                className="text-white hover:bg-white hover:bg-opacity-20 p-1 md:p-2 rounded-full transition-all hover:rotate-90 duration-300"
                             >
                                 <X className="h-6 w-6" />
                             </button>
@@ -145,23 +145,23 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                     {!showPrize ? (
                         <>
                             {/* Instrucciones */}
-                            <div className="bg-white bg-opacity-15 backdrop-blur-xl rounded-2xl p-6 mb-10 border border-white border-opacity-30 shadow-xl">
+                            <div className="bg-white bg-opacity-15 backdrop-blur-xl rounded-2xl p-4 mb-6 md:p-6 md:mb-10 border border-white border-opacity-30 shadow-xl">
                                 <div className="flex items-center justify-center gap-2 mb-2">
-                                    <Gift className="h-6 w-6 text-yellow-300" />
-                                    <p className="text-white text-xl font-bold text-center">
+                                    <Gift className="h-5 w-5 md:h-6 md:w-6 text-yellow-300" />
+                                    <p className="text-white text-lg md:text-xl font-bold text-center">
                                         Elige una caja de regalo
                                     </p>
                                 </div>
-                                <p className="text-white text-sm opacity-90 text-center">
+                                <p className="text-white text-xs md:text-sm opacity-90 text-center">
                                     Recibirás cupones de descuento divididos estratégicamente
                                 </p>
-                                <p className="text-yellow-300 font-bold text-center mt-2 text-sm">
+                                <p className="text-yellow-300 font-bold text-center mt-2 text-xs md:text-sm">
                                     Oportunidad única de bienvenida
                                 </p>
                             </div>
 
                             {/* Cajas de regalo */}
-                            <div className="grid grid-cols-3 gap-8 mb-10">
+                            <div className="grid grid-cols-3 gap-4 mb-6 md:gap-8 md:mb-10">
                                 {[0, 1, 2].map((boxIndex) => (
                                     <button
                                         key={boxIndex}
@@ -169,7 +169,7 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                                         onMouseEnter={() => setHoveredBox(boxIndex)}
                                         onMouseLeave={() => setHoveredBox(null)}
                                         disabled={selectedBox !== null}
-                                        className={`aspect-square rounded-3xl flex flex-col items-center justify-center transition-all duration-500 transform relative ${selectedBox === null
+                                        className={`aspect-square rounded-2xl md:rounded-3xl flex flex-col items-center justify-center transition-all duration-500 transform relative ${selectedBox === null
                                             ? 'hover:scale-125 cursor-pointer bg-gradient-to-br from-amber-400 to-orange-600 hover:shadow-2xl hover:shadow-orange-500/50'
                                             : selectedBox === boxIndex
                                                 ? 'scale-125 bg-gradient-to-br from-emerald-400 to-green-600 animate-wiggle shadow-2xl shadow-green-500/50'
@@ -178,14 +178,14 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                                     >
                                         {/* Brillo en hover */}
                                         {hoveredBox === boxIndex && selectedBox === null && (
-                                            <div className="absolute inset-0 bg-white opacity-20 rounded-3xl animate-pulse"></div>
+                                            <div className="absolute inset-0 bg-white opacity-20 rounded-2xl md:rounded-3xl animate-pulse"></div>
                                         )}
 
-                                        <Gift className={`h-24 w-24 text-white drop-shadow-xl ${selectedBox === boxIndex && isRevealing ? 'animate-bounce' : ''
+                                        <Gift className={`h-12 w-12 md:h-24 md:w-24 text-white drop-shadow-xl ${selectedBox === boxIndex && isRevealing ? 'animate-bounce' : ''
                                             } ${hoveredBox === boxIndex && selectedBox === null ? 'animate-wiggle' : ''}`} />
 
                                         {selectedBox === null && (
-                                            <div className="mt-3 text-white font-bold text-lg">
+                                            <div className="mt-1 md:mt-3 text-white font-bold text-xs md:text-lg">
                                                 Caja {boxIndex + 1}
                                             </div>
                                         )}
@@ -194,16 +194,16 @@ const RewardGameModal: React.FC<RewardGameModalProps> = ({ isOpen, onClose }) =>
                                         {(hoveredBox === boxIndex || selectedBox === boxIndex) && selectedBox === null && (
                                             <>
                                                 <div className="absolute -top-2 -left-2 animate-ping">
-                                                    <Sparkles className="h-6 w-6 text-yellow-300" />
+                                                    <Sparkles className="h-4 w-4 md:h-6 md:w-6 text-yellow-300" />
                                                 </div>
                                                 <div className="absolute -top-2 -right-2 animate-ping delay-100">
-                                                    <Sparkles className="h-6 w-6 text-amber-300" />
+                                                    <Sparkles className="h-4 w-4 md:h-6 md:w-6 text-amber-300" />
                                                 </div>
                                                 <div className="absolute -bottom-2 -left-2 animate-ping delay-200">
-                                                    <Sparkles className="h-6 w-6 text-orange-300" />
+                                                    <Sparkles className="h-4 w-4 md:h-6 md:w-6 text-orange-300" />
                                                 </div>
                                                 <div className="absolute -bottom-2 -right-2 animate-ping delay-300">
-                                                    <Sparkles className="h-6 w-6 text-yellow-200" />
+                                                    <Sparkles className="h-4 w-4 md:h-6 md:w-6 text-yellow-200" />
                                                 </div>
                                             </>
                                         )}

@@ -2183,29 +2183,29 @@ const Home: React.FC = () => {
       {
         showReferralModal && user && (
           <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 relative animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-4 md:p-6 relative animate-in fade-in zoom-in duration-200 max-h-[85vh] overflow-y-auto">
               <button
                 onClick={() => setShowReferralModal(false)}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                className="absolute top-2 right-2 md:top-4 md:right-4 text-gray-400 hover:text-gray-600 z-10"
               >
                 <X className="h-6 w-6" />
               </button>
 
-              <h2 className="text-2xl font-bold text-blue-900 mb-2 text-center flex items-center justify-center gap-2">
-                <Wallet className="h-8 w-8 text-yellow-500" />
+              <h2 className="text-xl md:text-2xl font-bold text-blue-900 mb-2 text-center flex items-center justify-center gap-2 mt-2 md:mt-0">
+                <Wallet className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
                 Tu Wallet y Referidos
               </h2>
-              <p className="text-gray-500 text-center mb-6 text-sm">Gestiona tus bonos y ganancias</p>
+              <p className="text-gray-500 text-center mb-4 md:mb-6 text-xs md:text-sm">Gestiona tus bonos y ganancias</p>
 
               {/* Wallet Display */}
-              <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl p-6 text-white text-center mb-8 shadow-lg relative overflow-hidden">
+              <div className="bg-gradient-to-br from-blue-900 to-blue-800 rounded-xl p-4 md:p-6 text-white text-center mb-4 md:mb-8 shadow-lg relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <DollarSign className="h-24 w-24" />
+                  <DollarSign className="h-16 w-16 md:h-24 md:w-24" />
                 </div>
 
-                <p className="text-blue-100 text-sm font-medium mb-1 uppercase tracking-wider">Saldo Disponible</p>
-                <div className="text-5xl font-black flex items-center justify-center gap-1 mb-2 tracking-tight">
-                  <span className="text-2xl opacity-60 mt-2">$</span>
+                <p className="text-blue-100 text-xs md:text-sm font-medium mb-1 uppercase tracking-wider">Saldo Disponible</p>
+                <div className="text-4xl md:text-5xl font-black flex items-center justify-center gap-1 mb-2 tracking-tight">
+                  <span className="text-xl md:text-2xl opacity-60 mt-2">$</span>
                   <span>{walletBalance.toFixed(2)}</span>
                 </div>
 
@@ -2222,13 +2222,13 @@ const Home: React.FC = () => {
 
               {/* Link Section */}
               <div className="space-y-4">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2 text-sm md:text-base">
                   <User className="h-5 w-5 text-blue-600" />
                   ¡Gana $10 por cada amigo!
                 </h3>
 
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                  <p className="text-sm text-gray-600 mb-3">
+                <div className="bg-blue-50 p-3 md:p-4 rounded-lg border border-blue-100">
+                  <p className="text-xs md:text-sm text-gray-600 mb-3">
                     Comparte tu enlace único. Tus amigos reciben <strong>$10 de bono</strong> al registrarse, y tú recibes <strong>$10 extra</strong> cuando ellos hagan su primera compra.
                   </p>
 
@@ -2239,7 +2239,7 @@ const Home: React.FC = () => {
                         type="text"
                         readOnly
                         value={referralLink}
-                        className="flex-1 px-3 py-2 text-sm text-gray-600 focus:outline-none font-mono"
+                        className="flex-1 px-3 py-2 text-xs md:text-sm text-gray-600 focus:outline-none font-mono"
                       />
                     </div>
                     <button
@@ -2253,7 +2253,7 @@ const Home: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-8 text-center text-xs text-gray-400">
+              <div className="mt-4 md:mt-8 text-center text-[10px] md:text-xs text-gray-400">
                 * Los bonos aplican como descuento del 20% sobre el valor del envío.
               </div>
 
