@@ -87,7 +87,25 @@ class EmailService {
             estimatedDate: data.estimatedDate
         };
 
-        return await this.sendEmail('compra_exitosa', emailParams);
+        // Enviar al cliente
+        const clientResponse = await this.sendEmail('compra_exitosa', emailParams);
+
+        // Enviar copia al admin
+        // Usamos un try/catch para que si falla la copia no afecte el flujo principal
+        try {
+            const adminParams: EmailParams = {
+                ...emailParams,
+                to_email: 'luisuf@gmail.com',
+                to_name: 'Administrador',
+                // Podemos ajustar el asunto si es necesario, pero el template lo define
+            };
+            await this.sendEmail('compra_exitosa', adminParams);
+            console.log('Copia de pedido enviada a luisuf@gmail.com');
+        } catch (error) {
+            console.error('Error enviando copia al admin:', error);
+        }
+
+        return clientResponse;
     }
 
     /**
