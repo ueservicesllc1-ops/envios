@@ -15,7 +15,7 @@ const AppEnCamino: React.FC = () => {
     const [exitNotes, setExitNotes] = useState<ExitNote[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in-transit'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'in-transit' | 'received'>('all');
 
     useEffect(() => {
         // Solo cargar datos si la autenticación está completa
@@ -33,9 +33,9 @@ const AppEnCamino: React.FC = () => {
             setLoading(true);
             const notes = await exitNoteService.getAll();
 
-            // Filtrar solo pendientes y en tránsito
+            // Filtrar solo pendientes, en tránsito y recibidos
             const filtered = notes.filter(note =>
-                note.status === 'pending' || note.status === 'in-transit'
+                note.status === 'pending' || note.status === 'in-transit' || note.status === 'received'
             );
 
             // Ordenar por fecha (más recientes primero)
@@ -68,6 +68,14 @@ const AppEnCamino: React.FC = () => {
                     iconColor: 'text-blue-600',
                     bgGradient: 'from-blue-50 to-cyan-50'
                 };
+            case 'received':
+                return {
+                    label: 'Recibido',
+                    color: 'bg-green-100 text-green-800 border-green-300',
+                    icon: CheckCircle,
+                    iconColor: 'text-green-600',
+                    bgGradient: 'from-green-50 to-emerald-50'
+                };
             default:
                 return {
                     label: status,
@@ -93,6 +101,7 @@ const AppEnCamino: React.FC = () => {
 
     const pendingCount = exitNotes.filter(n => n.status === 'pending').length;
     const inTransitCount = exitNotes.filter(n => n.status === 'in-transit').length;
+    const receivedCount = exitNotes.filter(n => n.status === 'received').length;
 
     if (loading || authLoading) {
         return (
@@ -119,7 +128,7 @@ const AppEnCamino: React.FC = () => {
                         </button>
                         <div className="flex-1">
                             <h1 className="text-xl font-bold">En Camino</h1>
-                            <p className="text-xs text-blue-100">Notas de salida pendientes</p>
+                            <p className="text-xs text-blue-100">Notas de salida</p>
                         </div>
                     </div>
 
@@ -137,10 +146,10 @@ const AppEnCamino: React.FC = () => {
                 </div>
 
                 {/* Stats Pills */}
-                <div className="px-4 pb-4 flex gap-2">
+                <div className="px-4 pb-4 flex gap-2 overflow-x-auto">
                     <button
                         onClick={() => setFilterStatus('all')}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'all'
+                        className={`min-w-20 flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'all'
                             ? 'bg-white text-blue-600'
                             : 'bg-white/20 text-white'
                             }`}
@@ -150,7 +159,7 @@ const AppEnCamino: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setFilterStatus('pending')}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'pending'
+                        className={`min-w-20 flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'pending'
                             ? 'bg-white text-blue-600'
                             : 'bg-white/20 text-white'
                             }`}
@@ -160,13 +169,23 @@ const AppEnCamino: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setFilterStatus('in-transit')}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'in-transit'
+                        className={`min-w-20 flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'in-transit'
                             ? 'bg-white text-blue-600'
                             : 'bg-white/20 text-white'
                             }`}
                     >
-                        <div className="text-xs">En Camino</div>
+                        <div className="text-xs">Camino</div>
                         <div className="text-lg font-bold">{inTransitCount}</div>
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('received')}
+                        className={`min-w-20 flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'received'
+                            ? 'bg-white text-blue-600'
+                            : 'bg-white/20 text-white'
+                            }`}
+                    >
+                        <div className="text-xs">Recibidos</div>
+                        <div className="text-lg font-bold">{receivedCount}</div>
                     </button>
                 </div>
             </div>
@@ -182,7 +201,7 @@ const AppEnCamino: React.FC = () => {
                         <p className="text-gray-500 text-sm">
                             {searchTerm
                                 ? 'No se encontraron resultados para tu búsqueda'
-                                : 'No hay notas de salida pendientes o en camino'}
+                                : 'No hay notas con el estado seleccionado'}
                         </p>
                     </div>
                 ) : (
@@ -195,7 +214,7 @@ const AppEnCamino: React.FC = () => {
                             <div
                                 key={note.id}
                                 onClick={() => navigate(`/app/en-camino/${note.id}`)}
-                                className={`rounded-lg border-l-4 ${statusInfo.color.split(' ')[2].replace('border-', 'border-l-')} shadow-sm active:scale-98 transition-transform cursor-pointer ${isEven ? 'bg-white' : 'bg-blue-100'
+                                className={`rounded-lg border-l-4 ${statusInfo.color.split(' ')[2].replace('border-', 'border-l-')} shadow-sm active:scale-98 transition-transform cursor-pointer ${isEven ? 'bg-white' : 'bg-blue-50'
                                     }`}
                             >
                                 <div className="p-3">

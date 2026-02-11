@@ -106,6 +106,40 @@ export const exitNoteService = {
         }
       }
 
+      // Si se marca como recibida y es para Bodega Ecuador, actualizar inventario de Bodega Ecuador
+      if (note.status === 'received') {
+        try {
+          const noteDoc = await getDoc(docRef);
+          if (noteDoc.exists()) {
+            const noteData = noteDoc.data();
+
+            // Verificar si es para Bodega Ecuador
+            const isBodegaEcuador = noteData.sellerId === 'bodega-ecuador' ||
+              (noteData.number && (noteData.number.includes('ECU') || noteData.number.startsWith('NS-ECU-')));
+
+            if (isBodegaEcuador) {
+              const { inventoryService } = await import('./inventoryService');
+
+              for (const item of noteData.items) {
+                const product = await productService.getById(item.productId);
+                if (product) {
+                  await inventoryService.updateStockAfterEntry(
+                    item.productId,
+                    item.quantity,
+                    product.cost,
+                    item.unitPrice,
+                    'Bodega Ecuador'
+                  );
+                }
+              }
+              toast.success('Inventario de Bodega Ecuador actualizado');
+            }
+          }
+        } catch (inventoryError) {
+          console.error('Error updating Bodega Ecuador inventory:', inventoryError);
+        }
+      }
+
       toast.success('Nota de salida actualizada exitosamente');
     } catch (error) {
       console.error('Error updating exit note:', error);

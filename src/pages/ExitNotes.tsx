@@ -819,23 +819,7 @@ const ExitNotes: React.FC = () => {
           await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id);
         }
 
-        // Agregar a Bodega Ecuador
-        // Usamos updateStockAfterEntry para sumar stock en la nueva ubicación
-        for (const item of exitNoteItems) {
-          // item.product debe tener los datos
-          const cost = item.product.cost || 0;
-          const unitPrice = item.unitPrice; // El precio de venta acordado
-
-          await inventoryService.updateStockAfterEntry(
-            item.productId,
-            item.quantity,
-            cost,
-            unitPrice,
-            'Bodega Ecuador' // Ubicación específica
-          );
-        }
-
-        toast.success('Nota de salida para Bodega Ecuador creada. Stock transferido.');
+        toast.success('Nota de salida para Bodega Ecuador creada.');
 
       } else {
         // Comportamiento normal para otros vendedores

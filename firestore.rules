@@ -24,9 +24,8 @@ service cloud.firestore {
     
     // Reglas para notas de salida
     match /exitNotes/{noteId} {
-      // Permitir lectura para usuarios autenticados (incluyendo anónimos)
-      // Esto permite que la app móvil acceda con auth anónima
-      allow read: if request.auth != null;
+      // Permitir lectura pública para que el dashboard web funcione sin auth explícita
+      allow read: if true;
       allow write: if request.auth != null;
     }
     

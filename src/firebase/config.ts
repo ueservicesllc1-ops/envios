@@ -9,8 +9,8 @@ export const firebaseConfig = {
   projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "envios-aaf94",
   storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "envios-aaf94.firebasestorage.app",
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "301889994673",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:301889994673:web:4bf140b88c095b54890790",
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "G-QCM8ZVYE36"
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:301889994673:web:4bf140b88c095b54890790"
+  // measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "G-QCM8ZVYE36" // Comentado para evitar advertencias de feature_collector si no se inicializa Analytics
 };
 
 // Configuración del dominio personalizado

@@ -330,13 +330,72 @@ const AppBodegaEcuador: React.FC = () => {
                 </div>
 
                 {/* Agregar Botón */}
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="w-full bg-white/10 hover:bg-white/20 flex items-center justify-center space-x-2 py-2 rounded-lg transition-colors border border-white/30 active:scale-95"
-                >
-                    <Plus className="w-5 h-5 text-green-300" />
-                    <span className="font-bold text-sm">Agregar Producto</span>
-                </button>
+                <div className="flex space-x-2">
+                    <button
+                        onClick={async () => {
+                            if (!window.confirm("¿Seguro que desea revertir la ULTIMA nota PENDIENTE de Bodega Ecuador? Esto eliminará del stock de Bodega Ecuador los items que se sumaron erróneamente.")) return;
+
+                            const tId = toast.loading("Procesando corrección...");
+                            try {
+                                const notes = await exitNoteService.getAll();
+                                const pendingNotes = notes.filter(n =>
+                                    (n.sellerId === 'bodega-ecuador' || n.number.includes('ECU')) &&
+                                    n.status === 'pending'
+                                ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+                                if (pendingNotes.length === 0) {
+                                    toast.error("No se encontraron notas pendientes", { id: tId });
+                                    return;
+                                }
+
+                                const noteToRevert = pendingNotes[0];
+                                const allInventory = await inventoryService.getAll();
+
+                                for (const item of noteToRevert.items) {
+                                    // Buscar en inventario de Bodega Ecuador
+                                    const targetItem = allInventory.find(inv =>
+                                        inv.productId === item.productId &&
+                                        inv.location === 'Bodega Ecuador'
+                                    );
+
+                                    if (targetItem) {
+                                        const newQty = Math.max(0, targetItem.quantity - item.quantity);
+                                        await inventoryService.update(targetItem.id, { quantity: newQty });
+
+                                        // Loguear
+                                        await addDoc(collection(db, 'inventory_logs'), {
+                                            type: 'correction',
+                                            productId: item.productId,
+                                            productName: item.product.name,
+                                            quantity: item.quantity,
+                                            reason: `Corrección automática: Reversión nota ${noteToRevert.number}`,
+                                            location: 'Bodega Ecuador',
+                                            createdAt: Timestamp.now(),
+                                            user: user?.uid || 'Admin Correction'
+                                        });
+                                    }
+                                }
+                                toast.success(`Correcto. Nota ${noteToRevert.number} revertida.`, { id: tId });
+                                loadInventory(); // Recargar
+
+                            } catch (error: any) {
+                                console.error(error);
+                                toast.error("Error: " + error.message, { id: tId });
+                            }
+                        }}
+                        className="bg-red-500 text-white p-2 rounded-lg"
+                    >
+                        <Flag className="w-5 h-5" />
+                    </button>
+
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="flex-1 bg-white/10 hover:bg-white/20 flex items-center justify-center space-x-2 py-2 rounded-lg transition-colors border border-white/30 active:scale-95"
+                    >
+                        <Plus className="w-5 h-5 text-green-300" />
+                        <span className="font-bold text-sm">Agregar Producto</span>
+                    </button>
+                </div>
             </div>
 
             {/* Grid de Productos */}
