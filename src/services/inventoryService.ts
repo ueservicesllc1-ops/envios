@@ -639,11 +639,12 @@ export const inventoryService = {
   // Limpiar productos con stock 0
   async cleanZeroStockItems(): Promise<void> {
     try {
-      console.log('🧹 Iniciando limpieza de productos con stock 0...');
-      const allItems = await this.getAll();
-      const zeroStockItems = allItems.filter(item => item.quantity <= 0);
+      console.log('Iniciando limpieza de productos con stock 0...');
 
-      console.log(`Total encontrados con stock <= 0: ${zeroStockItems.length}`);
+      const allInventory = await this.getAll();
+      const zeroStockItems = allInventory.filter(item => item.quantity === 0);
+
+      console.log(`Encontrados ${zeroStockItems.length} items con stock 0`);
 
       let deletedCount = 0;
       for (const item of zeroStockItems) {
@@ -651,12 +652,15 @@ export const inventoryService = {
         deletedCount++;
       }
 
-      console.log(`✅ Eliminados ${deletedCount} registros con stock 0.`);
-      toast.success(`Se eliminaron ${deletedCount} productos con stock 0`);
-
+      console.log(`Limpieza completada. ${deletedCount} items con stock 0 eliminados`);
+      if (deletedCount > 0) {
+        toast.success(`Limpieza completada. ${deletedCount} items con stock 0 eliminados`);
+      } else {
+        toast.success('No se encontraron items con stock 0 para eliminar');
+      }
     } catch (error) {
       console.error('Error cleaning zero stock items:', error);
-      toast.error('Error al limpiar productos con stock 0');
+      toast.error('Error al limpiar items con stock 0');
       throw error;
     }
   }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { 
-  Package, 
-  TrendingUp, 
-  DollarSign, 
+import {
+  Package,
+  TrendingUp,
+  DollarSign,
   Calendar,
   Plus,
   ShoppingCart,
@@ -83,7 +83,7 @@ const AdminSellerMode: React.FC = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Cargar vendedores disponibles
       const sellersData = await sellerService.getAll();
       setSellers(sellersData);
@@ -103,7 +103,7 @@ const AdminSellerMode: React.FC = () => {
         await loadPaymentNotes(sellersData[0].id);
         await loadShippingPackages(sellersData[0].id);
       }
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -160,7 +160,7 @@ const AdminSellerMode: React.FC = () => {
       const allPaymentNotes = await paymentNoteService.getAll();
       const pendingPayments = allPaymentNotes.filter(note => note.status === 'pending');
       setPendingPaymentCount(pendingPayments.length);
-      
+
       // Mostrar notificación si hay pagos pendientes
       if (pendingPayments.length > 0) {
         setShowPaymentNotification(true);
@@ -380,7 +380,7 @@ const AdminSellerMode: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900">Mi Inventario</h3>
           <p className="text-sm text-gray-600">Productos entregados desde notas de salida</p>
         </div>
-        
+
         {sellerInventory.length === 0 ? (
           <div className="text-center py-12">
             <Package className="mx-auto h-12 w-12 text-gray-400" />
@@ -451,7 +451,7 @@ const AdminSellerMode: React.FC = () => {
           Nueva Venta
         </button>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow">
         {soldProducts.length === 0 ? (
           <div className="text-center py-12">
@@ -487,20 +487,18 @@ const AdminSellerMode: React.FC = () => {
                       <span className="text-sm font-medium text-gray-900">${sale.unitPrice.toLocaleString()}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        sale.paymentType === 'cash' 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sale.paymentType === 'cash'
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-blue-100 text-blue-800'
-                      }`}>
+                        }`}>
                         {sale.paymentType === 'cash' ? 'Contado' : 'Crédito'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        sale.status === 'paid' 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sale.status === 'paid'
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                        }`}>
                         {sale.status === 'paid' ? 'Pagado' : 'Pendiente'}
                       </span>
                     </td>
@@ -519,14 +517,14 @@ const AdminSellerMode: React.FC = () => {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900">Notas de Pago</h3>
         <button
-          onClick={() => {/* TODO: Implementar modal de nueva nota de pago */}}
+          onClick={() => {/* TODO: Implementar modal de nueva nota de pago */ }}
           className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
         >
           <Plus className="h-4 w-4 mr-2" />
           Nueva Nota de Pago
         </button>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow">
         {paymentNotes.length === 0 ? (
           <div className="text-center py-12">
@@ -561,15 +559,14 @@ const AdminSellerMode: React.FC = () => {
                       <span className="text-sm font-medium text-gray-900">${note.totalAmount.toLocaleString()}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        note.status === 'approved' 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${note.status === 'approved'
+                          ? 'bg-green-100 text-green-800'
                           : note.status === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {note.status === 'approved' ? 'Aprobada' : 
-                         note.status === 'rejected' ? 'Rechazada' : 'Pendiente'}
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {note.status === 'approved' ? 'Aprobada' :
+                          note.status === 'rejected' ? 'Rechazada' : 'Pendiente'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -593,7 +590,7 @@ const AdminSellerMode: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Paquetes Enviados</h3>
         </div>
-        
+
         {shippingPackages.length === 0 ? (
           <div className="text-center py-12">
             <Truck className="mx-auto h-12 w-12 text-gray-400" />
@@ -619,15 +616,14 @@ const AdminSellerMode: React.FC = () => {
                       <div className="text-sm font-medium text-gray-900">{pkg.trackingNumber}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        pkg.status === 'delivered' 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${pkg.status === 'delivered'
+                          ? 'bg-green-100 text-green-800'
                           : pkg.status === 'in-transit'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {pkg.status === 'delivered' ? 'Entregado' : 
-                         pkg.status === 'in-transit' ? 'En Tránsito' : 'Pendiente'}
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {pkg.status === 'delivered' ? 'En Camino' :
+                          pkg.status === 'in-transit' ? 'En Tránsito' : 'Pendiente'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -657,7 +653,7 @@ const AdminSellerMode: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Devoluciones</h3>
         </div>
-        
+
         <div className="text-center py-12">
           <RotateCcw className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No hay devoluciones</h3>
@@ -676,9 +672,8 @@ const AdminSellerMode: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } lg:translate-x-0 lg:static lg:inset-0`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0 lg:static lg:inset-0`}>
         <div className="flex items-center justify-between h-16 px-4 border-b">
           <h2 className="text-lg font-semibold text-gray-900">Panel Vendedor</h2>
           <button
@@ -688,17 +683,16 @@ const AdminSellerMode: React.FC = () => {
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <nav className="mt-5 px-2">
           {navigation.map((item) => (
             <button
               key={item.name}
               onClick={() => setActiveSection(item.href)}
-              className={`w-full flex items-center px-2 py-2 text-sm font-medium rounded-md mb-1 ${
-                activeSection === item.href
+              className={`w-full flex items-center px-2 py-2 text-sm font-medium rounded-md mb-1 ${activeSection === item.href
                   ? 'bg-primary-100 text-primary-700'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
+                }`}
             >
               <item.icon className="mr-3 h-5 w-5" />
               {item.name}
@@ -709,7 +703,7 @@ const AdminSellerMode: React.FC = () => {
 
       {/* Overlay para móvil */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -733,7 +727,7 @@ const AdminSellerMode: React.FC = () => {
                   <p className="text-sm text-gray-600">Simulando como: {selectedSeller?.name}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-4">
                 {/* Selector de vendedor */}
                 <select
@@ -747,7 +741,7 @@ const AdminSellerMode: React.FC = () => {
                     </option>
                   ))}
                 </select>
-                
+
                 <button
                   onClick={handleLogout}
                   className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900"

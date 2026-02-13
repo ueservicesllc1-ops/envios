@@ -33,9 +33,12 @@ const AppEnCamino: React.FC = () => {
             setLoading(true);
             const notes = await exitNoteService.getAll();
 
-            // Filtrar solo pendientes, en tránsito y recibidos
+            // Filtrar solo pendientes, en tránsito, recibidos y entregados (estos últimos se ven como en tránsito)
             const filtered = notes.filter(note =>
-                note.status === 'pending' || note.status === 'in-transit' || note.status === 'received'
+                note.status === 'pending' ||
+                note.status === 'in-transit' ||
+                note.status === 'received' ||
+                note.status === 'delivered'
             );
 
             // Ordenar por fecha (más recientes primero)
@@ -68,13 +71,21 @@ const AppEnCamino: React.FC = () => {
                     iconColor: 'text-blue-600',
                     bgGradient: 'from-blue-50 to-cyan-50'
                 };
-            case 'received':
+            case 'delivered':
                 return {
-                    label: 'Recibido',
+                    label: 'En Camino',
                     color: 'bg-green-100 text-green-800 border-green-300',
                     icon: CheckCircle,
                     iconColor: 'text-green-600',
                     bgGradient: 'from-green-50 to-emerald-50'
+                };
+            case 'received':
+                return {
+                    label: 'Recibido',
+                    color: 'bg-purple-100 text-purple-800 border-purple-300',
+                    icon: CheckCircle,
+                    iconColor: 'text-purple-600',
+                    bgGradient: 'from-purple-50 to-pink-50'
                 };
             default:
                 return {
@@ -93,14 +104,22 @@ const AppEnCamino: React.FC = () => {
             note.seller.toLowerCase().includes(searchTerm.toLowerCase()) ||
             note.customer.toLowerCase().includes(searchTerm.toLowerCase());
 
-        const matchesStatus =
-            filterStatus === 'all' || note.status === filterStatus;
+        let matchesStatus = false;
+        if (filterStatus === 'all') {
+            matchesStatus = true;
+        } else if (filterStatus === 'in-transit') {
+            // "En Camino" incluye in-transit y delivered
+            matchesStatus = note.status === 'in-transit' || note.status === 'delivered';
+        } else {
+            matchesStatus = note.status === filterStatus;
+        }
 
         return matchesSearch && matchesStatus;
     });
 
     const pendingCount = exitNotes.filter(n => n.status === 'pending').length;
-    const inTransitCount = exitNotes.filter(n => n.status === 'in-transit').length;
+    // En Camino incluye in-transit y delivered
+    const inTransitCount = exitNotes.filter(n => n.status === 'in-transit' || n.status === 'delivered').length;
     const receivedCount = exitNotes.filter(n => n.status === 'received').length;
 
     if (loading || authLoading) {
@@ -140,51 +159,51 @@ const AppEnCamino: React.FC = () => {
                             placeholder="Buscar por número, vendedor o cliente..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 rounded-lg bg-white/20 backdrop-blur-sm text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-white/50"
+                            className="bg-white/20 text-white placeholder-blue-200 rounded-lg pl-10 pr-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-white/50"
                         />
                     </div>
                 </div>
 
                 {/* Stats Pills */}
-                <div className="px-4 pb-4 flex gap-2 overflow-x-auto">
+                <div className="px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
                     <button
                         onClick={() => setFilterStatus('all')}
                         className={`min-w-20 flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'all'
-                            ? 'bg-white text-blue-600'
-                            : 'bg-white/20 text-white'
+                            ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                            : 'bg-white/20 text-white hover:bg-white/30'
                             }`}
                     >
-                        <div className="text-xs">Total</div>
+                        <div className="text-xs opacity-90">Total</div>
                         <div className="text-lg font-bold">{exitNotes.length}</div>
                     </button>
                     <button
                         onClick={() => setFilterStatus('pending')}
                         className={`min-w-20 flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'pending'
-                            ? 'bg-white text-blue-600'
-                            : 'bg-white/20 text-white'
+                            ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                            : 'bg-white/20 text-white hover:bg-white/30'
                             }`}
                     >
-                        <div className="text-xs">Pendientes</div>
+                        <div className="text-xs opacity-90">Pendientes</div>
                         <div className="text-lg font-bold">{pendingCount}</div>
                     </button>
                     <button
                         onClick={() => setFilterStatus('in-transit')}
                         className={`min-w-20 flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'in-transit'
-                            ? 'bg-white text-blue-600'
-                            : 'bg-white/20 text-white'
+                            ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                            : 'bg-white/20 text-white hover:bg-white/30'
                             }`}
                     >
-                        <div className="text-xs">Camino</div>
+                        <div className="text-xs opacity-90">Camino</div>
                         <div className="text-lg font-bold">{inTransitCount}</div>
                     </button>
                     <button
                         onClick={() => setFilterStatus('received')}
                         className={`min-w-20 flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${filterStatus === 'received'
-                            ? 'bg-white text-blue-600'
-                            : 'bg-white/20 text-white'
+                            ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                            : 'bg-white/20 text-white hover:bg-white/30'
                             }`}
                     >
-                        <div className="text-xs">Recibidos</div>
+                        <div className="text-xs opacity-90">Recibidos</div>
                         <div className="text-lg font-bold">{receivedCount}</div>
                     </button>
                 </div>

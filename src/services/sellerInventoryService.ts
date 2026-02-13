@@ -182,7 +182,7 @@ class SellerInventoryService {
     }
   }
 
-  async removeFromSellerInventory(sellerId: string, productId: string, quantity: number): Promise<void> {
+  async removeFromSellerInventory(sellerId: string, productId: string, quantity: number, allowPartial: boolean = false): Promise<void> {
     try {
       let remaining = quantity;
       const items = await this.getBySeller(sellerId);
@@ -204,7 +204,7 @@ class SellerInventoryService {
         }
       }
 
-      if (remaining > 0) {
+      if (remaining > 0 && !allowPartial) {
         throw new Error('Inventario del vendedor insuficiente para remover la cantidad solicitada');
       }
     } catch (error) {

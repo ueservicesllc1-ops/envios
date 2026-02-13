@@ -89,7 +89,7 @@ const AppVendedorDashboard: React.FC = () => {
         switch (status) {
             case 'pending': return { label: 'Pendiente', color: 'text-orange-600', bg: 'bg-orange-100', icon: Clock };
             case 'in-transit': return { label: 'En Camino', color: 'text-blue-600', bg: 'bg-blue-100', icon: Truck };
-            case 'delivered': return { label: 'Entregado', color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle };
+            case 'delivered': return { label: 'En Camino', color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle };
             case 'received': return { label: 'Recibido', color: 'text-purple-600', bg: 'bg-purple-100', icon: CheckCircle };
             default: return { label: status, color: 'text-gray-600', bg: 'bg-gray-100', icon: Package };
         }

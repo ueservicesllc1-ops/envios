@@ -273,7 +273,7 @@ const ExitNotes: React.FC = () => {
       case 'in-transit':
         return 'En Tránsito';
       case 'delivered':
-        return 'Entregado';
+        return 'En Camino';
       case 'received':
         return 'Recibido';
       case 'cancelled':
@@ -1001,7 +1001,8 @@ const ExitNotes: React.FC = () => {
             await sellerInventoryService.removeFromSellerInventory(
               editingNote.sellerId,
               productId,
-              quantityToRemove
+              quantityToRemove,
+              true
             );
           }
 
@@ -1042,7 +1043,8 @@ const ExitNotes: React.FC = () => {
             await sellerInventoryService.removeFromSellerInventory(
               editingNote.sellerId,
               productId,
-              quantityToRemove
+              quantityToRemove,
+              true
             );
           }
         }
@@ -1249,7 +1251,8 @@ const ExitNotes: React.FC = () => {
         await sellerInventoryService.removeFromSellerInventory(
           editingNote.sellerId,
           originalItem.productId,
-          originalItem.quantity
+          originalItem.quantity,
+          true
         );
       }
       // Si es "Dañado", no hacer nada con el inventario (solo eliminar de la nota)

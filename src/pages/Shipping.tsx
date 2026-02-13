@@ -101,7 +101,7 @@ const Shipping: React.FC = () => {
       case 'in-transit':
         return 'En Tránsito';
       case 'delivered':
-        return 'Entregado';
+        return 'En Camino';
       case 'returned':
         return 'Devuelto';
       default:
@@ -154,8 +154,8 @@ const Shipping: React.FC = () => {
       if (editingPackage) {
         // Editar envío existente
         await shippingService.update(editingPackage.id, packageData);
-        setPackages(packages.map(p => 
-          p.id === editingPackage.id 
+        setPackages(packages.map(p =>
+          p.id === editingPackage.id
             ? { ...p, ...packageData }
             : p
         ));
@@ -213,7 +213,7 @@ const Shipping: React.FC = () => {
   const handleAutoPackage = async () => {
     try {
       setLoading(true);
-      
+
       // Cargar inventario y productos
       const [inventoryData, productsData] = await Promise.all([
         inventoryService.getAll(),
@@ -222,7 +222,7 @@ const Shipping: React.FC = () => {
 
       // Filtrar solo productos con stock disponible
       const availableInventory = inventoryData.filter(item => item.quantity > 0);
-      
+
       if (availableInventory.length === 0) {
         toast.error('No hay productos disponibles en inventario');
         setLoading(false);
@@ -237,7 +237,7 @@ const Shipping: React.FC = () => {
 
       // Algoritmo inteligente de llenado
       const selectedItems = await fillPackageIntelligently(availableInventory, productsData, targetWeight, tolerance);
-      
+
       if (selectedItems.length === 0) {
         toast.error('No se pudo crear un paquete con los productos disponibles');
         setLoading(false);
@@ -246,7 +246,7 @@ const Shipping: React.FC = () => {
 
       // Calcular peso total
       const totalWeight = selectedItems.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
-      
+
       // Agregar al historial
       const newPackage = {
         items: selectedItems,
@@ -254,15 +254,15 @@ const Shipping: React.FC = () => {
         timestamp: new Date(),
         index: packageHistory.length + 1
       };
-      
+
       setPackageHistory(prev => [...prev, newPackage]);
       setCurrentPackageIndex(packageHistory.length);
       setAutoPackageItems(selectedItems);
       setAutoPackageWeight(totalWeight);
       setShowAutoPackageModal(true);
-      
+
       toast.success(`Paquete automático creado con ${selectedItems.length} productos (${totalWeight.toFixed(2)}g)`);
-      
+
     } catch (error) {
       console.error('Error creating auto package:', error);
       toast.error('Error al crear paquete automático');
@@ -276,67 +276,67 @@ const Shipping: React.FC = () => {
     let currentWeight = 0;
     const minWeight = targetWeight - tolerance;
     const maxWeight = targetWeight + tolerance;
-    
+
     // Contadores para las reglas
     const skuCount: { [key: string]: number } = {};
     const categoryCount: { [key: string]: number } = {};
-    
+
     // Reglas específicas
     const maxSkuCount = 3; // Máximo 3 productos del mismo SKU
     const maxShoes = 3; // Máximo 3 pares de zapatos
     const minShoes = 2; // Mínimo 2 pares de zapatos
     const maxVitamins = 4; // Máximo 4 vitaminas
     const maxSocks = 5; // Máximo 5 medias
-    
+
     // Crear mapa de productos para acceso rápido
     const productMap = new Map(products.map(p => [p.id, p]));
-    
+
     // Primero, verificar si hay suficientes zapatos disponibles
     const availableShoes = inventory.filter(item => {
       const product = productMap.get(item.productId);
       return product && product.category.toLowerCase().includes('zapato') && item.quantity > 0;
     });
-    
+
     if (availableShoes.length === 0) {
       // No hay zapatos en stock, no crear paquete
       return [];
     }
-    
+
     // Filtrar productos ya usados en paquetes anteriores
     const filteredInventory = inventory.filter(item => !excludeProducts.includes(item.productId));
-    
+
     // Mezclar inventario aleatoriamente para obtener diferentes combinaciones
     const shuffledInventory = [...filteredInventory].sort(() => Math.random() - 0.5);
-    
+
     // Primera pasada: agregar zapatos primero (mínimo 2)
     let shoesAdded = 0;
     for (const inventoryItem of shuffledInventory) {
       const product = productMap.get(inventoryItem.productId);
       if (!product || !product.weight) continue;
-      
+
       const sku = product.sku;
       const category = product.category.toLowerCase();
       const itemWeight = product.weight;
-      
+
       // Solo procesar zapatos en la primera pasada
       if (!category.includes('zapato')) continue;
-      
+
       // Verificar reglas antes de agregar
       if (skuCount[sku] >= maxSkuCount) continue;
       if (shoesAdded >= maxShoes) break;
-      
+
       // Calcular cuántas unidades podemos agregar sin exceder el peso
       const maxQuantity = Math.min(
         inventoryItem.quantity,
         Math.floor((maxWeight - currentWeight) / itemWeight)
       );
-      
+
       if (maxQuantity <= 0) continue;
-      
+
       // Agregar el producto
       const quantity = Math.min(maxQuantity, 1); // Empezar con 1 unidad
       const newWeight = currentWeight + (itemWeight * quantity);
-      
+
       if (newWeight <= maxWeight) {
         selectedItems.push({
           productId: product.id,
@@ -347,49 +347,49 @@ const Shipping: React.FC = () => {
           sku: sku,
           category: category
         });
-        
+
         currentWeight = newWeight;
         skuCount[sku] = (skuCount[sku] || 0) + quantity;
         categoryCount[category] = (categoryCount[category] || 0) + quantity;
         shoesAdded += quantity;
       }
     }
-    
+
     // Verificar si tenemos al menos 2 zapatos (o 1 si solo hay 1 disponible)
     if (shoesAdded < minShoes && shoesAdded < availableShoes.length) {
       // No se puede cumplir la regla mínima, no crear paquete
       return [];
     }
-    
+
     // Segunda pasada: agregar otros productos
     for (const inventoryItem of shuffledInventory) {
       const product = productMap.get(inventoryItem.productId);
       if (!product || !product.weight) continue;
-      
+
       const sku = product.sku;
       const category = product.category.toLowerCase();
       const itemWeight = product.weight;
-      
+
       // Verificar reglas antes de agregar
       if (skuCount[sku] >= maxSkuCount) continue;
-      
+
       // Verificar reglas por categoría
       if (category.includes('zapato') && categoryCount['zapatos'] >= maxShoes) continue;
       if (category.includes('vitamina') && categoryCount['vitaminas'] >= maxVitamins) continue;
       if (category.includes('media') && categoryCount['medias'] >= maxSocks) continue;
-      
+
       // Calcular cuántas unidades podemos agregar sin exceder el peso
       const maxQuantity = Math.min(
         inventoryItem.quantity,
         Math.floor((maxWeight - currentWeight) / itemWeight)
       );
-      
+
       if (maxQuantity <= 0) continue;
-      
+
       // Agregar el producto
       const quantity = Math.min(maxQuantity, 1); // Empezar con 1 unidad
       const newWeight = currentWeight + (itemWeight * quantity);
-      
+
       if (newWeight <= maxWeight) {
         selectedItems.push({
           productId: product.id,
@@ -400,25 +400,25 @@ const Shipping: React.FC = () => {
           sku: sku,
           category: category
         });
-        
+
         currentWeight = newWeight;
         skuCount[sku] = (skuCount[sku] || 0) + quantity;
         categoryCount[category] = (categoryCount[category] || 0) + quantity;
-        
+
         // Si ya alcanzamos el peso objetivo, parar
         if (currentWeight >= minWeight) {
           break;
         }
       }
     }
-    
+
     return selectedItems;
   };
 
   const handleRegeneratePackage = async () => {
     try {
       setLoading(true);
-      
+
       // Cargar inventario y productos
       const [inventoryData, productsData] = await Promise.all([
         inventoryService.getAll(),
@@ -427,7 +427,7 @@ const Shipping: React.FC = () => {
 
       // Filtrar solo productos con stock disponible
       const availableInventory = inventoryData.filter(item => item.quantity > 0);
-      
+
       if (availableInventory.length === 0) {
         toast.error('No hay productos disponibles en inventario');
         setLoading(false);
@@ -443,7 +443,7 @@ const Shipping: React.FC = () => {
 
       // Algoritmo inteligente de llenado
       const selectedItems = await fillPackageIntelligently(availableInventory, productsData, targetWeight, tolerance, usedProducts);
-      
+
       if (selectedItems.length === 0) {
         toast.error('No se pudo crear un paquete con los productos disponibles');
         setLoading(false);
@@ -452,7 +452,7 @@ const Shipping: React.FC = () => {
 
       // Calcular peso total
       const totalWeight = selectedItems.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
-      
+
       // Agregar al historial
       const newPackage = {
         items: selectedItems,
@@ -460,14 +460,14 @@ const Shipping: React.FC = () => {
         timestamp: new Date(),
         index: packageHistory.length + 1
       };
-      
+
       setPackageHistory(prev => [...prev, newPackage]);
       setCurrentPackageIndex(packageHistory.length);
       setAutoPackageItems(selectedItems);
       setAutoPackageWeight(totalWeight);
-      
+
       toast.success(`Paquete regenerado con ${selectedItems.length} productos (${totalWeight.toFixed(2)}g)`);
-      
+
     } catch (error) {
       console.error('Error regenerating package:', error);
       toast.error('Error al regenerar paquete');
@@ -490,7 +490,7 @@ const Shipping: React.FC = () => {
       toast.error('No hay productos para crear la nota de salida');
       return;
     }
-    
+
     // Abrir modal para seleccionar vendedor
     setShowSellerModal(true);
   };
@@ -519,7 +519,7 @@ const Shipping: React.FC = () => {
           if (!item.product) {
             throw new Error(`Producto no encontrado para el item: ${item.productId}`);
           }
-          
+
           return {
             id: Date.now().toString() + Math.random(),
             productId: item.productId,
@@ -570,7 +570,7 @@ const Shipping: React.FC = () => {
       // Crear la nota de salida con el shippingId
       const createdExitNote = await exitNoteService.create(exitNoteData);
       toast.success('Paquete de envío creado exitosamente');
-      
+
       // Actualizar inventario principal (remover stock)
       for (const item of autoPackageItems) {
         await inventoryService.removeStock(item.productId, item.quantity);
@@ -595,12 +595,12 @@ const Shipping: React.FC = () => {
       setPackageHistory([]);
       setCurrentPackageIndex(0);
       setSelectedSellerId('');
-      
+
       // Recargar datos
       console.log('Recargando paquetes...');
       await loadPackages();
       console.log('Paquetes recargados');
-      
+
     } catch (error) {
       console.error('Error creating exit note:', error);
       toast.error('Error al crear la nota de salida');
@@ -621,10 +621,10 @@ const Shipping: React.FC = () => {
   const handleViewPackage = async (pkg: ShippingPackage) => {
     try {
       setViewingPackage(pkg);
-      
+
       // Buscar la nota de salida asociada
       const associatedNote = exitNotes.find(note => note.shippingId === pkg.id);
-      
+
       if (associatedNote && associatedNote.items) {
         // Si hay nota asociada, usar sus productos
         setPackageProducts(associatedNote.items);
@@ -686,9 +686,9 @@ const Shipping: React.FC = () => {
           const exitNotes = await exitNoteService.getAll();
           console.log(`🔍 Buscando nota de salida con shippingId: ${selectedPackage.id}`);
           console.log(`📋 Total notas de salida: ${exitNotes.length}`);
-          
+
           const associatedExitNote = exitNotes.find(note => note.shippingId === selectedPackage.id);
-          
+
           if (associatedExitNote) {
             console.log(`✅ Nota de salida encontrada: ${associatedExitNote.number} - Estado actual: ${associatedExitNote.status}`);
             if (associatedExitNote.status === 'pending') {
@@ -702,12 +702,12 @@ const Shipping: React.FC = () => {
           } else {
             console.log(`⚠️ No se encontró nota de salida con shippingId: ${selectedPackage.id}`);
             // Buscar por destinatario y fecha como alternativa
-            const alternativeNote = exitNotes.find(note => 
-              note.seller === selectedPackage.recipient && 
+            const alternativeNote = exitNotes.find(note =>
+              note.seller === selectedPackage.recipient &&
               !note.shippingId &&
               Math.abs(new Date(note.date).getTime() - new Date(selectedPackage.shippingDate).getTime()) < 24 * 60 * 60 * 1000
             );
-            
+
             if (alternativeNote) {
               console.log(`🔗 Asociando nota alternativa: ${alternativeNote.number}`);
               await exitNoteService.update(alternativeNote.id, {
@@ -721,12 +721,12 @@ const Shipping: React.FC = () => {
           console.warn('No se pudo actualizar la nota de salida asociada:', exitNoteError);
         }
 
-        setPackages(packages.map(p => 
-          p.id === selectedPackage.id 
+        setPackages(packages.map(p =>
+          p.id === selectedPackage.id
             ? { ...p, trackingNumber: trackingNumber.trim(), status: 'in-transit' as const }
             : p
         ));
-        toast.success(selectedPackage.trackingNumber 
+        toast.success(selectedPackage.trackingNumber
           ? 'Número de seguimiento actualizado y nota de salida actualizada'
           : 'Número de seguimiento agregado y nota de salida actualizada');
         setShowTrackingModal(false);
@@ -770,20 +770,20 @@ const Shipping: React.FC = () => {
   const handleMarkAsDelivered = async (id: string) => {
     try {
       // Actualizar estado del paquete
-      await shippingService.update(id, { 
+      await shippingService.update(id, {
         status: 'delivered',
         deliveredAt: new Date()
       });
-      
+
       // Sincronizar con notas de salida y actualizar deuda del vendedor
       await syncService.syncShippingWithExitNotes(id, 'delivered');
-      
-      setPackages(packages.map(p => 
-        p.id === id 
+
+      setPackages(packages.map(p =>
+        p.id === id
           ? { ...p, status: 'delivered' as const, deliveredAt: new Date() }
           : p
       ));
-      
+
       toast.success('Paquete marcado como entregado y datos sincronizados');
     } catch (error) {
       console.error('Error marking as delivered:', error);
@@ -793,11 +793,11 @@ const Shipping: React.FC = () => {
 
   const filteredPackages = packages.filter(pkg => {
     const matchesSearch = (pkg.trackingNumber?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-                         pkg.recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         pkg.city.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      pkg.recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pkg.city.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesFilter = filterBy === 'all' || pkg.status === filterBy;
-    
+
     return matchesSearch && matchesFilter;
   });
 
@@ -818,21 +818,21 @@ const Shipping: React.FC = () => {
           <p className="text-gray-600">Gestión de envíos y paquetes</p>
         </div>
         <div className="flex space-x-3">
-          <button 
+          <button
             onClick={openModal}
             className="btn-primary flex items-center"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Envío
           </button>
-          <button 
+          <button
             onClick={handleAutoPackage}
             className="btn-secondary flex items-center"
           >
             <Package className="h-4 w-4 mr-2" />
             Crear Paquete Automático
           </button>
-          <button 
+          <button
             onClick={handleCleanOrphanedPackages}
             className="btn-danger flex items-center"
           >
@@ -1147,7 +1147,7 @@ const Shipping: React.FC = () => {
                       onChange={(e) => {
                         const selectedSeller = sellers.find(s => s.id === e.target.value);
                         setFormData({
-                          ...formData, 
+                          ...formData,
                           sellerId: e.target.value,
                           phone: selectedSeller?.phone || '',
                           city: selectedSeller?.city || '',
@@ -1223,7 +1223,7 @@ const Shipping: React.FC = () => {
                       min="0.1"
                       step="0.1"
                       value={formData.weight}
-                      onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })}
                       className="input-field"
                       placeholder="1.5"
                     />
@@ -1235,7 +1235,7 @@ const Shipping: React.FC = () => {
                     </label>
                     <select
                       value={formData.dimensions}
-                      onChange={(e) => setFormData({...formData, dimensions: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
                       className="input-field"
                     >
                       <option value="Funda">Funda</option>
@@ -1252,7 +1252,7 @@ const Shipping: React.FC = () => {
                       min="0"
                       step="0.01"
                       value={formData.cost}
-                      onChange={(e) => setFormData({...formData, cost: parseFloat(e.target.value) || 0})}
+                      onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
                       className="input-field"
                       placeholder="5.00"
                     />
@@ -1267,7 +1267,7 @@ const Shipping: React.FC = () => {
                 </label>
                 <textarea
                   value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   className="input-field"
                   rows={3}
                   placeholder="Instrucciones especiales, horarios de entrega, etc."
@@ -1297,12 +1297,12 @@ const Shipping: React.FC = () => {
                 >
                   Cancelar
                 </button>
-                    <button
-                      type="submit"
-                      className="btn-primary"
-                    >
-                      {editingPackage ? 'Actualizar Envío' : 'Crear Envío'}
-                    </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                >
+                  {editingPackage ? 'Actualizar Envío' : 'Crear Envío'}
+                </button>
               </div>
             </form>
           </div>
@@ -1451,11 +1451,10 @@ const Shipping: React.FC = () => {
                     <button
                       key={index}
                       onClick={() => handleSelectPackage(index)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        currentPackageIndex === index
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPackageIndex === index
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
+                        }`}
                     >
                       Paquete {index + 1}
                       <div className="text-xs">
@@ -1518,7 +1517,7 @@ const Shipping: React.FC = () => {
                 </svg>
               </button>
             </div>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Vendedor para la Nota de Salida
@@ -1614,7 +1613,7 @@ const Shipping: React.FC = () => {
                       <button
                         onClick={async () => {
                           if (!viewingPackage.sellerId) return;
-                          
+
                           try {
                             // Obtener el vendedor para conseguir su slug
                             const seller = await sellerService.getById(viewingPackage.sellerId);
@@ -1763,7 +1762,7 @@ const Shipping: React.FC = () => {
                               <div className="flex items-center space-x-2">
                                 {item.product?.color && (
                                   <>
-                                    <div 
+                                    <div
                                       className="w-4 h-4 rounded-full border border-gray-300"
                                       style={{ backgroundColor: item.product.color }}
                                       title={item.product.color}
@@ -1894,7 +1893,7 @@ const Shipping: React.FC = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="flex justify-center">
               <img
                 src={selectedImage}
@@ -1902,7 +1901,7 @@ const Shipping: React.FC = () => {
                 className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
               />
             </div>
-            
+
             <div className="flex justify-end space-x-3 pt-4 mt-4 border-t">
               <button
                 onClick={() => setShowImageModal(false)}

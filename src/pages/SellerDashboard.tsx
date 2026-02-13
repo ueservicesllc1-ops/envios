@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { 
-  Package, 
-  TrendingUp, 
-  DollarSign, 
+import {
+  Package,
+  TrendingUp,
+  DollarSign,
   ShoppingCart,
   CreditCard,
   Banknote,
@@ -46,133 +46,133 @@ import { storage } from '../firebase/config';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import toast from 'react-hot-toast';
 
-  // Función que sincroniza inventario considerando notas de salida y ventas realizadas
-  const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[], soldProducts: any[]) => {
-    try {
-      console.log(`Sincronizando inventario para vendedor ${sellerId}`);
-      console.log(`Notas de salida: ${exitNotes.length}, Ventas realizadas: ${soldProducts.length}`);
-      
-      // PASO 1: Obtener inventario actual y devoluciones aprobadas
-      const currentInventory = await sellerInventoryService.getBySeller(sellerId);
-      const approvedReturns = await returnService.getBySeller(sellerId);
-      const approvedReturnsItems = approvedReturns
-        .filter(r => r.status === 'approved')
-        .flatMap(r => r.items);
-      
-      // Crear mapa de productos devueltos por productId
-      const returnedMap = new Map<string, number>();
-      for (const returnItem of approvedReturnsItems) {
-        const current = returnedMap.get(returnItem.productId) || 0;
-        returnedMap.set(returnItem.productId, current + returnItem.quantity);
-      }
-      
-      console.log(`Productos devueltos encontrados: ${returnedMap.size}`);
-      
-      // PASO 2: Crear inventario desde las notas de salida
-      const inventoryMap = new Map();
-      
-      // Primero, agregar todos los productos de las notas de salida
-      for (const note of exitNotes) {
-        for (const item of note.items) {
-          if (inventoryMap.has(item.productId)) {
-            // Sumar cantidad si ya existe
-            const existing = inventoryMap.get(item.productId);
-            existing.quantity += item.quantity;
-            // Mantener el precio unitario (debería ser el mismo para el mismo producto)
-            existing.unitPrice = item.unitPrice || existing.unitPrice;
-            // Recalcular el valor total
-            existing.totalValue = existing.unitPrice * existing.quantity;
-          } else {
-            // Crear nuevo producto
-            const unitPrice = item.unitPrice || 0;
-            const returnedQty = returnedMap.get(item.productId) || 0;
-            inventoryMap.set(item.productId, {
-              sellerId: sellerId,
-              productId: item.productId,
-              product: item.product,
-              quantity: item.quantity,
-              unitPrice: unitPrice,
-              totalValue: unitPrice * item.quantity,
-              status: note.status === 'delivered' || note.status === 'received' ? 'stock' : 'in-transit',
-              returnedQuantity: returnedQty // Preservar cantidad devuelta
-            });
-          }
-        }
-      }
-      
-      // PASO 3: Restar las ventas realizadas
-      for (const sale of soldProducts) {
-        if (inventoryMap.has(sale.productId)) {
-          const existing = inventoryMap.get(sale.productId);
-          existing.quantity -= sale.quantity;
-          // Recalcular el valor total después de restar la venta
-          existing.totalValue = existing.unitPrice * existing.quantity;
-          console.log(`Restando venta: ${sale.product.name} - ${sale.quantity} unidades. Stock restante: ${existing.quantity}`);
-        }
-      }
-      
-      // PASO 4: Actualizar o crear productos en el inventario (sin eliminar todo)
-      const inventoryItems = Array.from(inventoryMap.values());
-      
-      for (const newItem of inventoryItems) {
-        // Buscar si ya existe este producto en el inventario actual
-        const existingItem = currentInventory.find(
-          inv => inv.productId === newItem.productId && inv.sellerId === sellerId
-        );
-        
-        // Actualizar el estado basándose en la cantidad final
-        if (newItem.quantity <= 0) {
-          newItem.status = 'delivered';
-        }
-        
-        // Asegurar que lastDeliveryDate existe
-        if (!newItem.lastDeliveryDate) {
-          // Buscar la fecha de la última nota de salida para este producto
-          const latestNote = exitNotes
-            .filter(note => note.items.some(i => i.productId === newItem.productId))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-          newItem.lastDeliveryDate = latestNote ? new Date(latestNote.date) : new Date();
-        }
-        
-        if (existingItem) {
-          // Actualizar producto existente preservando returnedQuantity
-          // Usar el máximo entre el existente y el calculado desde devoluciones
-          const existingReturnedQty = existingItem.returnedQuantity || 0;
-          const calculatedReturnedQty = newItem.returnedQuantity || 0;
-          const finalReturnedQty = Math.max(existingReturnedQty, calculatedReturnedQty);
-          
-          await sellerInventoryService.update(existingItem.id, {
-            quantity: newItem.quantity,
-            unitPrice: newItem.unitPrice,
-            totalValue: newItem.totalValue,
-            status: newItem.status,
-            product: newItem.product,
-            returnedQuantity: finalReturnedQty
-          });
-        } else {
-          // Crear nuevo producto solo si no existe
-          await sellerInventoryService.create(newItem);
-        }
-      }
-      
-      // PASO 5: Eliminar productos que ya no están en las notas de salida (opcional, comentado para evitar problemas)
-      // Solo eliminar si realmente no deberían estar ahí
-      
-      console.log(`Inventario sincronizado: ${inventoryItems.length} productos únicos`);
-    } catch (error) {
-      console.error('Error sincronizando inventario:', error);
+// Función que sincroniza inventario considerando notas de salida y ventas realizadas
+const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[], soldProducts: any[]) => {
+  try {
+    console.log(`Sincronizando inventario para vendedor ${sellerId}`);
+    console.log(`Notas de salida: ${exitNotes.length}, Ventas realizadas: ${soldProducts.length}`);
+
+    // PASO 1: Obtener inventario actual y devoluciones aprobadas
+    const currentInventory = await sellerInventoryService.getBySeller(sellerId);
+    const approvedReturns = await returnService.getBySeller(sellerId);
+    const approvedReturnsItems = approvedReturns
+      .filter(r => r.status === 'approved')
+      .flatMap(r => r.items);
+
+    // Crear mapa de productos devueltos por productId
+    const returnedMap = new Map<string, number>();
+    for (const returnItem of approvedReturnsItems) {
+      const current = returnedMap.get(returnItem.productId) || 0;
+      returnedMap.set(returnItem.productId, current + returnItem.quantity);
     }
-  };
+
+    console.log(`Productos devueltos encontrados: ${returnedMap.size}`);
+
+    // PASO 2: Crear inventario desde las notas de salida
+    const inventoryMap = new Map();
+
+    // Primero, agregar todos los productos de las notas de salida
+    for (const note of exitNotes) {
+      for (const item of note.items) {
+        if (inventoryMap.has(item.productId)) {
+          // Sumar cantidad si ya existe
+          const existing = inventoryMap.get(item.productId);
+          existing.quantity += item.quantity;
+          // Mantener el precio unitario (debería ser el mismo para el mismo producto)
+          existing.unitPrice = item.unitPrice || existing.unitPrice;
+          // Recalcular el valor total
+          existing.totalValue = existing.unitPrice * existing.quantity;
+        } else {
+          // Crear nuevo producto
+          const unitPrice = item.unitPrice || 0;
+          const returnedQty = returnedMap.get(item.productId) || 0;
+          inventoryMap.set(item.productId, {
+            sellerId: sellerId,
+            productId: item.productId,
+            product: item.product,
+            quantity: item.quantity,
+            unitPrice: unitPrice,
+            totalValue: unitPrice * item.quantity,
+            status: note.status === 'delivered' || note.status === 'received' ? 'stock' : 'in-transit',
+            returnedQuantity: returnedQty // Preservar cantidad devuelta
+          });
+        }
+      }
+    }
+
+    // PASO 3: Restar las ventas realizadas
+    for (const sale of soldProducts) {
+      if (inventoryMap.has(sale.productId)) {
+        const existing = inventoryMap.get(sale.productId);
+        existing.quantity -= sale.quantity;
+        // Recalcular el valor total después de restar la venta
+        existing.totalValue = existing.unitPrice * existing.quantity;
+        console.log(`Restando venta: ${sale.product.name} - ${sale.quantity} unidades. Stock restante: ${existing.quantity}`);
+      }
+    }
+
+    // PASO 4: Actualizar o crear productos en el inventario (sin eliminar todo)
+    const inventoryItems = Array.from(inventoryMap.values());
+
+    for (const newItem of inventoryItems) {
+      // Buscar si ya existe este producto en el inventario actual
+      const existingItem = currentInventory.find(
+        inv => inv.productId === newItem.productId && inv.sellerId === sellerId
+      );
+
+      // Actualizar el estado basándose en la cantidad final
+      if (newItem.quantity <= 0) {
+        newItem.status = 'delivered';
+      }
+
+      // Asegurar que lastDeliveryDate existe
+      if (!newItem.lastDeliveryDate) {
+        // Buscar la fecha de la última nota de salida para este producto
+        const latestNote = exitNotes
+          .filter(note => note.items.some(i => i.productId === newItem.productId))
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        newItem.lastDeliveryDate = latestNote ? new Date(latestNote.date) : new Date();
+      }
+
+      if (existingItem) {
+        // Actualizar producto existente preservando returnedQuantity
+        // Usar el máximo entre el existente y el calculado desde devoluciones
+        const existingReturnedQty = existingItem.returnedQuantity || 0;
+        const calculatedReturnedQty = newItem.returnedQuantity || 0;
+        const finalReturnedQty = Math.max(existingReturnedQty, calculatedReturnedQty);
+
+        await sellerInventoryService.update(existingItem.id, {
+          quantity: newItem.quantity,
+          unitPrice: newItem.unitPrice,
+          totalValue: newItem.totalValue,
+          status: newItem.status,
+          product: newItem.product,
+          returnedQuantity: finalReturnedQty
+        });
+      } else {
+        // Crear nuevo producto solo si no existe
+        await sellerInventoryService.create(newItem);
+      }
+    }
+
+    // PASO 5: Eliminar productos que ya no están en las notas de salida (opcional, comentado para evitar problemas)
+    // Solo eliminar si realmente no deberían estar ahí
+
+    console.log(`Inventario sincronizado: ${inventoryItems.length} productos únicos`);
+  } catch (error) {
+    console.error('Error sincronizando inventario:', error);
+  }
+};
 
 // Función para limpiar inventario duplicado del vendedor
 const cleanDuplicateInventory = async (sellerId: string) => {
   try {
     console.log(`Limpiando inventario duplicado para vendedor ${sellerId}`);
-    
+
     const inventory = await sellerInventoryService.getBySeller(sellerId);
     const seenProducts = new Set();
     const duplicatesToDelete = [];
-    
+
     for (const item of inventory) {
       const key = `${item.productId}-${item.sellerId}`;
       if (seenProducts.has(key)) {
@@ -182,13 +182,13 @@ const cleanDuplicateInventory = async (sellerId: string) => {
         seenProducts.add(key);
       }
     }
-    
+
     // Eliminar duplicados
     for (const id of duplicatesToDelete) {
       await sellerInventoryService.delete(id);
       console.log(`Eliminado duplicado: ${id}`);
     }
-    
+
     console.log(`Limpiados ${duplicatesToDelete.length} duplicados`);
   } catch (error) {
     console.error('Error limpiando inventario duplicado:', error);
@@ -243,7 +243,7 @@ const SellerDashboard: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_deposit'>('cash');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
-  
+
   // Estados para modal de generar pedido
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [adminInventory, setAdminInventory] = useState<any[]>([]);
@@ -285,9 +285,9 @@ const SellerDashboard: React.FC = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       console.log('🔐 Estado de autenticación:', { user, isAdmin, isSeller, isAdminPreview, loading });
-      
+
       if (!user && !isAdminPreview) {
         console.log('❌ Usuario no autenticado');
         setSeller(null);
@@ -317,10 +317,10 @@ const SellerDashboard: React.FC = () => {
         const sellers = await sellerService.getAll();
         console.log('🔍 Todos los vendedores:', sellers.map(s => ({ id: s.id, email: s.email, name: s.name })));
         console.log('👤 Usuario actual:', user?.email);
-        
+
         let foundSeller = sellers.find(s => s.email === user?.email);
         console.log('✅ Vendedor encontrado:', foundSeller ? 'SÍ' : 'NO');
-        
+
         if (foundSeller && !foundSeller.slug) {
           try {
             console.log('🔄 Generando slug para vendedor:', foundSeller.name);
@@ -337,7 +337,7 @@ const SellerDashboard: React.FC = () => {
 
         if (!foundSeller) {
           console.log('❌ No se encontró vendedor para email:', user?.email);
-          
+
           if (user?.email === 'luisuf@gmail.com') {
             console.log('🚀 Creando vendedor Luisuf automáticamente...');
             try {
@@ -351,13 +351,13 @@ const SellerDashboard: React.FC = () => {
                 priceType: 'price1' as 'price1' | 'price2',
                 isActive: true
               };
-              
+
               const luisufId = await sellerService.create(luisufData);
               console.log('✅ Luisuf creado con ID:', luisufId);
-              
+
               const updatedSellers = await sellerService.getAll();
               const newCurrentSeller = updatedSellers.find(s => s.email === user?.email);
-              
+
               if (newCurrentSeller) {
                 currentSeller = newCurrentSeller;
                 setSeller(newCurrentSeller);
@@ -434,12 +434,12 @@ const SellerDashboard: React.FC = () => {
       setReturns(returnsData);
 
       await loadSellerOrders(sellerId);
-      
+
       const [inventoryDataAdmin, productsData] = await Promise.all([
         inventoryService.getAll(),
         productService.getAll()
       ]);
-      
+
       const inventoryWithProducts = inventoryDataAdmin.map(item => {
         const product = productsData.find(p => p.id === item.productId);
         return {
@@ -447,9 +447,9 @@ const SellerDashboard: React.FC = () => {
           product: product || {} as any
         };
       });
-      
+
       setAdminInventory(inventoryWithProducts);
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -522,7 +522,7 @@ const SellerDashboard: React.FC = () => {
       console.log('No seller found, cannot load orders');
       return;
     }
-    
+
     try {
       setLoadingOrders(true);
       console.log('Loading orders for seller:', targetSellerId);
@@ -544,9 +544,9 @@ const SellerDashboard: React.FC = () => {
 
   const updateOrderItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
-    
-    setEditingOrderItems(prev => prev.map(item => 
-      item.id === itemId 
+
+    setEditingOrderItems(prev => prev.map(item =>
+      item.id === itemId
         ? { ...item, orderQuantity: newQuantity }
         : item
     ));
@@ -579,13 +579,13 @@ const SellerDashboard: React.FC = () => {
 
   const handleDeleteOrder = async (order: Order) => {
     if (!order.id) return;
-    
+
     const confirmed = window.confirm(
       `¿Estás seguro de que quieres eliminar el pedido #${order.id.slice(-8)}?\n\nEsta acción no se puede deshacer.`
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
       await orderService.delete(order.id);
       await loadSellerOrders();
@@ -598,7 +598,7 @@ const SellerDashboard: React.FC = () => {
 
   const handleAddToOrder = () => {
     if (!selectedProduct) return;
-    
+
     if (orderQuantity > selectedProduct.quantity) {
       toast.error(`Solo hay ${selectedProduct.quantity} unidades disponibles en stock`);
       return;
@@ -606,7 +606,7 @@ const SellerDashboard: React.FC = () => {
 
     // Verificar si el producto ya está en el pedido
     const existingItem = orderItems.find(item => item.id === selectedProduct.id);
-    
+
     if (existingItem) {
       // Si ya existe, actualizar la cantidad
       const newQuantity = existingItem.orderQuantity + orderQuantity;
@@ -614,9 +614,9 @@ const SellerDashboard: React.FC = () => {
         toast.error(`Solo hay ${selectedProduct.quantity} unidades disponibles en stock`);
         return;
       }
-      
-      setOrderItems(prev => prev.map(item => 
-        item.id === selectedProduct.id 
+
+      setOrderItems(prev => prev.map(item =>
+        item.id === selectedProduct.id
           ? { ...item, orderQuantity: newQuantity }
           : item
       ));
@@ -627,7 +627,7 @@ const SellerDashboard: React.FC = () => {
         orderQuantity: orderQuantity
       }]);
     }
-    
+
     toast.success(`Agregado al pedido: ${selectedProduct.product?.name} (${orderQuantity} unidades)`);
     setShowProductModal(false);
   };
@@ -644,7 +644,7 @@ const SellerDashboard: React.FC = () => {
     }
 
     try {
-      const totalAmount = orderItems.reduce((total, item) => 
+      const totalAmount = orderItems.reduce((total, item) =>
         total + ((item.product?.salePrice1 || 0) * item.orderQuantity), 0
       );
 
@@ -676,15 +676,15 @@ const SellerDashboard: React.FC = () => {
 
       const orderId = await orderService.create(orderData);
       console.log('Order created with ID:', orderId);
-      
+
       // Recargar los pedidos del vendedor
       console.log('Reloading seller orders...');
       await loadSellerOrders();
-      
+
       // Limpiar el pedido actual
       setOrderItems([]);
       setShowOrderFile(false);
-      
+
       toast.success(`Pedido #${orderId} creado exitosamente y enviado al administrador`);
 
     } catch (error) {
@@ -706,7 +706,7 @@ const SellerDashboard: React.FC = () => {
         const newQuantity = product.quantity + quantity;
         console.log(`Restaurando inventario: Producto ${product.product.name}, Cantidad actual: ${product.quantity}, Restaurando: ${quantity}, Nueva cantidad: ${newQuantity}`);
         console.log(`ID del producto en inventario: ${product.id}`);
-        
+
         // Usar el ID del inventario del vendedor, no el productId
         await sellerInventoryService.updateQuantity(product.id, newQuantity);
         console.log('Inventario restaurado exitosamente');
@@ -729,12 +729,12 @@ const SellerDashboard: React.FC = () => {
       console.log('=== INICIANDO VENTA ===');
       console.log('Vendedor:', seller);
       console.log('Formulario de venta:', saleForm);
-      
+
       if (!seller) return;
 
       const product = sellerInventory.find(item => item.id === saleForm.productId);
       console.log('Producto encontrado:', product);
-      
+
       if (!product) {
         toast.error('Producto no encontrado');
         return;
@@ -747,8 +747,8 @@ const SellerDashboard: React.FC = () => {
       }
 
       // Obtener precio según el tipo del vendedor
-      const unitPrice = seller.priceType === 'price2' 
-        ? product.product.salePrice2 
+      const unitPrice = seller.priceType === 'price2'
+        ? product.product.salePrice2
         : product.product.salePrice1;
 
       const totalPrice = unitPrice * saleForm.quantity;
@@ -769,7 +769,7 @@ const SellerDashboard: React.FC = () => {
         notes: saleForm.notes
       };
       console.log('Datos de la venta:', saleData);
-      
+
       await soldProductService.create(saleData);
       console.log('Venta creada exitosamente');
 
@@ -777,9 +777,9 @@ const SellerDashboard: React.FC = () => {
       const newQuantity = product.quantity - saleForm.quantity;
       console.log(`Actualizando inventario: Producto ${product.product.name}, Cantidad actual: ${product.quantity}, Vendido: ${saleForm.quantity}, Nueva cantidad: ${newQuantity}`);
       console.log(`ID del producto en inventario: ${product.id}`);
-      
+
       await sellerInventoryService.updateQuantity(
-        product.id, 
+        product.id,
         newQuantity
       );
 
@@ -792,7 +792,7 @@ const SellerDashboard: React.FC = () => {
         paymentType: 'credit',
         notes: ''
       });
-      
+
       // Recargar datos
       console.log('Recargando datos...');
       await loadData();
@@ -838,7 +838,7 @@ const SellerDashboard: React.FC = () => {
     if (quantity <= 0) {
       return 'text-red-600 bg-red-100';
     }
-    
+
     switch (status) {
       case 'stock':
         return 'text-green-600 bg-green-100';
@@ -856,14 +856,14 @@ const SellerDashboard: React.FC = () => {
     if (quantity <= 0) {
       return 'Agotado';
     }
-    
+
     switch (status) {
       case 'stock':
         return 'En Stock';
       case 'in-transit':
         return 'En Tránsito';
       case 'delivered':
-        return 'Entregado';
+        return 'En Camino';
       default:
         return 'Desconocido';
     }
@@ -883,10 +883,10 @@ const SellerDashboard: React.FC = () => {
   const inTransitExitNotes = exitNotes.filter(note => note.status === 'in-transit').length;
   const deliveredExitNotes = exitNotes.filter(note => note.status === 'delivered').length;
   const totalPaymentNotes = paymentNotes.length;
-  
+
   // Paquetería en tránsito
   const inTransitPackages = shippingPackages.filter(pkg => pkg.status === 'in-transit').length;
-  
+
   // Valor total del inventario del vendedor (todos los productos, excluyendo devueltos)
   const currentInventoryValue = sellerInventory.reduce((sum, item) => {
     const returnedQty = item.returnedQuantity || 0;
@@ -896,21 +896,21 @@ const SellerDashboard: React.FC = () => {
     }
     return sum;
   }, 0);
-  
+
   // Valor del inventario del vendedor (suma de precios de productos en su inventario, excluyendo devueltos)
   const availableInventoryValue = sellerInventory
     .reduce((sum, item) => {
       const returnedQty = item.returnedQuantity || 0;
       const availableQty = (item.quantity || 0) - returnedQty;
       if (availableQty <= 0) return sum;
-      
+
       // Usar el precio de venta del producto del inventario del vendedor
-      const productPrice = seller?.priceType === 'price2' 
+      const productPrice = seller?.priceType === 'price2'
         ? (item.product.salePrice2 || item.product.salePrice1 || 0)
         : (item.product.salePrice1 || 0);
-      
+
       const subtotal = (productPrice || 0) * availableQty;
-      
+
       return sum + subtotal;
     }, 0);
 
@@ -918,32 +918,32 @@ const SellerDashboard: React.FC = () => {
   const approvedPayments = paymentNotes
     .filter(note => note.status === 'approved')
     .reduce((sum, note) => sum + (note.totalAmount || 0), 0);
-  
+
   const currentDebt = Math.max(0, currentInventoryValue - approvedPayments);
-  
+
   // Calcular deuda de productos entregados menos devoluciones y pagos
   // 1. Valor de productos de notas de salida entregadas (status 'delivered' o 'received')
-  const deliveredExitNotesList = exitNotes.filter(note => 
+  const deliveredExitNotesList = exitNotes.filter(note =>
     note.status === 'delivered' || note.status === 'received'
   );
-  
+
   const deliveredInventoryValue = deliveredExitNotesList.reduce((sum: number, note: ExitNote) => {
     return sum + (note.totalPrice || 0);
   }, 0);
-  
+
   // 2. Monto total de devoluciones aprobadas
   const approvedReturnsTotal = returns
     .filter(r => r.status === 'approved')
     .reduce((sum, r) => sum + (r.totalValue || 0), 0);
-  
+
   // 3. Monto total de notas de pago aprobadas
   const approvedPaymentsTotal = paymentNotes
     .filter(note => note.status === 'approved')
     .reduce((sum, note) => sum + (note.totalAmount || 0), 0);
-  
+
   // 4. Deuda = Valor productos entregados - Devoluciones - Pagos
   const deliveredProductsDebt = Math.max(0, deliveredInventoryValue - approvedReturnsTotal - approvedPaymentsTotal);
-    
+
   console.log('Valor total del inventario:', availableInventoryValue);
   console.log('Inventario del vendedor:', sellerInventory);
   console.log('Vendedor:', seller);
@@ -1105,13 +1105,11 @@ const SellerDashboard: React.FC = () => {
         </div>
 
         {/* Tarjeta de Deuda Actual */}
-        <div className={`bg-white rounded-lg shadow p-6 border-2 ${
-          currentDebt > 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'
-        }`}>
+        <div className={`bg-white rounded-lg shadow p-6 border-2 ${currentDebt > 0 ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'
+          }`}>
           <div className="flex items-center">
-            <div className={`p-2 rounded-lg ${
-              currentDebt > 0 ? 'bg-red-100' : 'bg-green-100'
-            }`}>
+            <div className={`p-2 rounded-lg ${currentDebt > 0 ? 'bg-red-100' : 'bg-green-100'
+              }`}>
               {currentDebt > 0 ? (
                 <AlertCircle className="h-6 w-6 text-red-600" />
               ) : (
@@ -1119,14 +1117,12 @@ const SellerDashboard: React.FC = () => {
               )}
             </div>
             <div className="ml-4">
-              <p className={`text-sm font-medium ${
-                currentDebt > 0 ? 'text-red-700' : 'text-green-700'
-              }`}>
+              <p className={`text-sm font-medium ${currentDebt > 0 ? 'text-red-700' : 'text-green-700'
+                }`}>
                 Deuda Actual
               </p>
-              <p className={`text-2xl font-bold ${
-                currentDebt > 0 ? 'text-red-600' : 'text-green-600'
-              }`}>
+              <p className={`text-2xl font-bold ${currentDebt > 0 ? 'text-red-600' : 'text-green-600'
+                }`}>
                 ${currentDebt.toLocaleString()}
               </p>
               {currentDebt > 0 && (
@@ -1137,13 +1133,11 @@ const SellerDashboard: React.FC = () => {
         </div>
 
         {/* Tarjeta de Deuda Productos Entregados */}
-        <div className={`bg-white rounded-lg shadow p-6 border-2 ${
-          deliveredProductsDebt > 0 ? 'border-orange-200 bg-orange-50' : 'border-green-200 bg-green-50'
-        }`}>
+        <div className={`bg-white rounded-lg shadow p-6 border-2 ${deliveredProductsDebt > 0 ? 'border-orange-200 bg-orange-50' : 'border-green-200 bg-green-50'
+          }`}>
           <div className="flex items-center">
-            <div className={`p-2 rounded-lg ${
-              deliveredProductsDebt > 0 ? 'bg-orange-100' : 'bg-green-100'
-            }`}>
+            <div className={`p-2 rounded-lg ${deliveredProductsDebt > 0 ? 'bg-orange-100' : 'bg-green-100'
+              }`}>
               {deliveredProductsDebt > 0 ? (
                 <AlertCircle className="h-6 w-6 text-orange-600" />
               ) : (
@@ -1151,14 +1145,12 @@ const SellerDashboard: React.FC = () => {
               )}
             </div>
             <div className="ml-4">
-              <p className={`text-sm font-medium ${
-                deliveredProductsDebt > 0 ? 'text-orange-700' : 'text-green-700'
-              }`}>
+              <p className={`text-sm font-medium ${deliveredProductsDebt > 0 ? 'text-orange-700' : 'text-green-700'
+                }`}>
                 Deuda Productos Entregados
               </p>
-              <p className={`text-2xl font-bold ${
-                deliveredProductsDebt > 0 ? 'text-orange-600' : 'text-green-600'
-              }`}>
+              <p className={`text-2xl font-bold ${deliveredProductsDebt > 0 ? 'text-orange-600' : 'text-green-600'
+                }`}>
                 ${deliveredProductsDebt.toLocaleString()}
               </p>
               {deliveredProductsDebt > 0 && (
@@ -1192,7 +1184,7 @@ const SellerDashboard: React.FC = () => {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-900">{sale.product.name}</p>
                       <p className="text-sm text-gray-500">
-                        Cantidad: {sale.quantity} | 
+                        Cantidad: {sale.quantity} |
                         {sale.paymentType === 'credit' ? (
                           <CreditCard className="inline h-4 w-4 ml-1 text-blue-500" />
                         ) : (
@@ -1249,7 +1241,7 @@ const SellerDashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col space-y-2">
                   <button
                     onClick={handleViewOrder}
@@ -1263,7 +1255,7 @@ const SellerDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -1281,7 +1273,7 @@ const SellerDashboard: React.FC = () => {
                   {adminInventory.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div 
+                        <div
                           className="h-12 w-12 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => handleProductClick(item)}
                         >
@@ -1299,7 +1291,7 @@ const SellerDashboard: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div 
+                        <div
                           className="text-sm font-medium text-gray-900 cursor-pointer hover:text-primary-600 transition-colors"
                           onClick={() => handleProductClick(item)}
                         >
@@ -1327,9 +1319,8 @@ const SellerDashboard: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          item.status === 'stock' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'stock' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
                           {item.status === 'stock' ? 'En Stock' : 'Sin Stock'}
                         </span>
                       </td>
@@ -1338,7 +1329,7 @@ const SellerDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            
+
             {adminInventory.length === 0 && (
               <div className="text-center py-8">
                 <Package className="mx-auto h-12 w-12 text-gray-400" />
@@ -1355,7 +1346,7 @@ const SellerDashboard: React.FC = () => {
               <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
                 Mi Pedido ({orderItems.length} productos)
               </h3>
-              
+
               <div className="space-y-4">
                 {orderItems.map((item) => (
                   <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -1372,7 +1363,7 @@ const SellerDashboard: React.FC = () => {
                         <p className="text-sm text-gray-500">SKU: {item.product?.sku}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-4">
                       <span className="text-sm text-gray-500">
                         Cantidad: {item.orderQuantity}
@@ -1389,12 +1380,12 @@ const SellerDashboard: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                
+
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold">Total del Pedido:</span>
                     <span className="text-xl font-bold text-primary-600">
-                      ${orderItems.reduce((total, item) => 
+                      ${orderItems.reduce((total, item) =>
                         total + ((item.product?.salePrice1 || 0) * item.orderQuantity), 0
                       ).toFixed(2)}
                     </span>
@@ -1438,8 +1429,8 @@ const SellerDashboard: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {sellerOrders.map((order) => (
-              <div 
-                key={order.id} 
+              <div
+                key={order.id}
                 className="bg-white shadow rounded-lg p-6"
               >
                 <div className="flex justify-between items-start">
@@ -1449,17 +1440,16 @@ const SellerDashboard: React.FC = () => {
                         Pedido #{order.id?.slice(-8)}
                       </h3>
                       <div className="flex items-center space-x-2">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          order.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              order.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'
+                          }`}>
                           {order.status === 'pending' ? 'Pendiente' :
-                           order.status === 'approved' ? 'Aprobado' :
-                           order.status === 'rejected' ? 'Rechazado' : 'Completado'}
+                            order.status === 'approved' ? 'Aprobado' :
+                              order.status === 'rejected' ? 'Rechazado' : 'Completado'}
                         </span>
-                        
+
                         {/* Botones de gestión (solo si está pendiente) */}
                         {order.status === 'pending' && (
                           <div className="flex space-x-1">
@@ -1475,7 +1465,7 @@ const SellerDashboard: React.FC = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
-                            
+
                             <button
                               onClick={() => {
                                 console.log('Borrando pedido:', order);
@@ -1490,14 +1480,14 @@ const SellerDashboard: React.FC = () => {
                             </button>
                           </div>
                         )}
-                        
+
                         {/* Debug: Mostrar estado del pedido */}
                         <div className="text-xs text-gray-400 mt-1">
                           Estado: {order.status}
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="mt-2 text-sm text-gray-500">
                       <p>Fecha: {order.createdAt.toLocaleDateString('es-ES', {
                         year: 'numeric',
@@ -1508,7 +1498,7 @@ const SellerDashboard: React.FC = () => {
                       })}</p>
                       <p>Total: ${order.totalAmount.toFixed(2)} | Productos: {order.totalItems} | Cantidad: {order.totalQuantity}</p>
                     </div>
-                    
+
                     {order.notes && (
                       <div className="mt-4 p-3 bg-blue-50 rounded-md">
                         <p className="text-sm text-blue-800">
@@ -1518,7 +1508,7 @@ const SellerDashboard: React.FC = () => {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Botones de Acción */}
                 <div className="mt-4 flex space-x-3">
                   <button
@@ -1531,7 +1521,7 @@ const SellerDashboard: React.FC = () => {
                     </svg>
                     Ver Orden
                   </button>
-                  
+
                   <button
                     onClick={() => handleViewCounterOrder(order)}
                     className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center"
@@ -1570,137 +1560,137 @@ const SellerDashboard: React.FC = () => {
     }, 0);
 
     return (
-    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Mi Inventario</h2>
-      </div>
-
-      {/* Resumen de valores del inventario */}
-      {sellerInventory.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-center">
-              <p className="text-sm font-medium text-gray-600">Valor Actual del Inventario</p>
-              <p className="text-3xl font-bold text-green-600">${(isNaN(currentInventoryValue) ? 0 : (currentInventoryValue || 0)).toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">Productos en stock actual</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-center">
-              <p className="text-sm font-medium text-gray-600">Valor Histórico del Inventario</p>
-              <p className="text-3xl font-bold text-blue-600">${(isNaN(historicalInventoryValue) ? 0 : (historicalInventoryValue || 0)).toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-1">Total recibido en notas de salida</p>
-            </div>
-          </div>
+      <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Mi Inventario</h2>
         </div>
-      )}
+
+        {/* Resumen de valores del inventario */}
+        {sellerInventory.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-600">Valor Actual del Inventario</p>
+                <p className="text-3xl font-bold text-green-600">${(isNaN(currentInventoryValue) ? 0 : (currentInventoryValue || 0)).toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">Productos en stock actual</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-center">
+                <p className="text-sm font-medium text-gray-600">Valor Histórico del Inventario</p>
+                <p className="text-3xl font-bold text-blue-600">${(isNaN(historicalInventoryValue) ? 0 : (historicalInventoryValue || 0)).toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">Total recibido en notas de salida</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {sellerInventory.length === 0 ? (
-        <div className="text-center py-12">
-          <Package className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No tienes productos en inventario</h3>
-          <p className="mt-1 text-sm text-gray-500">Los productos aparecerán aquí cuando recibas entregas.</p>
-        </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sellerInventory.map((item, index) => {
-                const returnedQty = item.returnedQuantity || 0;
-                const availableQty = item.quantity - returnedQty;
-                const isReturned = returnedQty > 0;
-                const isFullyReturned = returnedQty >= item.quantity;
-                
-                return (
-                  <tr 
-                    key={item.id} 
-                    className={`${isFullyReturned ? 'bg-gray-100 opacity-60' : isReturned ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}`}
-                  >
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
-                      {index + 1}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-12 w-12">
-                          {item.product.imageUrl ? (
-                            <img 
-                              className={`h-12 w-12 rounded-lg object-cover ${isFullyReturned ? 'opacity-50 grayscale' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
-                              src={item.product.imageUrl} 
-                              alt={item.product.name}
-                              onClick={isFullyReturned ? undefined : () => setViewingProductImage(item.product.imageUrl)}
-                            />
-                          ) : (
-                            <div className={`h-12 w-12 rounded-lg ${isFullyReturned ? 'bg-gray-300' : 'bg-gray-200'} flex items-center justify-center`}>
-                              <Package className={`h-6 w-6 ${isFullyReturned ? 'text-gray-400' : 'text-gray-400'}`} />
+          <div className="text-center py-12">
+            <Package className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No tienes productos en inventario</h3>
+            <p className="mt-1 text-sm text-gray-500">Los productos aparecerán aquí cuando recibas entregas.</p>
+          </div>
+        ) : (
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sellerInventory.map((item, index) => {
+                  const returnedQty = item.returnedQuantity || 0;
+                  const availableQty = item.quantity - returnedQty;
+                  const isReturned = returnedQty > 0;
+                  const isFullyReturned = returnedQty >= item.quantity;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`${isFullyReturned ? 'bg-gray-100 opacity-60' : isReturned ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}`}
+                    >
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-12 w-12">
+                            {item.product.imageUrl ? (
+                              <img
+                                className={`h-12 w-12 rounded-lg object-cover ${isFullyReturned ? 'opacity-50 grayscale' : 'cursor-pointer hover:opacity-80 transition-opacity'}`}
+                                src={item.product.imageUrl}
+                                alt={item.product.name}
+                                onClick={isFullyReturned ? undefined : () => setViewingProductImage(item.product.imageUrl)}
+                              />
+                            ) : (
+                              <div className={`h-12 w-12 rounded-lg ${isFullyReturned ? 'bg-gray-300' : 'bg-gray-200'} flex items-center justify-center`}>
+                                <Package className={`h-6 w-6 ${isFullyReturned ? 'text-gray-400' : 'text-gray-400'}`} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <div className={`text-sm font-medium ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                              {item.product.name}
+                              {isFullyReturned && <span className="ml-2 text-xs text-red-600 font-bold">(DEVUELTO)</span>}
+                              {isReturned && !isFullyReturned && <span className="ml-2 text-xs text-orange-600 font-semibold">({returnedQty} devuelto{returnedQty > 1 ? 's' : ''})</span>}
+                            </div>
+                            <div className={`text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>SKU: {item.product.sku}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                        {item.product.size || 'N/A'}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                        {item.product.color || 'N/A'}
+                        {item.product.color2 && (
+                          <div className={`text-xs ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>+ {item.product.color2}</div>
+                        )}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
+                        ${(isNaN(item.unitPrice) ? 0 : (item.unitPrice || 0)).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        <div className={isFullyReturned ? 'text-gray-400' : 'text-gray-900'}>
+                          {availableQty > 0 ? availableQty : 0}
+                          {returnedQty > 0 && (
+                            <div className="text-xs text-red-600 font-semibold">
+                              (Devuelto: {returnedQty})
                             </div>
                           )}
                         </div>
-                        <div className="ml-4">
-                          <div className={`text-sm font-medium ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
-                            {item.product.name}
-                            {isFullyReturned && <span className="ml-2 text-xs text-red-600 font-bold">(DEVUELTO)</span>}
-                            {isReturned && !isFullyReturned && <span className="ml-2 text-xs text-orange-600 font-semibold">({returnedQty} devuelto{returnedQty > 1 ? 's' : ''})</span>}
-                          </div>
-                          <div className={`text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>SKU: {item.product.sku}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
-                      {item.product.size || 'N/A'}
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
-                      {item.product.color || 'N/A'}
-                      {item.product.color2 && (
-                        <div className={`text-xs ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>+ {item.product.color2}</div>
-                      )}
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
-                      ${(isNaN(item.unitPrice) ? 0 : (item.unitPrice || 0)).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                      <div className={isFullyReturned ? 'text-gray-400' : 'text-gray-900'}>
-                        {availableQty > 0 ? availableQty : 0}
-                        {returnedQty > 0 && (
-                          <div className="text-xs text-red-600 font-semibold">
-                            (Devuelto: {returnedQty})
-                          </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isFullyReturned ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                            DEVUELTO
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getInventoryStatusColor(item.status, availableQty)}`}>
+                            {getInventoryStatusText(item.status, availableQty)}
+                          </span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {isFullyReturned ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
-                          DEVUELTO
-                        </span>
-                      ) : (
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getInventoryStatusColor(item.status, availableQty)}`}>
-                          {getInventoryStatusText(item.status, availableQty)}
-                        </span>
-                      )}
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {new Date(item.lastDeliveryDate).toLocaleDateString()}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {new Date(item.lastDeliveryDate).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -1819,7 +1809,7 @@ const SellerDashboard: React.FC = () => {
   const renderExitNotes = () => {
     // Calcular el total de todas las notas de salida
     const totalExitNotesValue = exitNotes.reduce((sum, note) => sum + (note.totalPrice || 0), 0);
-    
+
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -1849,82 +1839,81 @@ const SellerDashboard: React.FC = () => {
         )}
 
         {exitNotes.length === 0 ? (
-        <div className="text-center py-12">
-          <FileText className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay notas de salida</h3>
-          <p className="mt-1 text-sm text-gray-500">Las notas de salida aparecerán aquí cuando el administrador las genere.</p>
-        </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productos</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {exitNotes.map((note) => (
-                <tr key={note.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {note.number}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(note.date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {note.customer}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="flex flex-col">
-                      <span className="font-medium">{note.items.length} productos</span>
-                      <span className="text-xs text-gray-500">
-                        {note.items.reduce((sum, item) => sum + item.quantity, 0)} unidades
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${(note.totalPrice || 0).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      note.status === 'delivered' 
-                        ? 'bg-green-100 text-green-800'
-                        : note.status === 'in-transit'
-                        ? 'bg-blue-100 text-blue-800'
-                        : note.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : note.status === 'received'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {note.status === 'delivered' ? 'Entregada' : 
-                       note.status === 'in-transit' ? 'En Tránsito' :
-                       note.status === 'pending' ? 'Pendiente' : 
-                       note.status === 'received' ? 'Recibida' : 'Cancelada'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => setViewingExitNote(note)}
-                      className="text-primary-600 hover:text-primary-900 flex items-center"
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Ver detalles
-                    </button>
-                  </td>
+          <div className="text-center py-12">
+            <FileText className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay notas de salida</h3>
+            <p className="mt-1 text-sm text-gray-500">Las notas de salida aparecerán aquí cuando el administrador las genere.</p>
+          </div>
+        ) : (
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productos</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {exitNotes.map((note) => (
+                  <tr key={note.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {note.number}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(note.date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {note.customer}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{note.items.length} productos</span>
+                        <span className="text-xs text-gray-500">
+                          {note.items.reduce((sum, item) => sum + item.quantity, 0)} unidades
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      ${(note.totalPrice || 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${note.status === 'delivered'
+                          ? 'bg-green-100 text-green-800'
+                          : note.status === 'in-transit'
+                            ? 'bg-blue-100 text-blue-800'
+                            : note.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : note.status === 'received'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-gray-100 text-gray-800'
+                        }`}>
+                        {note.status === 'delivered' ? 'Entregada' :
+                          note.status === 'in-transit' ? 'En Tránsito' :
+                            note.status === 'pending' ? 'Pendiente' :
+                              note.status === 'received' ? 'Recibida' : 'Cancelada'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => setViewingExitNote(note)}
+                        className="text-primary-600 hover:text-primary-900 flex items-center"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver detalles
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -1998,16 +1987,15 @@ const SellerDashboard: React.FC = () => {
                     <div className="text-sm text-gray-900">${(pkg.cost || 0).toLocaleString()}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      pkg.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      pkg.status === 'in-transit' ? 'bg-blue-100 text-blue-800' :
-                      pkg.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${pkg.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        pkg.status === 'in-transit' ? 'bg-blue-100 text-blue-800' :
+                          pkg.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                      }`}>
                       {pkg.status === 'pending' ? 'Pendiente' :
-                       pkg.status === 'in-transit' ? 'En Tránsito' :
-                       pkg.status === 'delivered' ? 'Entregado' :
-                       'Devuelto'}
+                        pkg.status === 'in-transit' ? 'En Tránsito' :
+                          pkg.status === 'delivered' ? 'En Camino' :
+                            'Devuelto'}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -2044,106 +2032,105 @@ const SellerDashboard: React.FC = () => {
     const currentDebt = historicalInventoryValue - approvedPayments;
 
     return (
-    <div className="space-y-6">
-      {/* Información de Deuda */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-medium text-blue-900">Deuda Total Actual</h3>
-            <p className="text-sm text-blue-700">
-              Valor total de tu inventario pendiente de pago
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-blue-900">
-              ${currentDebt.toFixed(2)}
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Histórico: ${historicalInventoryValue.toFixed(2)} - Pagos: ${approvedPayments.toFixed(2)}
-            </p>
+      <div className="space-y-6">
+        {/* Información de Deuda */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-blue-900">Deuda Total Actual</h3>
+              <p className="text-sm text-blue-700">
+                Valor total de tu inventario pendiente de pago
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-900">
+                ${currentDebt.toFixed(2)}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Histórico: ${historicalInventoryValue.toFixed(2)} - Pagos: ${approvedPayments.toFixed(2)}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Mis Notas de Pago</h2>
-        <button
-          onClick={() => {
-            setPaymentType('full');
-            setPartialPaymentAmount(0);
-            setShowPaymentModal(true);
-          }}
-          className="btn-primary flex items-center"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Nota de Pago
-        </button>
-      </div>
-
-      {paymentNotes.length === 0 ? (
-        <div className="text-center py-12">
-          <Receipt className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay notas de pago</h3>
-          <p className="mt-1 text-sm text-gray-500">Crea tu primera nota de pago para reportar pagos a la empresa.</p>
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Mis Notas de Pago</h2>
+          <button
+            onClick={() => {
+              setPaymentType('full');
+              setPartialPaymentAmount(0);
+              setShowPaymentModal(true);
+            }}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Nota de Pago
+          </button>
         </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paymentNotes.map((note) => (
-                <tr key={note.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {note.number}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(note.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${(note.totalAmount || 0).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      note.status === 'approved' 
-                        ? 'bg-green-100 text-green-800'
-                        : note.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {note.status === 'approved' ? 'Aprobada' : 
-                       note.status === 'pending' ? 'Pendiente' : 'Rechazada'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => setViewingPaymentNote(note)}
-                      className="text-primary-600 hover:text-primary-900 flex items-center"
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Ver detalles
-                    </button>
-                  </td>
+
+        {paymentNotes.length === 0 ? (
+          <div className="text-center py-12">
+            <Receipt className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay notas de pago</h3>
+            <p className="mt-1 text-sm text-gray-500">Crea tu primera nota de pago para reportar pagos a la empresa.</p>
+          </div>
+        ) : (
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paymentNotes.map((note) => (
+                  <tr key={note.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {note.number}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(note.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      ${(note.totalAmount || 0).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${note.status === 'approved'
+                          ? 'bg-green-100 text-green-800'
+                          : note.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                        {note.status === 'approved' ? 'Aprobada' :
+                          note.status === 'pending' ? 'Pendiente' : 'Rechazada'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => setViewingPaymentNote(note)}
+                        className="text-primary-600 hover:text-primary-900 flex items-center"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver detalles
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     );
   };
 
   const handleAddToStore = async (item: SellerInventoryItem, salePrice: number, description: string) => {
     if (!seller) return;
-    
+
     if (!salePrice || salePrice <= 0) {
       toast.error('Por favor ingresa un precio válido');
       return;
@@ -2244,8 +2231,8 @@ const SellerDashboard: React.FC = () => {
     };
 
     const handleUpdateReturnItem = (productId: string, field: string, value: any) => {
-      setReturnItems(returnItems.map(item => 
-        item.productId === productId 
+      setReturnItems(returnItems.map(item =>
+        item.productId === productId
           ? { ...item, [field]: value }
           : item
       ));
@@ -2695,7 +2682,7 @@ const SellerDashboard: React.FC = () => {
   const renderStoreEditor = () => {
     // Crear un mapa de productos ya en la tienda
     const storeProductMap = new Map(storeProducts.map(p => [p.productId, p]));
-    
+
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -2730,7 +2717,7 @@ const SellerDashboard: React.FC = () => {
                           console.error('Error generating slug:', error);
                         }
                       }
-                      
+
                       const link = `${window.location.origin}/store/${slug || seller.id}`;
                       navigator.clipboard.writeText(link);
                       toast.success('Link copiado al portapapeles');
@@ -2821,7 +2808,7 @@ const SellerDashboard: React.FC = () => {
                   .map((item) => {
                     const storeProduct = storeProductMap.get(item.productId);
                     const isInStore = !!storeProduct;
-                    
+
                     return (
                       <tr key={item.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -2862,11 +2849,10 @@ const SellerDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {isInStore ? (
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              storeProduct.isActive 
-                                ? 'bg-green-100 text-green-800' 
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${storeProduct.isActive
+                                ? 'bg-green-100 text-green-800'
                                 : 'bg-gray-100 text-gray-800'
-                            }`}>
+                              }`}>
                               {storeProduct.isActive ? 'Activo' : 'Inactivo'}
                             </span>
                           ) : (
@@ -2891,11 +2877,10 @@ const SellerDashboard: React.FC = () => {
                               </button>
                               <button
                                 onClick={() => handleToggleStoreProduct(storeProduct.id, storeProduct.isActive)}
-                                className={`px-2 py-1 rounded text-xs ${
-                                  storeProduct.isActive
+                                className={`px-2 py-1 rounded text-xs ${storeProduct.isActive
                                     ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                                     : 'bg-green-100 text-green-800 hover:bg-green-200'
-                                }`}
+                                  }`}
                                 title={storeProduct.isActive ? 'Desactivar' : 'Activar'}
                               >
                                 {storeProduct.isActive ? 'Ocultar' : 'Mostrar'}
@@ -2930,7 +2915,7 @@ const SellerDashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
-          
+
           {sellerInventory.filter(item => item.quantity > 0 && item.status === 'stock').length === 0 && (
             <div className="text-center py-12">
               <Package className="mx-auto h-12 w-12 text-gray-400" />
@@ -2944,7 +2929,7 @@ const SellerDashboard: React.FC = () => {
         {editingStoreProduct && (() => {
           const inventoryItem = sellerInventory.find(item => item.productId === editingStoreProduct.productId);
           if (!inventoryItem) return null;
-          
+
           return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4">
@@ -3064,7 +3049,7 @@ const SellerDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {storeProducts.filter(p => p.isActive).length === 0 ? (
                 <div className="text-center py-12">
@@ -3077,8 +3062,8 @@ const SellerDashboard: React.FC = () => {
                   {storeProducts
                     .filter(p => p.isActive)
                     .map((storeProduct) => (
-                      <div 
-                        key={storeProduct.id} 
+                      <div
+                        key={storeProduct.id}
                         className="bg-white rounded-md shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex flex-col h-full"
                         onClick={() => setSelectedStoreProduct(storeProduct)}
                       >
@@ -3254,7 +3239,7 @@ const SellerDashboard: React.FC = () => {
               <span className="text-sm text-gray-500">
                 Tipo de precio: {seller.priceType === 'price2' ? 'Precio 2' : 'Precio 1'}
               </span>
-              
+
               {/* Información del usuario */}
               <div className="flex items-center space-x-3">
                 <div className="text-right">
@@ -3279,7 +3264,7 @@ const SellerDashboard: React.FC = () => {
                   )}
                 </div>
               </div>
-              
+
               <button
                 onClick={handleLogout}
                 className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
@@ -3297,110 +3282,100 @@ const SellerDashboard: React.FC = () => {
         <nav className="flex space-x-8 px-6">
           <button
             onClick={() => setActiveSection('dashboard')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'dashboard'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'dashboard'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <BarChart3 className="h-5 w-5 inline mr-2" />
             Dashboard
           </button>
           <button
             onClick={() => setActiveSection('inventory')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'inventory'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'inventory'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <Package className="h-5 w-5 inline mr-2" />
             Inventario
           </button>
           <button
             onClick={() => setActiveSection('sales')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'sales'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'sales'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <ShoppingCart className="h-5 w-5 inline mr-2" />
             Ventas
           </button>
           <button
             onClick={() => setActiveSection('exit-notes')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'exit-notes'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'exit-notes'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <FileText className="h-5 w-5 inline mr-2" />
             Notas de Salida
           </button>
           <button
             onClick={() => setActiveSection('shipping-packages')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'shipping-packages'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'shipping-packages'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <Truck className="h-5 w-5 inline mr-2" />
             Paquetes de Envío
           </button>
           <button
             onClick={() => setActiveSection('payment-notes')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'payment-notes'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'payment-notes'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <Receipt className="h-5 w-5 inline mr-2" />
             Notas de Pago
           </button>
           <button
             onClick={() => setActiveSection('generate-order')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'generate-order'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'generate-order'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <Plus className="h-5 w-5 inline mr-2" />
             Generar Pedido
           </button>
           <button
             onClick={() => setActiveSection('my-orders')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'my-orders'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'my-orders'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <Package className="h-5 w-5 inline mr-2" />
             Mis Pedidos
           </button>
           <button
             onClick={() => setActiveSection('store')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'store'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'store'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <Store className="h-5 w-5 inline mr-2" />
             Tienda Online
           </button>
           <button
             onClick={() => setActiveSection('returns')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeSection === 'returns'
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'returns'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             <RotateCcw className="h-5 w-5 inline mr-2" />
             Devoluciones
@@ -3447,7 +3422,7 @@ const SellerDashboard: React.FC = () => {
                 <select
                   required
                   value={saleForm.productId}
-                  onChange={(e) => setSaleForm({...saleForm, productId: e.target.value})}
+                  onChange={(e) => setSaleForm({ ...saleForm, productId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Seleccionar producto</option>
@@ -3474,7 +3449,7 @@ const SellerDashboard: React.FC = () => {
                   })()}
                   required
                   value={saleForm.quantity}
-                  onChange={(e) => setSaleForm({...saleForm, quantity: parseInt(e.target.value) || 1})}
+                  onChange={(e) => setSaleForm({ ...saleForm, quantity: parseInt(e.target.value) || 1 })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {saleForm.productId && (() => {
@@ -3498,7 +3473,7 @@ const SellerDashboard: React.FC = () => {
                       name="paymentType"
                       value="credit"
                       checked={saleForm.paymentType === 'credit'}
-                      onChange={(e) => setSaleForm({...saleForm, paymentType: e.target.value as 'credit' | 'cash'})}
+                      onChange={(e) => setSaleForm({ ...saleForm, paymentType: e.target.value as 'credit' | 'cash' })}
                       className="mr-2"
                     />
                     <CreditCard className="h-4 w-4 mr-1 text-blue-500" />
@@ -3510,7 +3485,7 @@ const SellerDashboard: React.FC = () => {
                       name="paymentType"
                       value="cash"
                       checked={saleForm.paymentType === 'cash'}
-                      onChange={(e) => setSaleForm({...saleForm, paymentType: e.target.value as 'credit' | 'cash'})}
+                      onChange={(e) => setSaleForm({ ...saleForm, paymentType: e.target.value as 'credit' | 'cash' })}
                       className="mr-2"
                     />
                     <Banknote className="h-4 w-4 mr-1 text-green-500" />
@@ -3525,7 +3500,7 @@ const SellerDashboard: React.FC = () => {
                 </label>
                 <textarea
                   value={saleForm.notes}
-                  onChange={(e) => setSaleForm({...saleForm, notes: e.target.value})}
+                  onChange={(e) => setSaleForm({ ...saleForm, notes: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   rows={3}
                 />
@@ -3786,105 +3761,104 @@ const SellerDashboard: React.FC = () => {
 
             {/* Botones */}
             <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      if (!seller) return;
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    if (!seller) return;
 
-                      const historicalValue = exitNotes.reduce((sum, note) => {
-                        return sum + note.totalPrice;
-                      }, 0);
+                    const historicalValue = exitNotes.reduce((sum, note) => {
+                      return sum + note.totalPrice;
+                    }, 0);
 
-                      const paymentAmount = paymentType === 'full' ? historicalValue : partialPaymentAmount;
+                    const paymentAmount = paymentType === 'full' ? historicalValue : partialPaymentAmount;
 
-                      if (paymentType === 'partial' && partialPaymentAmount <= 0) {
-                        toast.error('El monto del pago debe ser mayor a 0');
-                        return;
-                      }
-
-                      if (paymentType === 'partial' && partialPaymentAmount > historicalValue) {
-                        toast.error('El monto del pago no puede ser mayor a la deuda actual');
-                        return;
-                      }
-
-                      // Validar que si es depósito bancario, se haya subido un comprobante
-                      if (paymentMethod === 'bank_deposit' && !receiptFile) {
-                        toast.error('Por favor sube un comprobante para el depósito bancario');
-                        return;
-                      }
-
-                      let receiptImageUrl = '';
-                      
-                      // Si es depósito bancario y hay archivo, subirlo a Firebase Storage
-                      if (paymentMethod === 'bank_deposit' && receiptFile) {
-                        setUploadingReceipt(true);
-                        try {
-                          const fileName = `receipts/${seller.id}_${Date.now()}_${receiptFile.name}`;
-                          const storageRef = ref(storage, fileName);
-                          await uploadBytes(storageRef, receiptFile);
-                          receiptImageUrl = await getDownloadURL(storageRef);
-                          toast.success('Comprobante subido exitosamente');
-                        } catch (error) {
-                          console.error('Error uploading receipt:', error);
-                          toast.error('Error al subir el comprobante');
-                          setUploadingReceipt(false);
-                          return;
-                        }
-                        setUploadingReceipt(false);
-                      }
-
-                      // Crear la nota de pago
-                      const paymentNoteData: any = {
-                        number: `PN-${Date.now()}`, // Generar número único
-                        sourceType: 'seller' as const,
-                        sellerId: seller.id,
-                        sellerName: seller.name,
-                        items: [{
-                          description: paymentType === 'full' ? 'Pago total de deuda' : `Pago parcial de deuda - $${partialPaymentAmount}`,
-                          amount: paymentAmount
-                        }],
-                        totalAmount: paymentAmount,
-                        status: 'pending' as const,
-                        notes: `Pago ${paymentType === 'full' ? 'total' : 'parcial'} de deuda del inventario - ${paymentMethod === 'cash' ? 'En efectivo' : 'Depósito bancario'}`,
-                        paymentMethod: paymentMethod
-                      };
-                      
-                      // Solo incluir receiptImageUrl si tiene un valor válido
-                      if (receiptImageUrl && receiptImageUrl.trim() !== '') {
-                        paymentNoteData.receiptImageUrl = receiptImageUrl;
-                      }
-
-                      await paymentNoteService.create(paymentNoteData);
-                      toast.success('Nota de pago creada exitosamente');
-                      setShowPaymentModal(false);
-                      setPaymentType('full');
-                      setPartialPaymentAmount(0);
-                      setPaymentMethod('cash');
-                      setReceiptFile(null);
-                      await loadData();
-                    } catch (error) {
-                      console.error('Error creating payment note:', error);
-                      toast.error('Error al crear la nota de pago');
+                    if (paymentType === 'partial' && partialPaymentAmount <= 0) {
+                      toast.error('El monto del pago debe ser mayor a 0');
+                      return;
                     }
-                  }}
-                  className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                    uploadingReceipt 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-primary-600 hover:bg-primary-700'
+
+                    if (paymentType === 'partial' && partialPaymentAmount > historicalValue) {
+                      toast.error('El monto del pago no puede ser mayor a la deuda actual');
+                      return;
+                    }
+
+                    // Validar que si es depósito bancario, se haya subido un comprobante
+                    if (paymentMethod === 'bank_deposit' && !receiptFile) {
+                      toast.error('Por favor sube un comprobante para el depósito bancario');
+                      return;
+                    }
+
+                    let receiptImageUrl = '';
+
+                    // Si es depósito bancario y hay archivo, subirlo a Firebase Storage
+                    if (paymentMethod === 'bank_deposit' && receiptFile) {
+                      setUploadingReceipt(true);
+                      try {
+                        const fileName = `receipts/${seller.id}_${Date.now()}_${receiptFile.name}`;
+                        const storageRef = ref(storage, fileName);
+                        await uploadBytes(storageRef, receiptFile);
+                        receiptImageUrl = await getDownloadURL(storageRef);
+                        toast.success('Comprobante subido exitosamente');
+                      } catch (error) {
+                        console.error('Error uploading receipt:', error);
+                        toast.error('Error al subir el comprobante');
+                        setUploadingReceipt(false);
+                        return;
+                      }
+                      setUploadingReceipt(false);
+                    }
+
+                    // Crear la nota de pago
+                    const paymentNoteData: any = {
+                      number: `PN-${Date.now()}`, // Generar número único
+                      sourceType: 'seller' as const,
+                      sellerId: seller.id,
+                      sellerName: seller.name,
+                      items: [{
+                        description: paymentType === 'full' ? 'Pago total de deuda' : `Pago parcial de deuda - $${partialPaymentAmount}`,
+                        amount: paymentAmount
+                      }],
+                      totalAmount: paymentAmount,
+                      status: 'pending' as const,
+                      notes: `Pago ${paymentType === 'full' ? 'total' : 'parcial'} de deuda del inventario - ${paymentMethod === 'cash' ? 'En efectivo' : 'Depósito bancario'}`,
+                      paymentMethod: paymentMethod
+                    };
+
+                    // Solo incluir receiptImageUrl si tiene un valor válido
+                    if (receiptImageUrl && receiptImageUrl.trim() !== '') {
+                      paymentNoteData.receiptImageUrl = receiptImageUrl;
+                    }
+
+                    await paymentNoteService.create(paymentNoteData);
+                    toast.success('Nota de pago creada exitosamente');
+                    setShowPaymentModal(false);
+                    setPaymentType('full');
+                    setPartialPaymentAmount(0);
+                    setPaymentMethod('cash');
+                    setReceiptFile(null);
+                    await loadData();
+                  } catch (error) {
+                    console.error('Error creating payment note:', error);
+                    toast.error('Error al crear la nota de pago');
+                  }
+                }}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-md ${uploadingReceipt
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-primary-600 hover:bg-primary-700'
                   }`}
-                  disabled={uploadingReceipt}
-                >
-                  {uploadingReceipt ? 'Subiendo comprobante...' : 'Crear Nota de Pago'}
-                </button>
-              </div>
+                disabled={uploadingReceipt}
+              >
+                {uploadingReceipt ? 'Subiendo comprobante...' : 'Crear Nota de Pago'}
+              </button>
             </div>
+          </div>
         </div>
       )}
 
@@ -3912,17 +3886,16 @@ const SellerDashboard: React.FC = () => {
                   <p><span className="font-medium">Número:</span> {viewingExitNote.number}</p>
                   <p><span className="font-medium">Fecha:</span> {new Date(viewingExitNote.date).toLocaleDateString()}</p>
                   <p><span className="font-medium">Cliente:</span> {viewingExitNote.customer}</p>
-                  <p><span className="font-medium">Estado:</span> 
-                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${
-                      viewingExitNote.status === 'delivered' 
+                  <p><span className="font-medium">Estado:</span>
+                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${viewingExitNote.status === 'delivered'
                         ? 'bg-green-100 text-green-800'
                         : viewingExitNote.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {viewingExitNote.status === 'delivered' ? 'Entregada' : 
-                       viewingExitNote.status === 'pending' ? 'Pendiente' : 
-                       viewingExitNote.status === 'received' ? 'Recibida' : 'Cancelada'}
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                      {viewingExitNote.status === 'delivered' ? 'Entregada' :
+                        viewingExitNote.status === 'pending' ? 'Pendiente' :
+                          viewingExitNote.status === 'received' ? 'Recibida' : 'Cancelada'}
                     </span>
                   </p>
                   {viewingExitNote.notes && (
@@ -3958,45 +3931,45 @@ const SellerDashboard: React.FC = () => {
                     {viewingExitNote.items.map((item, index) => {
                       console.log('Producto en nota de salida:', item);
                       return (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center overflow-hidden">
-                            {item.product && item.product.imageUrl ? (
-                              <img
-                                src={item.product.imageUrl}
-                                alt={item.product.name}
-                                className="w-full h-full object-cover cursor-pointer hover:opacity-75"
-                                onClick={() => setViewingProductImage(item.product.imageUrl || null)}
-                                onError={(e) => {
-                                  console.log('Error loading image:', item.product.imageUrl);
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            ) : null}
-                            {(!item.product || !item.product.imageUrl) && (
-                              <span className="text-xs text-gray-500">Sin imagen</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.product.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.product.sku}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.size || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.quantity}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${item.unitPrice.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          ${item.totalPrice.toFixed(2)}
-                        </td>
-                      </tr>
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center overflow-hidden">
+                              {item.product && item.product.imageUrl ? (
+                                <img
+                                  src={item.product.imageUrl}
+                                  alt={item.product.name}
+                                  className="w-full h-full object-cover cursor-pointer hover:opacity-75"
+                                  onClick={() => setViewingProductImage(item.product.imageUrl || null)}
+                                  onError={(e) => {
+                                    console.log('Error loading image:', item.product.imageUrl);
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              ) : null}
+                              {(!item.product || !item.product.imageUrl) && (
+                                <span className="text-xs text-gray-500">Sin imagen</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {item.product.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.product.sku}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.size || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.quantity}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${item.unitPrice.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${item.totalPrice.toFixed(2)}
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
@@ -4023,9 +3996,9 @@ const SellerDashboard: React.FC = () => {
               </button>
             </div>
             <div className="flex justify-center">
-              <img 
-                src={viewingProductImage} 
-                alt="Imagen del producto" 
+              <img
+                src={viewingProductImage}
+                alt="Imagen del producto"
                 className="max-w-full max-h-[70vh] object-contain rounded-lg"
               />
             </div>
@@ -4066,13 +4039,12 @@ const SellerDashboard: React.FC = () => {
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Estado:</span>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      viewingPaymentNote.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      viewingPaymentNote.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${viewingPaymentNote.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        viewingPaymentNote.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                      }`}>
                       {viewingPaymentNote.status === 'approved' ? 'Aprobada' :
-                       viewingPaymentNote.status === 'pending' ? 'Pendiente' : 'Rechazada'}
+                        viewingPaymentNote.status === 'pending' ? 'Pendiente' : 'Rechazada'}
                     </span>
                   </div>
                 </div>
@@ -4109,7 +4081,7 @@ const SellerDashboard: React.FC = () => {
                 <div className="bg-green-50 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-green-900 mb-2">Aprobación</h4>
                   <p className="text-sm text-green-700">
-                    Aprobada el {new Date(viewingPaymentNote.approvedAt).toLocaleDateString()} 
+                    Aprobada el {new Date(viewingPaymentNote.approvedAt).toLocaleDateString()}
                     {viewingPaymentNote.approvedBy && ` por ${viewingPaymentNote.approvedBy}`}
                   </p>
                 </div>
@@ -4145,17 +4117,16 @@ const SellerDashboard: React.FC = () => {
                   <p><span className="font-medium">Dirección:</span> {viewingShippingPackage.address}</p>
                   <p><span className="font-medium">Ciudad:</span> {viewingShippingPackage.city}</p>
                   <p><span className="font-medium">Teléfono:</span> {viewingShippingPackage.phone}</p>
-                  <p><span className="font-medium">Estado:</span> 
-                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${
-                      viewingShippingPackage.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      viewingShippingPackage.status === 'in-transit' ? 'bg-blue-100 text-blue-800' :
-                      viewingShippingPackage.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                  <p><span className="font-medium">Estado:</span>
+                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${viewingShippingPackage.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        viewingShippingPackage.status === 'in-transit' ? 'bg-blue-100 text-blue-800' :
+                          viewingShippingPackage.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                      }`}>
                       {viewingShippingPackage.status === 'pending' ? 'Pendiente' :
-                       viewingShippingPackage.status === 'in-transit' ? 'En Tránsito' :
-                       viewingShippingPackage.status === 'delivered' ? 'Entregado' :
-                       'Devuelto'}
+                        viewingShippingPackage.status === 'in-transit' ? 'En Tránsito' :
+                          viewingShippingPackage.status === 'delivered' ? 'En Camino' :
+                            'Devuelto'}
                     </span>
                   </p>
                 </div>
@@ -4262,7 +4233,7 @@ const SellerDashboard: React.FC = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -4305,13 +4276,12 @@ const SellerDashboard: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            item.status === 'stock' ? 'bg-green-100 text-green-800' :
-                            item.status === 'in-transit' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.status === 'stock' ? 'bg-green-100 text-green-800' :
+                              item.status === 'in-transit' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                            }`}>
                             {item.status === 'stock' ? 'En Stock' :
-                             item.status === 'in-transit' ? 'En Tránsito' : 'Entregado'}
+                              item.status === 'in-transit' ? 'En Tránsito' : 'En Camino'}
                           </span>
                         </td>
                       </tr>
@@ -4319,7 +4289,7 @@ const SellerDashboard: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-              
+
               {adminInventory.length === 0 && (
                 <div className="text-center py-8">
                   <Package className="mx-auto h-12 w-12 text-gray-400" />
@@ -4344,7 +4314,7 @@ const SellerDashboard: React.FC = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="space-y-4">
               {selectedProduct.product?.imageUrl && (
                 <div className="flex justify-center">
@@ -4355,50 +4325,49 @@ const SellerDashboard: React.FC = () => {
                   />
                 </div>
               )}
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Producto</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedProduct.product?.name || 'N/A'}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">SKU</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedProduct.product?.sku || 'N/A'}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Cantidad</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedProduct.quantity || 0}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Ubicación</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedProduct.location || 'N/A'}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Precio Unit.</label>
                   <p className="mt-1 text-sm text-gray-900">${selectedProduct.product?.salePrice1?.toFixed(2) || '0.00'}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Estado</label>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    selectedProduct.status === 'stock' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedProduct.status === 'stock' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
                     {selectedProduct.status === 'stock' ? 'En Stock' : 'Sin Stock'}
                   </span>
                 </div>
               </div>
-              
+
               {selectedProduct.product?.description && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Descripción</label>
                   <p className="mt-1 text-sm text-gray-900">{selectedProduct.product.description}</p>
                 </div>
               )}
-              
+
               <div className="border-t pt-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
@@ -4415,20 +4384,19 @@ const SellerDashboard: React.FC = () => {
                       (Máximo: {selectedProduct.quantity})
                     </span>
                   </div>
-                  
+
                   <button
                     onClick={handleAddToOrder}
                     disabled={orderQuantity > selectedProduct.quantity}
-                    className={`px-4 py-2 rounded-md font-medium ${
-                      orderQuantity > selectedProduct.quantity
+                    className={`px-4 py-2 rounded-md font-medium ${orderQuantity > selectedProduct.quantity
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-primary-600 text-white hover:bg-primary-700'
-                    }`}
+                      }`}
                   >
                     {orderQuantity > selectedProduct.quantity ? 'No Disponible' : 'Agregar al Pedido'}
                   </button>
                 </div>
-                
+
                 {orderQuantity > selectedProduct.quantity && (
                   <p className="mt-2 text-sm text-red-600">
                     Solo hay {selectedProduct.quantity} unidades disponibles en stock
@@ -4453,7 +4421,7 @@ const SellerDashboard: React.FC = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="max-h-[70vh] overflow-y-auto">
               {editingOrderItems.length === 0 ? (
                 <div className="text-center py-8">
@@ -4479,7 +4447,7 @@ const SellerDashboard: React.FC = () => {
                             <p className="text-sm text-gray-500">Precio: ${(item.product?.salePrice1 || 0).toFixed(2)}</p>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-4">
                           <div className="flex items-center space-x-2">
                             <button
@@ -4504,7 +4472,7 @@ const SellerDashboard: React.FC = () => {
                               +
                             </button>
                           </div>
-                          
+
                           <div className="text-right">
                             <p className="font-medium text-gray-900">
                               ${((item.product?.salePrice1 || 0) * item.orderQuantity).toFixed(2)}
@@ -4513,7 +4481,7 @@ const SellerDashboard: React.FC = () => {
                               Stock: {item.quantity}
                             </p>
                           </div>
-                          
+
                           <button
                             onClick={() => removeOrderItem(item.id)}
                             className="text-red-600 hover:text-red-800"
@@ -4524,7 +4492,7 @@ const SellerDashboard: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  
+
                   {/* Resumen del Pedido */}
                   <div className="bg-primary-50 rounded-lg p-4">
                     <div className="flex justify-between items-center">
@@ -4538,7 +4506,7 @@ const SellerDashboard: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-primary-600">
-                          ${editingOrderItems.reduce((total, item) => 
+                          ${editingOrderItems.reduce((total, item) =>
                             total + ((item.product?.salePrice1 || 0) * item.orderQuantity), 0
                           ).toFixed(2)}
                         </p>
@@ -4548,7 +4516,7 @@ const SellerDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="flex justify-end space-x-3 mt-4">
               <button
                 onClick={() => setShowOrderFile(false)}
@@ -4591,7 +4559,7 @@ const SellerDashboard: React.FC = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="space-y-6 max-h-[60vh] overflow-y-auto">
               {/* Información del Pedido */}
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -4601,16 +4569,15 @@ const SellerDashboard: React.FC = () => {
                     <span className="font-medium">ID:</span> {selectedOrderDetails.id}
                   </div>
                   <div>
-                    <span className="font-medium">Estado:</span> 
-                    <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      selectedOrderDetails.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      selectedOrderDetails.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      selectedOrderDetails.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
+                    <span className="font-medium">Estado:</span>
+                    <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedOrderDetails.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedOrderDetails.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          selectedOrderDetails.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-blue-100 text-blue-800'
+                      }`}>
                       {selectedOrderDetails.status === 'pending' ? 'Pendiente' :
-                       selectedOrderDetails.status === 'approved' ? 'Aprobado' :
-                       selectedOrderDetails.status === 'rejected' ? 'Rechazado' : 'Completado'}
+                        selectedOrderDetails.status === 'approved' ? 'Aprobado' :
+                          selectedOrderDetails.status === 'rejected' ? 'Rechazado' : 'Completado'}
                     </span>
                   </div>
                   <div>
@@ -4655,9 +4622,8 @@ const SellerDashboard: React.FC = () => {
                             <span>Cantidad: {item.quantity}</span>
                             <span>Precio: ${item.unitPrice.toFixed(2)}</span>
                             <span>Ubicación: {item.location}</span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              item.status === 'stock' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.status === 'stock' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
                               {item.status === 'stock' ? 'En Stock' : 'Sin Stock'}
                             </span>
                           </div>
@@ -4676,7 +4642,7 @@ const SellerDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="flex justify-end mt-4">
               <button
                 onClick={() => setShowOrderDetailsModal(false)}
@@ -4702,7 +4668,7 @@ const SellerDashboard: React.FC = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="space-y-6 max-h-[70vh] overflow-y-auto">
               {/* Información del Pedido Original */}
               <div className="bg-gray-50 p-4 rounded-lg">
@@ -4712,16 +4678,15 @@ const SellerDashboard: React.FC = () => {
                     <span className="font-medium">ID:</span> {selectedCounterOrder.id}
                   </div>
                   <div>
-                    <span className="font-medium">Estado:</span> 
-                    <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      selectedCounterOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      selectedCounterOrder.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      selectedCounterOrder.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
+                    <span className="font-medium">Estado:</span>
+                    <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedCounterOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedCounterOrder.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          selectedCounterOrder.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-blue-100 text-blue-800'
+                      }`}>
                       {selectedCounterOrder.status === 'pending' ? 'Pendiente' :
-                       selectedCounterOrder.status === 'approved' ? 'Aprobado' :
-                       selectedCounterOrder.status === 'rejected' ? 'Rechazado' : 'Completado'}
+                        selectedCounterOrder.status === 'approved' ? 'Aprobado' :
+                          selectedCounterOrder.status === 'rejected' ? 'Rechazado' : 'Completado'}
                     </span>
                   </div>
                   <div>
@@ -4749,7 +4714,7 @@ const SellerDashboard: React.FC = () => {
                         <strong>Confirmado:</strong> El administrador ha revisado y confirmado los siguientes productos para el envío.
                       </p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       {selectedCounterOrder.approvedItems.map((item, index) => (
                         <div key={index} className="bg-white border rounded p-2">
@@ -4788,13 +4753,13 @@ const SellerDashboard: React.FC = () => {
                     <h4 className="font-medium text-gray-900 mb-3">Productos Solicitados - Pendientes de Confirmación</h4>
                     <div className="bg-yellow-50 p-4 rounded-lg mb-4">
                       <p className="text-sm text-yellow-800">
-                        <strong>Nota:</strong> Esta contra orden muestra los productos que solicitaste. 
-                        El administrador aún no ha confirmado cuáles están disponibles para envío. 
-                        Una vez que el administrador revise y confirme la disponibilidad, 
+                        <strong>Nota:</strong> Esta contra orden muestra los productos que solicitaste.
+                        El administrador aún no ha confirmado cuáles están disponibles para envío.
+                        Una vez que el administrador revise y confirme la disponibilidad,
                         se actualizará con los productos que realmente se enviarán.
                       </p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       {selectedCounterOrder.items.map((item, index) => (
                         <div key={index} className="bg-white border rounded p-2">
@@ -4827,20 +4792,18 @@ const SellerDashboard: React.FC = () => {
               </div>
 
               {/* Resumen de la Contra Orden */}
-              <div className={`p-4 rounded-lg ${
-                selectedCounterOrder.approvedItems && selectedCounterOrder.approvedItems.length > 0 
-                  ? 'bg-green-50' 
-                  : selectedCounterOrder.status === 'rejected' 
-                    ? 'bg-red-50' 
+              <div className={`p-4 rounded-lg ${selectedCounterOrder.approvedItems && selectedCounterOrder.approvedItems.length > 0
+                  ? 'bg-green-50'
+                  : selectedCounterOrder.status === 'rejected'
+                    ? 'bg-red-50'
                     : 'bg-yellow-50'
-              }`}>
-                <h4 className={`font-medium mb-2 ${
-                  selectedCounterOrder.approvedItems && selectedCounterOrder.approvedItems.length > 0 
-                    ? 'text-green-900' 
-                    : selectedCounterOrder.status === 'rejected' 
-                      ? 'text-red-900' 
-                      : 'text-yellow-900'
                 }`}>
+                <h4 className={`font-medium mb-2 ${selectedCounterOrder.approvedItems && selectedCounterOrder.approvedItems.length > 0
+                    ? 'text-green-900'
+                    : selectedCounterOrder.status === 'rejected'
+                      ? 'text-red-900'
+                      : 'text-yellow-900'
+                  }`}>
                   Resumen del Pedido
                 </h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -4867,16 +4830,15 @@ const SellerDashboard: React.FC = () => {
                     </>
                   )}
                   <div>
-                    <span className="font-medium">Estado:</span> 
-                    <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      selectedCounterOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      selectedCounterOrder.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      selectedCounterOrder.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
+                    <span className="font-medium">Estado:</span>
+                    <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedCounterOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        selectedCounterOrder.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          selectedCounterOrder.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-blue-100 text-blue-800'
+                      }`}>
                       {selectedCounterOrder.status === 'pending' ? 'Pendiente de Confirmación' :
-                       selectedCounterOrder.status === 'approved' ? 'Confirmado' :
-                       selectedCounterOrder.status === 'rejected' ? 'Rechazado' : 'Completado'}
+                        selectedCounterOrder.status === 'approved' ? 'Confirmado' :
+                          selectedCounterOrder.status === 'rejected' ? 'Rechazado' : 'Completado'}
                     </span>
                   </div>
                 </div>
@@ -4890,7 +4852,7 @@ const SellerDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="flex justify-end mt-4">
               <button
                 onClick={() => setShowCounterOrderModal(false)}
@@ -4916,15 +4878,15 @@ const SellerDashboard: React.FC = () => {
                 <X className="h-6 w-6" />
               </button>
             </div>
-            
+
             <div className="space-y-6 max-h-[70vh] overflow-y-auto">
               <div className="bg-yellow-50 p-4 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  <strong>Nota:</strong> Solo puedes editar pedidos que están pendientes de confirmación. 
+                  <strong>Nota:</strong> Solo puedes editar pedidos que están pendientes de confirmación.
                   Una vez que el administrador confirme el pedido, ya no se podrá modificar.
                 </p>
               </div>
-              
+
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Productos del Pedido</h4>
                 <div className="space-y-3">
@@ -4954,7 +4916,7 @@ const SellerDashboard: React.FC = () => {
                   ))}
                 </div>
               </div>
-              
+
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h4 className="font-medium text-blue-900 mb-2">Información del Pedido</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -4968,7 +4930,7 @@ const SellerDashboard: React.FC = () => {
                     <span className="font-medium">Cantidad Total:</span> {editingOrder.totalQuantity}
                   </div>
                   <div>
-                    <span className="font-medium">Estado:</span> 
+                    <span className="font-medium">Estado:</span>
                     <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                       Pendiente
                     </span>
@@ -4976,7 +4938,7 @@ const SellerDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-3 mt-4">
               <button
                 onClick={() => setShowEditOrderModal(false)}

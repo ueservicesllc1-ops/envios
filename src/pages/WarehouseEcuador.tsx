@@ -930,7 +930,7 @@ const WarehouseEcuador: React.FC = () => {
                                     }`}>
                                     {seller.status === 'stock' ? 'En Stock' :
                                       seller.status === 'in-transit' ? 'En Tránsito' :
-                                        'Entregado'}
+                                        'En Camino'}
                                   </span>
                                 </div>
                               ))}

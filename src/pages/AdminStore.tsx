@@ -706,7 +706,7 @@ const OrdersTable = ({
                                             order.status === 'processing' ? 'Procesando' :
                                                 order.status === 'shipped' ? 'En Camino' :
                                                     order.status === 'arrived_ecuador' ? 'Bodega Ecuador' :
-                                                        order.status === 'delivered' ? 'Entregado' :
+                                                        order.status === 'delivered' ? 'En Camino' :
                                                             order.status === 'cancelled' ? 'Cancelado' : order.status}
                                 </span>
                             </td>

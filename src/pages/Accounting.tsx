@@ -41,22 +41,22 @@ const Accounting: React.FC = () => {
   const loadEntries = async () => {
     try {
       setLoading(true);
-      
+
       // Cargar datos reales desde Firebase
       let shippingData: ShippingExpense[] = [];
       let shippingPackages: ShippingPackage[] = [];
-      
+
       try {
         // Cargar directamente desde paquetería para obtener solo paquetes activos
         shippingPackages = await shippingService.getAll();
         console.log('Paquetería desde sección:', shippingPackages.length, 'paquetes');
-        
+
         // Filtrar solo paquetes con estados válidos
-        const activePackages = shippingPackages.filter(pkg => 
+        const activePackages = shippingPackages.filter(pkg =>
           ['pending', 'in-transit', 'delivered', 'returned'].includes(pkg.status)
         );
         console.log('Paquetes activos:', activePackages.length, 'paquetes');
-        
+
         // Convertir paquetes activos a gastos para la contabilidad
         shippingData = activePackages.map(pkg => ({
           id: pkg.id,
@@ -69,12 +69,12 @@ const Accounting: React.FC = () => {
           notes: pkg.notes,
           createdAt: pkg.shippingDate
         }));
-        
+
       } catch (error) {
         console.error('Error cargando paquetería:', error);
         toast.error('Error al cargar datos de paquetería');
       }
-      
+
       const [expensesData, entryNotesData, exitNotesData, productsData, onlineSalesData] = await Promise.all([
         entryNoteAccountingService.getAll(),
         entryNoteService.getAll(),
@@ -82,9 +82,9 @@ const Accounting: React.FC = () => {
         productService.getAll(),
         onlineSaleAccountingService.getAll()
       ]);
-      
+
       setProducts(productsData);
-      
+
       // Calcular ventas basándose solo en las notas de salida reales (no eliminadas)
       const salesData = exitNotesData.map(note => ({
         id: note.id,
@@ -96,21 +96,21 @@ const Accounting: React.FC = () => {
         createdAt: note.createdAt,
         notes: `Venta a vendedor - ${note.seller}`
       }));
-      
+
       setShippingExpenses(shippingData);
       setExitNoteSales(salesData);
       setOnlineSales(onlineSalesData);
       setEntryNoteExpenses(expensesData);
-      
+
       // Calcular gastos de compras = suma de todas las notas de entrada
       const totalPurchaseExpenses = entryNotesData.reduce(
         (sum, note) => sum + (note.totalCost ?? 0),
         0
       );
-      
+
       // Calcular ventas a vendedores = suma de todas las notas de salida
       const totalSalesToSellers = exitNotesData.reduce((sum, note) => sum + note.totalPrice, 0);
-      
+
       // Calcular costo histórico total (suma de todos los costos de productos en notas de entrada)
       let totalHistoricalCostValue = 0;
       entryNotesData.forEach(note => {
@@ -120,7 +120,7 @@ const Accounting: React.FC = () => {
           totalHistoricalCostValue += itemCost * itemQuantity;
         });
       });
-      
+
       // Calcular ganancia histórica (diferencia entre total precios 1 y costos históricos)
       let totalSalePrice1Value = 0;
       entryNotesData.forEach(note => {
@@ -133,21 +133,21 @@ const Accounting: React.FC = () => {
           }
         });
       });
-      
+
       // Calcular gastos de paquetería
       console.log('Datos de paquetería cargados:', shippingData.length);
       console.log('Datos de paquetería:', shippingData);
       const shippingTotal = shippingData.reduce((sum, expense) => sum + expense.cost, 0);
-      
+
       // Ganancia histórica = Total Precios 1 - Costos Históricos - Gastos de Paquetería
       const totalHistoricalProfitValue = totalSalePrice1Value - totalHistoricalCostValue - shippingTotal;
       console.log('Total gastos de paquetería:', shippingTotal);
-      
+
       // Calcular totales
       const salesTotal = salesData.reduce((sum, sale) => sum + sale.totalValue, 0);
       const expensesTotal = expensesData.reduce((sum, expense) => sum + expense.totalCost, 0);
       const onlineSalesTotal = onlineSalesData.reduce((sum, sale) => sum + sale.totalValue, 0);
-      
+
       setTotalShippingCost(shippingTotal);
       setTotalSales(totalSalesToSellers); // Usar datos reales de notas de salida
       setTotalOnlineSales(onlineSalesTotal); // Ventas en línea
@@ -155,13 +155,13 @@ const Accounting: React.FC = () => {
       setTotalHistoricalCost(totalHistoricalCostValue);
       setTotalHistoricalProfit(totalHistoricalProfitValue);
       setTotalSalePrice1(totalSalePrice1Value);
-      
+
       // Debug: Mostrar valores calculados
       console.log('Ventas a Vendedores:', totalSalesToSellers);
       console.log('Gastos de Compras:', totalPurchaseExpenses);
       console.log('Gastos de Paquetería:', shippingTotal);
       console.log('Balance calculado:', totalSalesToSellers - totalPurchaseExpenses - shippingTotal);
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error loading accounting data:', error);
@@ -206,9 +206,9 @@ const Accounting: React.FC = () => {
 
   const filteredEntries = entries.filter(entry => {
     const matchesSearch = entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         entry.account.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         entry.reference.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      entry.account.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.reference.toLowerCase().includes(searchTerm.toLowerCase());
+
     if (filterBy === 'all') return matchesSearch;
     return matchesSearch && entry.type === filterBy;
   });
@@ -233,7 +233,7 @@ const Accounting: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Contabilidad</h1>
           <p className="text-gray-600">Inversiones y pagos de vendedores</p>
         </div>
-        <button 
+        <button
           onClick={() => setShowModal(true)}
           className="btn-primary flex items-center"
         >
@@ -244,56 +244,56 @@ const Accounting: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
-            <div className="card">
-              <div className="flex items-center">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Ventas a Vendedores</p>
-                  <p className="text-2xl font-bold text-gray-900">${totalSales.toLocaleString()}</p>
-                </div>
-              </div>
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-green-600" />
             </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Ventas a Vendedores</p>
+              <p className="text-2xl font-bold text-gray-900">${totalSales.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
 
-            <div className="card">
-              <div className="flex items-center">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Ventas en Línea</p>
-                  <p className="text-2xl font-bold text-gray-900">${totalOnlineSales.toLocaleString()}</p>
-                </div>
-              </div>
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-purple-600" />
             </div>
-        
-            <div className="card">
-              <div className="flex items-center">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <TrendingDown className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Gastos de Compras</p>
-                  <p className="text-2xl font-bold text-gray-900">${totalExpenses.toLocaleString()}</p>
-                </div>
-              </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Ventas en Línea</p>
+              <p className="text-2xl font-bold text-gray-900">${totalOnlineSales.toLocaleString()}</p>
             </div>
-        
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="flex items-center">
+            <div className="p-3 bg-red-100 rounded-lg">
+              <TrendingDown className="h-6 w-6 text-red-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Gastos de Compras</p>
+              <p className="text-2xl font-bold text-gray-900">${totalExpenses.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-blue-100 rounded-lg">
               <DollarSign className="h-6 w-6 text-blue-600" />
             </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Balance Total</p>
-                  <p className={`text-2xl font-bold ${(totalSales + totalOnlineSales - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${(totalSales + totalOnlineSales - totalExpenses).toLocaleString()}
-                  </p>
-                </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Balance Total</p>
+              <p className={`text-2xl font-bold ${(totalSales + totalOnlineSales - totalExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ${(totalSales + totalOnlineSales - totalExpenses).toLocaleString()}
+              </p>
+            </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-orange-100 rounded-lg">
@@ -306,7 +306,7 @@ const Accounting: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-purple-100 rounded-lg">
@@ -318,7 +318,7 @@ const Accounting: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-indigo-100 rounded-lg">
@@ -331,7 +331,7 @@ const Accounting: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-emerald-100 rounded-lg">
@@ -346,7 +346,7 @@ const Accounting: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="card">
           <div className="flex items-center">
             <div className="p-3 bg-cyan-100 rounded-lg">
@@ -373,7 +373,7 @@ const Accounting: React.FC = () => {
             <p className="text-2xl font-bold text-green-600">${totalSales.toLocaleString()}</p>
           </div>
         </div>
-        
+
         {exitNoteSales.length === 0 ? (
           <div className="text-center py-8">
             <TrendingUp className="mx-auto h-12 w-12 text-gray-400" />
@@ -408,15 +408,14 @@ const Accounting: React.FC = () => {
                       <span className="text-sm text-gray-900">{new Date(sale.date).toLocaleDateString()}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        sale.status === 'received' 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sale.status === 'received'
+                          ? 'bg-green-100 text-green-800'
                           : sale.status === 'cancelled'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {sale.status === 'received' ? 'Recibido' : 
-                         sale.status === 'cancelled' ? 'Cancelado' : 'Pendiente'}
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {sale.status === 'received' ? 'Recibido' :
+                          sale.status === 'cancelled' ? 'Cancelado' : 'Pendiente'}
                       </span>
                     </td>
                   </tr>
@@ -439,7 +438,7 @@ const Accounting: React.FC = () => {
             <p className="text-2xl font-bold text-purple-600">${totalOnlineSales.toLocaleString()}</p>
           </div>
         </div>
-        
+
         {onlineSales.length === 0 ? (
           <div className="text-center py-8">
             <TrendingUp className="mx-auto h-12 w-12 text-gray-400" />
@@ -474,19 +473,18 @@ const Accounting: React.FC = () => {
                       <span className="text-sm text-gray-900">{new Date(sale.date).toLocaleDateString()}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        sale.status === 'delivered' 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sale.status === 'delivered'
+                          ? 'bg-green-100 text-green-800'
                           : sale.status === 'cancelled'
-                          ? 'bg-red-100 text-red-800'
-                          : sale.status === 'confirmed'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {sale.status === 'delivered' ? 'Entregado' : 
-                         sale.status === 'cancelled' ? 'Cancelado' :
-                         sale.status === 'confirmed' ? 'Confirmado' :
-                         sale.status === 'shipped' ? 'Enviado' : 'Pendiente'}
+                            ? 'bg-red-100 text-red-800'
+                            : sale.status === 'confirmed'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {sale.status === 'delivered' ? 'En Camino' :
+                          sale.status === 'cancelled' ? 'Cancelado' :
+                            sale.status === 'confirmed' ? 'Confirmado' :
+                              sale.status === 'shipped' ? 'Enviado' : 'Pendiente'}
                       </span>
                     </td>
                   </tr>
@@ -509,7 +507,7 @@ const Accounting: React.FC = () => {
             <p className="text-2xl font-bold text-orange-600">${totalShippingCost.toLocaleString()}</p>
           </div>
         </div>
-        
+
         {shippingExpenses.length === 0 ? (
           <div className="text-center py-8">
             <Truck className="mx-auto h-12 w-12 text-gray-400" />
@@ -548,15 +546,14 @@ const Accounting: React.FC = () => {
                       <span className="text-sm text-gray-900">{new Date(expense.date).toLocaleDateString()}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        expense.status === 'delivered' 
-                          ? 'bg-green-100 text-green-800' 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${expense.status === 'delivered'
+                          ? 'bg-green-100 text-green-800'
                           : expense.status === 'returned'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {expense.status === 'delivered' ? 'Entregado' : 
-                         expense.status === 'returned' ? 'Devuelto' : 'Pendiente'}
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {expense.status === 'delivered' ? 'En Camino' :
+                          expense.status === 'returned' ? 'Devuelto' : 'Pendiente'}
                       </span>
                     </td>
                   </tr>
@@ -709,7 +706,7 @@ const Accounting: React.FC = () => {
                   <span className="text-sm text-gray-600">{getTypeText(type)}:</span>
                   <div className="flex items-center space-x-2">
                     <div className="w-16 bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className={`h-2 rounded-full ${getTypeColor(type).split(' ')[1]}`}
                         style={{ width: `${percentage}%` }}
                       ></div>
