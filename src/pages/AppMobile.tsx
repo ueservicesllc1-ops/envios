@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Truck, Warehouse, ShoppingBag, MapPin, Users, Lock, ChevronRight, X } from 'lucide-react';
+import { Package, Truck, Warehouse, ShoppingBag, MapPin, Users, Lock, ChevronRight, X, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sellerService } from '../services/sellerService';
 import { Seller } from '../types';
@@ -210,7 +210,26 @@ const AppMobile: React.FC = () => {
                         </div>
                     </button>
 
-                    {/* Botón 5: Mi Dashboard (NUEVO) - Ocupa ancho completo */}
+                    {/* Botón 5: Vilma Uchubanda (NUEVO) */}
+                    <button
+                        className="col-span-2 bg-gradient-to-r from-pink-500 to-pink-700 rounded-2xl shadow-lg p-4 active:scale-95 transform transition-all duration-150 hover:shadow-xl flex items-center justify-between group"
+                        onClick={() => navigate('/app/vilma')}
+                    >
+                        <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                                <Star className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="text-white font-bold text-lg">Vilma Uchubanda</h3>
+                                <p className="text-pink-200 text-xs">Inventario y Cuentas</p>
+                            </div>
+                        </div>
+                        <div className="bg-white/20 p-2 rounded-full group-hover:bg-white/30 transition-colors">
+                            <ChevronRight className="w-6 h-6 text-white" />
+                        </div>
+                    </button>
+
+                    {/* Botón 6: Mi Dashboard */}
                     <button
                         className="col-span-2 bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl shadow-lg p-4 active:scale-95 transform transition-all duration-150 hover:shadow-xl flex items-center justify-between group"
                         onClick={handleOpenLogin}

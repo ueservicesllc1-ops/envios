@@ -12,7 +12,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { ExitNote } from '../types';
+import { ExitNote, ExitNoteItem } from '../types';
 import { exitNoteAccountingService } from './exitNoteAccountingService';
 import { sellerInventoryService } from './sellerInventoryService';
 import { productService } from './productService';
@@ -404,6 +404,74 @@ export const exitNoteService = {
     } catch (error) {
       console.error('Error changing seller:', error);
       toast.error('Error al cambiar el vendedor');
+      throw error;
+    }
+  },
+
+  // Transferir productos de Bodega Ecuador a un Vendedor
+  async createTransferFromBodegaEcuador(
+    sellerId: string,
+    items: ExitNoteItem[],
+    notes?: string
+  ): Promise<string> {
+    try {
+      // 1. Obtener datos del vendedor
+      const { sellerService } = await import('./sellerService');
+      const seller = await sellerService.getById(sellerId);
+      if (!seller) throw new Error('Vendedor no encontrado');
+
+      // 2. Preparar la nota de salida
+      const exitNoteData: Omit<ExitNote, 'id'> = {
+        number: `NS-ECU-${Date.now()}`, // Prefijo importante para identificar origen
+        date: new Date(),
+        sellerId: seller.id,
+        seller: seller.name,
+        customer: seller.name,
+        items: items,
+        totalPrice: items.reduce((sum, item) => sum + item.totalPrice, 0),
+        status: 'delivered', // Asumimos entregado para que aparezca en el inventario del vendedor inmediatamente
+        notes: notes || 'Transferencia directa desde Bodega Ecuador',
+        createdAt: new Date(),
+        createdBy: 'system'
+      };
+
+      // 3. Crear la nota en Firestore
+      // Usamos addDoc directamente aquí para evitar la lógica automática de create() que podría interferir o duplicar
+      // aunque create() maneja contabilidad, queremos eso.
+      // create() NO resta stock automáticamente, así que es seguro usarlo.
+      const noteId = await this.create(exitNoteData);
+
+      // 4. Actualizar inventarios
+      const { inventoryService } = await import('./inventoryService');
+
+      for (const item of items) {
+        // A. Restar de Bodega Ecuador
+        // Usamos updateStockAfterExit especificando la ubicación 'Bodega Ecuador'
+        await inventoryService.updateStockAfterExit(
+          item.productId,
+          item.quantity,
+          noteId,
+          seller.id,
+          'Bodega Ecuador', // Ubicación explícita
+          true // Silent
+        );
+
+        // B. Sumar al Vendedor
+        // Solo si la nota se marca como 'delivered' (que lo estamos haciendo)
+        await sellerInventoryService.addToSellerInventory(
+          seller.id,
+          item.productId,
+          item.product,
+          item.quantity,
+          item.unitPrice
+        );
+      }
+
+      toast.success(`Transferencia de Bodega Ecuador a ${seller.name} completada`);
+      return noteId;
+    } catch (error) {
+      console.error('Error creating transfer from Bodega Ecuador:', error);
+      toast.error('Error al procesar la transferencia desde Bodega Ecuador');
       throw error;
     }
   }

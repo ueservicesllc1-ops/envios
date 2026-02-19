@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User, Edit, Download, Flag } from 'lucide-react';
+import { Plus, Search, Eye, Truck, CheckCircle, XCircle, X, Package, Scan, User, Edit, Download, Flag, RotateCcw } from 'lucide-react';
 import { ExitNote, Product, Seller } from '../types';
 import { exitNoteService } from '../services/exitNoteService';
 import { productService } from '../services/productService';
@@ -640,6 +640,60 @@ const ExitNotes: React.FC = () => {
     const totalWeightInGrams = exitNoteItems.reduce((sum, item) => sum + (item.weight * item.quantity), 0);
 
     return { exitNoteItems, totalPrice, totalWeightInGrams };
+  };
+
+
+
+
+
+  const handleSmartRegenerateNote = async (note: ExitNote) => {
+    if (!window.confirm(`¿REGENERAR FALTANTES en Bodega Ecuador?\n\nEsta acción verificará si faltan productos de esta nota en la bodega y SOLO agregará la diferencia.\n\nEjemplo: Si la nota tiene 10 y en bodega hay 6, solo agregará 4.`)) {
+      return;
+    }
+
+    const toastId = toast.loading('Verificando y regenerando faltantes...');
+    let restoredCount = 0;
+    let itemsRestored = 0;
+
+    try {
+      for (const item of note.items) {
+        // 1. Obtener stock actual en Bodega Ecuador
+        const currentInventory = await inventoryService.getByProductIdAndLocation(item.productId, 'Bodega Ecuador');
+        const currentQty = currentInventory ? currentInventory.quantity : 0;
+
+        // 2. Calcular faltante
+        // La nota dice que deberían haber X unidades transferidas.
+        // Si el usuario borró productos, currentQty será menor a item.quantity (suponiendo que no hubo ventas).
+        // Si currentQty >= item.quantity, asumimos que está completo y no hacemos nada.
+
+        const missing = item.quantity - currentQty;
+
+        if (missing > 0) {
+          // 3. Agregar solo lo que falta
+          await inventoryService.addStock(
+            item.productId,
+            missing,
+            item.product?.cost || 0,
+            item.product?.salePrice1 || 0,
+            'Bodega Ecuador'
+          );
+          restoredCount += missing;
+          itemsRestored++;
+          console.log(`Regenerado: ${item.product.name} - Faltaban: ${missing}`);
+        }
+      }
+
+      if (itemsRestored > 0) {
+        toast.success(`Se restauraron ${restoredCount} unidades de ${itemsRestored} productos faltantes.`, { id: toastId });
+      } else {
+        toast.success('Todos los productos de esta nota ya están en bodega. No se hicieron cambios.', { id: toastId });
+      }
+
+      loadNotes(); // Refrescar datos
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al regenerar', { id: toastId });
+    }
   };
 
   const handleSaveTemporary = async () => {
@@ -1907,6 +1961,15 @@ const ExitNotes: React.FC = () => {
                           <XCircle className="h-4 w-4" />
                         </button>
                       )}
+                      {isAdmin && (note.number.includes('ECU') || note.seller === 'Bodega Ecuador' || note.number.startsWith('NS-ECU')) && (
+                        <button
+                          onClick={() => handleSmartRegenerateNote(note)}
+                          className="p-1 text-gray-400 hover:text-purple-600"
+                          title="Regenerar Faltantes en Bodega Ecuador"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDelete(note.id)}
                         className="p-1 text-gray-400 hover:text-red-600"
@@ -2567,18 +2630,21 @@ const ExitNotes: React.FC = () => {
                           </td>
                           <td className="px-4 py-4">
                             {isAdmin && viewingNote.status !== 'cancelled' ? (
-                              <button
-                                onClick={() => {
-                                  setSelectedProductToMigrate({ item, note: viewingNote });
-                                  setMigrateToSellerId('');
-                                  setShowMigrateProductModal(true);
-                                }}
-                                className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1"
-                                title="Migrar producto a otro vendedor"
-                              >
-                                <User className="h-3 w-3" />
-                                Migrar
-                              </button>
+                              <div className="flex flex-col space-y-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedProductToMigrate({ item, note: viewingNote });
+                                    setMigrateToSellerId('');
+                                    setShowMigrateProductModal(true);
+                                  }}
+                                  className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1"
+                                  title="Migrar producto a otro vendedor"
+                                >
+                                  <User className="h-3 w-3" />
+                                  Migrar
+                                </button>
+
+                              </div>
                             ) : (
                               <span className="text-xs text-gray-400">—</span>
                             )}

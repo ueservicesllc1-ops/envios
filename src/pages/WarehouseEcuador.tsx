@@ -149,10 +149,26 @@ const WarehouseEcuador: React.FC = () => {
     }
   };
 
-  const handleOpenExitNoteModal = async () => {
+  const handleOpenExitNoteModal = async (initialProduct?: Product) => {
     setShowExitNoteModal(true);
     setExitNoteFormData({ sellerId: '', notes: '' });
-    setExitNoteItems([]);
+
+    if (initialProduct) {
+      const availableStock = getEcuadorStock(initialProduct.id);
+      if (availableStock > 0) {
+        setExitNoteItems([{
+          productId: initialProduct.id,
+          quantity: 1,
+          unitPrice: initialProduct.salePrice1
+        }]);
+      } else {
+        toast.error(`No hay stock disponible para ${initialProduct.name}`);
+        setExitNoteItems([]);
+      }
+    } else {
+      setExitNoteItems([]);
+    }
+
     setExitNoteSkuSearch('');
     try {
       const sellersData = await sellerService.getAll();
@@ -367,6 +383,8 @@ const WarehouseEcuador: React.FC = () => {
       // Actualizar el estado local con el inventario actualizado
       setInventory(currentInventory);
 
+      setInventory(currentInventory);
+
       // Construir items de la nota de salida
       const exitNoteItemsData = await Promise.all(exitNoteItems.map(async (item) => {
         const product = await productService.getById(item.productId);
@@ -385,83 +403,12 @@ const WarehouseEcuador: React.FC = () => {
         };
       }));
 
-      const totalPrice = exitNoteItemsData.reduce((sum, item) => sum + item.totalPrice, 0);
-
-      // Crear la nota de salida con status 'delivered' directamente
-      const exitNoteData: Omit<ExitNote, 'id'> = {
-        number: `NS-ECU-${Date.now()}`,
-        date: new Date(),
-        sellerId: selectedSeller.id,
-        seller: selectedSeller.name,
-        customer: selectedSeller.name,
-        items: exitNoteItemsData,
-        totalPrice,
-        status: 'delivered', // Directamente entregada
-        notes: `Nota de salida desde Bodega Ecuador${exitNoteFormData.notes ? ` - ${exitNoteFormData.notes}` : ''}`,
-        createdAt: new Date(),
-        createdBy: 'admin',
-        receivedAt: new Date() // Marcar como recibida inmediatamente
-      };
-
-      const createdExitNoteId = await exitNoteService.create(exitNoteData);
-
-      // Reducir stock de Bodega Ecuador y agregar al inventario del vendedor
-      // Usar el inventario actualizado que recargamos antes de validar
-      for (const item of exitNoteItemsData) {
-        // 1. Obtener el item de inventario actualizado de la base de datos
-        const currentInventoryUpdated = await inventoryService.getAll();
-        const ecuadorInventoryItem = currentInventoryUpdated.find(inv =>
-          inv.productId === item.productId &&
-          (inv.location?.toLowerCase().includes('ecuador') || inv.location === 'Ecuador')
-        );
-
-        if (!ecuadorInventoryItem) {
-          throw new Error(`Producto ${item.product.name} no encontrado en Bodega Ecuador`);
-        }
-
-        // Validar stock ANTES de restar
-        if (ecuadorInventoryItem.quantity < item.quantity) {
-          throw new Error(`Stock insuficiente para ${item.product.name}. Disponible: ${ecuadorInventoryItem.quantity}, Solicitado: ${item.quantity}`);
-        }
-
-        const newQuantity = ecuadorInventoryItem.quantity - item.quantity;
-
-        await inventoryService.update(ecuadorInventoryItem.id, {
-          quantity: newQuantity,
-          totalCost: ecuadorInventoryItem.cost * newQuantity,
-          totalPrice: ecuadorInventoryItem.unitPrice * newQuantity,
-          totalValue: ecuadorInventoryItem.cost * newQuantity
-        });
-
-        // 2. Agregar al inventario del vendedor con status 'delivered' directamente
-        const existingItems = await sellerInventoryService.getBySeller(selectedSeller.id);
-        const existingItem = existingItems.find(si => si.productId === item.productId);
-
-        if (existingItem) {
-          // Actualizar cantidad existente
-          const newQuantity = existingItem.quantity + item.quantity;
-          const newTotalValue = item.unitPrice * newQuantity;
-          await sellerInventoryService.update(existingItem.id, {
-            quantity: newQuantity,
-            unitPrice: item.unitPrice,
-            totalValue: newTotalValue,
-            status: 'delivered' // Marcar como entregado directamente
-          });
-        } else {
-          // Crear nuevo item con status 'delivered' directamente
-          await sellerInventoryService.create({
-            sellerId: selectedSeller.id,
-            productId: item.productId,
-            product: item.product,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalValue: item.unitPrice * item.quantity,
-            status: 'delivered' // Estado entregado directamente
-          });
-        }
-      }
-
-      toast.success(`Nota de salida Ecuador creada exitosamente. Inventario del vendedor actualizado.`);
+      // Usar la nueva función de servicio para la transferencia
+      await exitNoteService.createTransferFromBodegaEcuador(
+        selectedSeller.id,
+        exitNoteItemsData,
+        `Nota de salida desde Bodega Ecuador${exitNoteFormData.notes ? ` - ${exitNoteFormData.notes}` : ''}`
+      );
 
       // Recargar datos
       await loadData();
@@ -473,7 +420,8 @@ const WarehouseEcuador: React.FC = () => {
       setExitNoteSkuSearch('');
     } catch (error) {
       console.error('Error creating Ecuador exit note:', error);
-      toast.error('Error al crear la nota de salida Ecuador');
+      // El servicio ya muestra toasts específicos, pero mantenemos uno genérico por si acaso
+      // toast.error('Error al crear la nota de salida Ecuador'); 
     } finally {
       setIsCreatingExitNote(false);
     }
@@ -767,6 +715,13 @@ const WarehouseEcuador: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleOpenExitNoteModal(product)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Transferir a Vendedor"
+                        >
+                          <Truck className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => handleEdit(inventoryItem)}
                           className="text-green-600 hover:text-green-900"

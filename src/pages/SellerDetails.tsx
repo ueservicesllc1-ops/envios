@@ -1,23 +1,25 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  DollarSign, 
-  Package, 
-  Truck, 
-  FileText, 
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  DollarSign,
+  Package,
+  Truck,
+  FileText,
   TrendingUp,
   Calendar,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  Trash2
 } from 'lucide-react';
 import { Seller } from '../types';
 import { sellerService } from '../services/sellerService';
+import { sellerInventoryService } from '../services/sellerInventoryService';
 import { shippingService, ShippingPackage } from '../services/shippingService';
 import { soldProductService, SoldProduct } from '../services/soldProductService';
 import toast from 'react-hot-toast';
@@ -45,7 +47,7 @@ const SellerDetails: React.FC = () => {
   const loadSellerDetails = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Cargar datos del vendedor
       const sellerData = await sellerService.getById(id!);
       if (!sellerData) {
@@ -57,10 +59,10 @@ const SellerDetails: React.FC = () => {
 
       // Cargar productos vendidos del vendedor
       await loadSoldProducts(id!);
-      
+
       // Cargar paquetes de envío del vendedor
       await loadShippingPackages(id!);
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error loading seller details:', error);
@@ -89,7 +91,7 @@ const SellerDetails: React.FC = () => {
   const loadShippingPackages = async (sellerId: string) => {
     try {
       const allPackages = await shippingService.getAll();
-      const sellerPackages = allPackages.filter(pkg => 
+      const sellerPackages = allPackages.filter(pkg =>
         pkg.recipient === seller?.name || pkg.recipient.includes(seller?.name || '')
       );
       setShippingPackages(sellerPackages);
@@ -97,6 +99,36 @@ const SellerDetails: React.FC = () => {
       console.error('Error loading shipping packages:', error);
       // En caso de error, mostrar array vacío para que la página no se rompa
       setShippingPackages([]);
+    }
+  };
+
+  const handleResetSeller = async () => {
+    if (!seller) return;
+
+    if (!window.confirm(`¿Estás SEGURO de que quieres REINICIAR a ${seller.name}? \n\nEsto ELIMINARÁ TODO SU INVENTARIO ACTUAL y pondrá su DEUDA EN CERO.\n\nEsta acción NO se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // 1. Eliminar todo el inventario del vendedor
+      const inventoryItems = await sellerInventoryService.getBySeller(seller.id);
+      const deletePromises = inventoryItems.map(item => sellerInventoryService.delete(item.id));
+      await Promise.all(deletePromises);
+
+      // 2. Resetear la deuda del vendedor a 0
+      await sellerService.update(seller.id, { totalDebt: 0 });
+
+      toast.success(`Vendedor ${seller.name} reiniciado correctamente.`);
+
+      // Recargar datos
+      loadSellerDetails();
+
+    } catch (error) {
+      console.error('Error resetting seller:', error);
+      toast.error('Error al reiniciar vendedor.');
+      setLoading(false);
     }
   };
 
@@ -219,6 +251,14 @@ const SellerDetails: React.FC = () => {
           <Package className="h-4 w-4 mr-2" />
           Panel del Vendedor
         </button>
+
+        <button
+          onClick={handleResetSeller}
+          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center ml-2"
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Reiniciar Vendedor
+        </button>
       </div>
 
       {/* Información del Vendedor */}
@@ -276,9 +316,8 @@ const SellerDetails: React.FC = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Estado</span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  seller.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${seller.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
                   {seller.isActive ? 'Activo' : 'Inactivo'}
                 </span>
               </div>
@@ -316,7 +355,7 @@ const SellerDetails: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900">Productos Vendidos</h3>
           <span className="text-sm text-gray-500">{soldProducts.length} ventas</span>
         </div>
-        
+
         {soldProducts.length === 0 ? (
           <div className="text-center py-8">
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
@@ -382,7 +421,7 @@ const SellerDetails: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900">Envíos</h3>
           <span className="text-sm text-gray-500">{shippingPackages.length} envíos</span>
         </div>
-        
+
         {shippingPackages.length === 0 ? (
           <div className="text-center py-8">
             <Truck className="mx-auto h-12 w-12 text-gray-400" />
@@ -446,7 +485,7 @@ const SellerDetails: React.FC = () => {
           <h3 className="text-lg font-semibold text-gray-900">Productos Vendidos</h3>
           <span className="text-sm text-gray-500">{productSummary.length} productos únicos</span>
         </div>
-        
+
         {productSummary.length === 0 ? (
           <div className="text-center py-8">
             <Package className="mx-auto h-12 w-12 text-gray-400" />
@@ -500,7 +539,7 @@ const SellerDetails: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

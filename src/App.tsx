@@ -44,7 +44,9 @@ import AppBodegaEcuador from './pages/AppBodegaEcuador';
 import AppProductos from './pages/AppProductos';
 import AppVendedorDashboard from './pages/AppVendedorDashboard';
 import AppInstallPage from './pages/AppInstallPage';
+import AppVilma from './pages/AppVilma';
 import PdfEditor from './pages/PdfEditor';
+import TransferredProducts from './pages/TransferredProducts';
 
 import { CartProvider } from './contexts/CartContext';
 import CartPage from './pages/CartPage';
@@ -132,6 +134,7 @@ function App() {
               <Route path="/app/bodega-ecuador" element={<AppBodegaEcuador />} />
               <Route path="/app/productos" element={<AppProductos />} />
               <Route path="/app/vendedor/:id" element={<AppVendedorDashboard />} />
+              <Route path="/app/vilma" element={<AppVilma />} />
 
               {/* Landing de instalación de App */}
               <Route path="/instalar-app" element={<AppInstallPage />} />
@@ -159,6 +162,7 @@ function App() {
               <Route path="/seller-balances/:id" element={<AuthWrapper><Layout><SellerBalanceDetails /></Layout></AuthWrapper>} />
               <Route path="/seller-panel/:id" element={<AuthWrapper><Layout><SellerPanel /></Layout></AuthWrapper>} />
               <Route path="/seller-dashboard/:id" element={<AuthWrapper><Layout><SellerDashboard /></Layout></AuthWrapper>} />
+              <Route path="/transferred-products" element={<AuthWrapper><Layout><TransferredProducts /></Layout></AuthWrapper>} />
               <Route path="/orders" element={<AuthWrapper><Layout><Orders /></Layout></AuthWrapper>} />
               <Route path="/compound-interest" element={<AuthWrapper><Layout><CompoundInterest /></Layout></AuthWrapper>} />
               <Route path="/returns" element={<AuthWrapper><Layout><Returns /></Layout></AuthWrapper>} />

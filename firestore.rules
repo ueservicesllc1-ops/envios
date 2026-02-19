@@ -203,6 +203,18 @@ service cloud.firestore {
       allow read, update, delete: if request.auth != null;
     }
 
+    // Reglas para inventario de Vilma
+    match /vilmaInventory/{itemId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Reglas para pagos de Vilma
+    match /vilmaPayments/{paymentId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
     // Reglas para logs de inventario
     match /inventory_logs/{logId} {
       allow read, write: if request.auth != null;

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, Search, Flag, Plus, Trash2, X, Check, Edit } from 'lucide-react';
-import { InventoryItem, Product } from '../types';
+import { ArrowLeft, Package, Search, Flag, Plus, Trash2, X, Check, Edit, Truck } from 'lucide-react';
+import { InventoryItem, Product, Seller } from '../types';
 import { inventoryService } from '../services/inventoryService';
 import { productService } from '../services/productService';
+import { sellerService } from '../services/sellerService';
 import { exitNoteService } from '../services/exitNoteService';
+import { vilmaInventoryService } from '../services/vilmaInventoryService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
@@ -43,15 +45,33 @@ const AppBodegaEcuador: React.FC = () => {
     const [editQuantity, setEditQuantity] = useState('');
     const [editReason, setEditReason] = useState('');
 
+    // Transfer Logic
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [selectedItemToTransfer, setSelectedItemToTransfer] = useState<InventoryItem | null>(null);
+    const [transferSellers, setTransferSellers] = useState<Seller[]>([]);
+    const [transferSellerId, setTransferSellerId] = useState('');
+    const [transferQuantity, setTransferQuantity] = useState('1');
+    const [transferNotes, setTransferNotes] = useState('');
+
     useEffect(() => {
         if (!authLoading && user) {
             loadInventory();
+            loadSellers();
         }
 
         if (authError) {
             toast.error('Error de autenticación. Por favor, recarga la página.');
         }
     }, [authLoading, user, authError]);
+
+    const loadSellers = async () => {
+        try {
+            const sellers = await sellerService.getAll();
+            setTransferSellers(sellers);
+        } catch (error) {
+            console.error('Error loading sellers', error);
+        }
+    };
 
     const loadInventory = async () => {
         try {
@@ -274,6 +294,80 @@ const AppBodegaEcuador: React.FC = () => {
         }
     };
 
+    const handleTransferClick = (item: InventoryItem) => {
+        setSelectedItemToTransfer(item);
+        setTransferSellerId('');
+        setTransferQuantity('1');
+        setTransferNotes('');
+        setShowTransferModal(true);
+    };
+
+    const handleProcessTransfer = async () => {
+        if (!selectedItemToTransfer || !transferSellerId || !transferQuantity || parseInt(transferQuantity) <= 0) {
+            toast.error('Seleccione vendedor y cantidad válida');
+            return;
+        }
+
+        const qty = parseInt(transferQuantity);
+        if (qty > selectedItemToTransfer.quantity) {
+            toast.error(`Stock insuficiente. Disponible: ${selectedItemToTransfer.quantity}`);
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const selectedSeller = transferSellers.find(s => s.id === transferSellerId);
+            const product = selectedItemToTransfer.product;
+
+            // Determine price based on seller type
+            const unitPrice = selectedSeller?.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
+
+            const exitNoteItem = {
+                id: `${Date.now()}`,
+                productId: product.id,
+                product: product,
+                quantity: qty,
+                unitPrice: unitPrice,
+                totalPrice: unitPrice * qty,
+                size: product.size || '',
+                weight: product.weight || 0
+            };
+
+            await exitNoteService.createTransferFromBodegaEcuador(
+                transferSellerId,
+                [exitNoteItem],
+                `Transferencia desde App Bodega Ecuador${transferNotes ? ` - ${transferNotes}` : ''}`
+            );
+
+            // Si es Vilma, agregar a su inventario dedicado
+            if (selectedSeller?.name?.toLowerCase().includes('vilma')) {
+                await vilmaInventoryService.addProduct(product, qty, unitPrice);
+            }
+
+            // Log entry
+            await addDoc(collection(db, 'inventory_logs'), {
+                type: 'transfer',
+                productId: product.id,
+                productName: product.name,
+                quantity: qty,
+                reason: `Transferencia a ${selectedSeller?.name}`,
+                location: 'Bodega Ecuador',
+                createdAt: Timestamp.now(),
+                user: user?.uid || 'App User'
+            });
+
+            toast.success('Transferencia realizada correctamente');
+            setShowTransferModal(false);
+            setSelectedItemToTransfer(null);
+            loadInventory();
+        } catch (error) {
+            console.error(error);
+            toast.error('Error al procesar transferencia');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const filteredItems = inventory.filter(item => {
         const name = item.product?.name || '';
         const sku = item.product?.sku || '';
@@ -462,6 +556,16 @@ const AppBodegaEcuador: React.FC = () => {
                                     >
                                         <Edit className="w-3 h-3" />
                                         <span>Modificar</span>
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleTransferClick(item);
+                                        }}
+                                        className="mb-2 w-full bg-green-50 text-green-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-green-100 flex items-center justify-center space-x-1 hover:bg-green-100 active:scale-95"
+                                    >
+                                        <Truck className="w-3 h-3" />
+                                        <span>Transferir</span>
                                     </button>
                                     <div className="h-10 mb-1">
                                         <h3 className="text-xs font-medium text-gray-900 line-clamp-2 leading-tight">
@@ -687,6 +791,92 @@ const AppBodegaEcuador: React.FC = () => {
                                 className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             >
                                 {isSubmitting ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Guardar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Transferir */}
+            {showTransferModal && selectedItemToTransfer && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-scale-up">
+                        <div className="flex items-center space-x-3 text-green-600 mb-4">
+                            <div className="p-3 bg-green-100 rounded-full">
+                                <Truck className="w-6 h-6" />
+                            </div>
+                            <h2 className="text-xl font-bold">Transferir a Vendedor</h2>
+                        </div>
+
+                        <p className="text-gray-600 mb-4">
+                            Transfiriendo <span className="font-bold text-gray-900">{selectedItemToTransfer.product?.name}</span>.
+                            <br />
+                            <span className="text-xs text-gray-500">Stock disponible: {selectedItemToTransfer.quantity}</span>
+                        </p>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Vendedor <span className="text-green-500">*</span></label>
+                            <select
+                                value={transferSellerId}
+                                onChange={(e) => setTransferSellerId(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50"
+                            >
+                                <option value="">Seleccionar Vendedor</option>
+                                {transferSellers.map(seller => (
+                                    <option key={seller.id} value={seller.id}>{seller.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Cantidad a Transferir</label>
+                            <div className="flex items-center justify-center space-x-6 bg-gray-50 p-4 rounded-xl">
+                                <button
+                                    onClick={() => setTransferQuantity(prev => Math.max(1, (parseInt(prev) || 0) - 1).toString())}
+                                    className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold hover:bg-gray-300"
+                                >
+                                    -
+                                </button>
+                                <input
+                                    type="number"
+                                    value={transferQuantity}
+                                    onChange={(e) => setTransferQuantity(e.target.value)}
+                                    className="w-20 text-center text-2xl font-bold bg-transparent outline-none border-b-2 border-green-500 pb-1"
+                                    min="1"
+                                    max={selectedItemToTransfer.quantity}
+                                />
+                                <button
+                                    onClick={() => setTransferQuantity(prev => Math.min((parseInt(prev) || 0) + 1, selectedItemToTransfer.quantity).toString())}
+                                    className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center text-lg font-bold hover:bg-green-700"
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Notas (Opcional)</label>
+                            <textarea
+                                value={transferNotes}
+                                onChange={(e) => setTransferNotes(e.target.value)}
+                                placeholder="Notas adicionales..."
+                                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none h-20 resize-none bg-gray-50"
+                            />
+                        </div>
+
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => { setShowTransferModal(false); setTransferNotes(''); setTransferSellerId(''); }}
+                                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleProcessTransfer}
+                                disabled={!transferSellerId || isSubmitting || parseInt(transferQuantity) <= 0}
+                                className="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                                {isSubmitting ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Transferir'}
                             </button>
                         </div>
                     </div>

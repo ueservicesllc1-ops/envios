@@ -42,6 +42,7 @@ const navigation = [
   { name: 'Interes Compuesto', href: '/compound-interest', icon: Percent },
   { name: 'Vendedores', href: '/sellers', icon: Users },
   { name: 'Saldo Vendedores', href: '/seller-balances', icon: CreditCard },
+  { name: 'Productos Transferidos', href: '/transferred-products', icon: Truck },
   { name: 'Acceso Editor Tienda', href: '/store-editor-access', icon: ShoppingBag },
   { name: 'Test Email', href: '/test-email', icon: Mail },
   { name: 'Configuración', href: '/settings', icon: Settings },

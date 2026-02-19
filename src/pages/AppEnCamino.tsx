@@ -33,13 +33,17 @@ const AppEnCamino: React.FC = () => {
             setLoading(true);
             const notes = await exitNoteService.getAll();
 
-            // Filtrar solo pendientes, en tránsito, recibidos y entregados (estos últimos se ven como en tránsito)
-            const filtered = notes.filter(note =>
-                note.status === 'pending' ||
-                note.status === 'in-transit' ||
-                note.status === 'received' ||
-                note.status === 'delivered'
-            );
+            // Filtrar notas por estado (incluyendo variaciones de mayúsculas y español)
+            const filtered = notes.filter(note => {
+                if (!note.status) return false;
+                const s = note.status.toLowerCase();
+                return (
+                    s === 'pending' || s === 'pendiente' ||
+                    s === 'in-transit' || s === 'en camino' || s === 'en-camino' || s === 'transito' ||
+                    s === 'received' || s === 'recibido' ||
+                    s === 'delivered' || s === 'entregado'
+                );
+            });
 
             // Ordenar por fecha (más recientes primero)
             filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -53,49 +57,60 @@ const AppEnCamino: React.FC = () => {
         }
     };
 
-    const getStatusInfo = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return {
-                    label: 'Pendiente',
-                    color: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-                    icon: Clock,
-                    iconColor: 'text-yellow-600',
-                    bgGradient: 'from-yellow-50 to-orange-50'
-                };
-            case 'in-transit':
-                return {
-                    label: 'En Camino',
-                    color: 'bg-blue-100 text-blue-800 border-blue-300',
-                    icon: Truck,
-                    iconColor: 'text-blue-600',
-                    bgGradient: 'from-blue-50 to-cyan-50'
-                };
-            case 'delivered':
-                return {
-                    label: 'En Camino',
-                    color: 'bg-green-100 text-green-800 border-green-300',
-                    icon: CheckCircle,
-                    iconColor: 'text-green-600',
-                    bgGradient: 'from-green-50 to-emerald-50'
-                };
-            case 'received':
-                return {
-                    label: 'Recibido',
-                    color: 'bg-purple-100 text-purple-800 border-purple-300',
-                    icon: CheckCircle,
-                    iconColor: 'text-purple-600',
-                    bgGradient: 'from-purple-50 to-pink-50'
-                };
-            default:
-                return {
-                    label: status,
-                    color: 'bg-gray-100 text-gray-800 border-gray-300',
-                    icon: Package,
-                    iconColor: 'text-gray-600',
-                    bgGradient: 'from-gray-50 to-gray-100'
-                };
+    const getStatusInfo = (rawStatus: string) => {
+        const s = (rawStatus || '').toLowerCase();
+
+        // Pending
+        if (s === 'pending' || s === 'pendiente') {
+            return {
+                label: 'Pendiente',
+                color: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                icon: Clock,
+                iconColor: 'text-yellow-600',
+                bgGradient: 'from-yellow-50 to-orange-50'
+            };
         }
+
+        // In Transit
+        if (s === 'in-transit' || s === 'en camino' || s === 'en-camino' || s === 'transito') {
+            return {
+                label: 'En Camino',
+                color: 'bg-blue-100 text-blue-800 border-blue-300',
+                icon: Truck,
+                iconColor: 'text-blue-600',
+                bgGradient: 'from-blue-50 to-cyan-50'
+            };
+        }
+
+        // Delivered
+        if (s === 'delivered' || s === 'entregado') {
+            return {
+                label: 'Entregado', // Changed from 'En Camino' to distinct if needed, but keeping consistent color/icon
+                color: 'bg-green-100 text-green-800 border-green-300',
+                icon: CheckCircle,
+                iconColor: 'text-green-600',
+                bgGradient: 'from-green-50 to-emerald-50'
+            };
+        }
+
+        // Received
+        if (s === 'received' || s === 'recibido') {
+            return {
+                label: 'Recibido',
+                color: 'bg-purple-100 text-purple-800 border-purple-300',
+                icon: CheckCircle,
+                iconColor: 'text-purple-600',
+                bgGradient: 'from-purple-50 to-pink-50'
+            };
+        }
+
+        return {
+            label: rawStatus,
+            color: 'bg-gray-100 text-gray-800 border-gray-300',
+            icon: Package,
+            iconColor: 'text-gray-600',
+            bgGradient: 'from-gray-50 to-gray-100'
+        };
     };
 
     const filteredNotes = exitNotes.filter(note => {
@@ -104,23 +119,44 @@ const AppEnCamino: React.FC = () => {
             note.seller.toLowerCase().includes(searchTerm.toLowerCase()) ||
             note.customer.toLowerCase().includes(searchTerm.toLowerCase());
 
+        const s = (note.status || '').toLowerCase();
         let matchesStatus = false;
+
         if (filterStatus === 'all') {
             matchesStatus = true;
         } else if (filterStatus === 'in-transit') {
             // "En Camino" incluye in-transit y delivered
-            matchesStatus = note.status === 'in-transit' || note.status === 'delivered';
+            matchesStatus =
+                s === 'in-transit' || s === 'en camino' || s === 'en-camino' || s === 'transito' ||
+                s === 'delivered' || s === 'entregado';
+        } else if (filterStatus === 'pending') {
+            matchesStatus = s === 'pending' || s === 'pendiente';
+        } else if (filterStatus === 'received') {
+            matchesStatus = s === 'received' || s === 'recibido';
         } else {
+            // Fallback exact match
             matchesStatus = note.status === filterStatus;
         }
 
         return matchesSearch && matchesStatus;
     });
 
-    const pendingCount = exitNotes.filter(n => n.status === 'pending').length;
+    const pendingCount = exitNotes.filter(n => {
+        const s = (n.status || '').toLowerCase();
+        return s === 'pending' || s === 'pendiente';
+    }).length;
+
     // En Camino incluye in-transit y delivered
-    const inTransitCount = exitNotes.filter(n => n.status === 'in-transit' || n.status === 'delivered').length;
-    const receivedCount = exitNotes.filter(n => n.status === 'received').length;
+    const inTransitCount = exitNotes.filter(n => {
+        const s = (n.status || '').toLowerCase();
+        return s === 'in-transit' || s === 'en camino' || s === 'en-camino' || s === 'transito' ||
+            s === 'delivered' || s === 'entregado';
+    }).length;
+
+    const receivedCount = exitNotes.filter(n => {
+        const s = (n.status || '').toLowerCase();
+        return s === 'received' || s === 'recibido';
+    }).length;
 
     if (loading || authLoading) {
         return (
