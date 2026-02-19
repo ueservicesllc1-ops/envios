@@ -344,6 +344,12 @@ const AppBodegaEcuador: React.FC = () => {
                 await vilmaInventoryService.addProduct(product, qty, unitPrice);
             }
 
+            // Si es Annabel, agregar a su inventario dedicado
+            if (selectedSeller?.name?.toLowerCase().includes('annabel')) {
+                const { annabelInventoryService } = await import('../services/annabelInventoryService');
+                await annabelInventoryService.addProduct(product, qty, unitPrice);
+            }
+
             // Log entry
             await addDoc(collection(db, 'inventory_logs'), {
                 type: 'transfer',

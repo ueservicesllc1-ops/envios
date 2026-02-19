@@ -45,6 +45,7 @@ import AppProductos from './pages/AppProductos';
 import AppVendedorDashboard from './pages/AppVendedorDashboard';
 import AppInstallPage from './pages/AppInstallPage';
 import AppVilma from './pages/AppVilma';
+import AppAnnabel from './pages/AppAnnabel';
 import PdfEditor from './pages/PdfEditor';
 import TransferredProducts from './pages/TransferredProducts';
 
@@ -135,6 +136,7 @@ function App() {
               <Route path="/app/productos" element={<AppProductos />} />
               <Route path="/app/vendedor/:id" element={<AppVendedorDashboard />} />
               <Route path="/app/vilma" element={<AppVilma />} />
+              <Route path="/app/annabel" element={<AppAnnabel />} />
 
               {/* Landing de instalación de App */}
               <Route path="/instalar-app" element={<AppInstallPage />} />

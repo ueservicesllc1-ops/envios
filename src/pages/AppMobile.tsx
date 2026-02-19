@@ -229,6 +229,25 @@ const AppMobile: React.FC = () => {
                         </div>
                     </button>
 
+                    {/* Botón 6: Annabel Diaz */}
+                    <button
+                        className="col-span-2 bg-gradient-to-r from-purple-500 to-purple-700 rounded-2xl shadow-lg p-4 active:scale-95 transform transition-all duration-150 hover:shadow-xl flex items-center justify-between group"
+                        onClick={() => navigate('/app/annabel')}
+                    >
+                        <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                                <Star className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="text-white font-bold text-lg">Annabel Diaz</h3>
+                                <p className="text-purple-200 text-xs">Inventario y Cuentas</p>
+                            </div>
+                        </div>
+                        <div className="bg-white/20 p-2 rounded-full group-hover:bg-white/30 transition-colors">
+                            <ChevronRight className="w-6 h-6 text-white" />
+                        </div>
+                    </button>
+
                     {/* Botón 6: Mi Dashboard */}
                     <button
                         className="col-span-2 bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl shadow-lg p-4 active:scale-95 transform transition-all duration-150 hover:shadow-xl flex items-center justify-between group"
