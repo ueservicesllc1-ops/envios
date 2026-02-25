@@ -59,6 +59,7 @@ import ReturnsPolicyPage from './pages/ReturnsPolicyPage';
 import UserAddresses from './pages/UserAddresses';
 import UserProfile from './pages/UserProfile';
 import TestEmail from './pages/TestEmail';
+import Cata from './pages/Cata';
 
 import OnlineTracker from './components/Layout/OnlineTracker';
 import SplashScreen from './components/Layout/SplashScreen';
@@ -126,6 +127,9 @@ function App() {
 
               {/* Ruta para rastreo de pedido */}
               <Route path="/track-order/:orderId" element={<OrderTracking />} />
+
+              {/* Catálogo público */}
+              <Route path="/cata" element={<Cata />} />
 
               {/* Ruta para App Mobile - sin Layout ni AuthWrapper */}
               <Route path="/app" element={<AppMobile />} />

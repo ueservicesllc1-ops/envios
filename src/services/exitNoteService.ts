@@ -446,12 +446,14 @@ export const exitNoteService = {
 
       for (const item of items) {
         // A. Restar de Bodega Ecuador
-        // Usamos updateStockAfterExit especificando la ubicación 'Bodega Ecuador'
-        await inventoryService.updateStockAfterExit(
+        // IMPORTANTE: Usamos removeStock (NO updateStockAfterExit) porque:
+        // updateStockAfterExit cambia el status del registro a 'in-transit', lo que hace
+        // que TODOS los productos de ese tipo desaparezcan de Bodega Ecuador ya que el
+        // filtro isArrived excluye registros con status 'in-transit'.
+        // removeStock solo descuenta la cantidad y mantiene el status en 'stock'.
+        await inventoryService.removeStock(
           item.productId,
           item.quantity,
-          noteId,
-          seller.id,
           'Bodega Ecuador', // Ubicación explícita
           true // Silent
         );

@@ -192,20 +192,20 @@ const AppMobile: React.FC = () => {
                         </div>
                     </button>
 
-                    {/* Botón 4: Productos */}
+                    {/* Botón 4: Catálogo (NUEVO) */}
                     <button
-                        className="bg-white rounded-2xl shadow-lg p-6 active:scale-95 transform transition-all duration-150 hover:shadow-xl border-2 border-transparent hover:border-purple-400"
-                        onClick={() => navigate('/app/productos')}
+                        className="bg-white rounded-2xl shadow-lg p-6 active:scale-95 transform transition-all duration-150 hover:shadow-xl border-2 border-transparent hover:border-pink-400"
+                        onClick={() => navigate('/cata')}
                     >
                         <div className="flex flex-col items-center space-y-3">
-                            <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center shadow-md">
-                                <Package className="w-8 h-8 text-white" />
+                            <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center shadow-md">
+                                <ShoppingBag className="w-8 h-8 text-white" />
                             </div>
                             <span className="text-gray-800 font-semibold text-center">
-                                Productos
+                                Catálogo Venta
                             </span>
                             <span className="text-xs text-gray-500 text-center">
-                                Catálogo completo
+                                Envío por WS
                             </span>
                         </div>
                     </button>
