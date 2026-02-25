@@ -137,7 +137,8 @@ const Cata: React.FC = () => {
 
         let message = '*Hola, me gustaría solicitar estos productos del catálogo:* \n\n';
         cart.forEach((item, index) => {
-            message += `${index + 1}. *${item.product.name}* (Cant: ${item.quantity})\n`;
+            const sizeInfo = item.product.size ? ` (Talla: ${item.product.size})` : '';
+            message += `${index + 1}. *${item.product.name}*${sizeInfo} (Cant: ${item.quantity})\n`;
         });
 
         const total = cart.reduce((sum, item) => sum + (item.product.salePrice1 * item.quantity), 0);
@@ -252,7 +253,14 @@ const Cata: React.FC = () => {
                                                 {item.product.name}
                                             </h3>
                                         </div>
-                                        <p className="text-[10px] text-gray-400 font-medium mb-3">{item.product.sku}</p>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <p className="text-[10px] text-gray-400 font-medium">{item.product.sku}</p>
+                                            {item.product.size && (
+                                                <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-bold uppercase">
+                                                    Talla: {item.product.size}
+                                                </span>
+                                            )}
+                                        </div>
 
                                         <div className="mt-auto flex items-center justify-between mb-3">
                                             <span className="text-lg font-black text-blue-600">${item.unitPrice.toFixed(2)}</span>
@@ -326,7 +334,12 @@ const Cata: React.FC = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="text-sm font-bold text-gray-800 line-clamp-1">{item.product.name}</h4>
-                                            <p className="text-xs text-blue-600 font-black">${item.product.salePrice1.toFixed(2)} c/u</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs text-blue-600 font-black">${item.product.salePrice1.toFixed(2)} c/u</p>
+                                                {item.product.size && (
+                                                    <span className="text-[10px] text-gray-400 font-bold">Talla: {item.product.size}</span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="flex items-center bg-white rounded-xl border border-gray-100 shadow-sm px-1 py-1">
                                             <button
