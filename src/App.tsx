@@ -46,6 +46,7 @@ import AppVendedorDashboard from './pages/AppVendedorDashboard';
 import AppInstallPage from './pages/AppInstallPage';
 import AppVilma from './pages/AppVilma';
 import AppAnnabel from './pages/AppAnnabel';
+import AppMaria from './pages/AppMaria';
 import PdfEditor from './pages/PdfEditor';
 import TransferredProducts from './pages/TransferredProducts';
 
@@ -73,8 +74,8 @@ function MobileRedirect() {
   useEffect(() => {
     // Verificar si estamos en una plataforma nativa (Android/iOS)
     if (Capacitor.isNativePlatform()) {
-      // Redirigir si estamos en la raíz o si no estamos en una ruta de la app móvil
-      if (location.pathname === '/' || location.pathname === '' || (!location.pathname.startsWith('/app') && location.pathname !== '/login')) {
+      // Redirigir si estamos en la raíz o si no estamos en una ruta de la app móvil o catálogo
+      if (location.pathname === '/' || location.pathname === '' || (!location.pathname.startsWith('/app') && location.pathname !== '/login' && location.pathname !== '/cata')) {
         navigate('/app', { replace: true });
       }
     }
@@ -140,6 +141,7 @@ function App() {
               <Route path="/app/productos" element={<AppProductos />} />
               <Route path="/app/vendedor/:id" element={<AppVendedorDashboard />} />
               <Route path="/app/vilma" element={<AppVilma />} />
+              <Route path="/app/maria" element={<AppMaria />} />
               <Route path="/app/annabel" element={<AppAnnabel />} />
 
               {/* Landing de instalación de App */}

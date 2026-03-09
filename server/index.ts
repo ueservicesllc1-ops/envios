@@ -3,6 +3,7 @@ import cors from 'cors';
 import { getProductsFromCollection, getProductStats } from './services/shopifyScraper';
 import { getImageFromB2, uploadImageToB2 } from './services/b2Service';
 import { getVisits, recordVisit } from './services/visitService';
+import { notificationService } from './services/notificationService';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -145,6 +146,23 @@ app.post('/api/visits', (req, res) => {
 
   const count = recordVisit(cleanIp);
   res.json({ count });
+});
+
+// Endpoint para enviar notificaciones push
+app.post('/api/notifications/send', async (req, res) => {
+  try {
+    const { tokens, title, body, data } = req.body;
+
+    if (!tokens || !title || !body) {
+      return res.status(400).json({ error: 'Missing required parameters: tokens, title, body' });
+    }
+
+    const result = await notificationService.sendPushNotification(tokens, title, body, data);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error in /api/notifications/send:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Health check

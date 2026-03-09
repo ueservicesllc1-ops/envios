@@ -9,6 +9,7 @@
     "@capacitor/android": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
+    "@capacitor/push-notifications": "^8.0.1",
     "@emailjs/browser": "^4.4.1",
     "@paypal/react-paypal-js": "^8.9.2",
     "@types/node": "^16.18.0",
@@ -79,6 +80,7 @@
     ]
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@types/canvas-confetti": "^1.9.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",

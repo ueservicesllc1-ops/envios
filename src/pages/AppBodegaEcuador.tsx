@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { MAIN_SELLERS, getSellerSession } from '../utils/sellerSession';
 
 const AppBodegaEcuador: React.FC = () => {
     const navigate = useNavigate();
@@ -23,6 +24,8 @@ const AppBodegaEcuador: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const session = getSellerSession();
+    const isAdmin = session?.isAdmin || false;
 
     // Modal States
     const [showAddModal, setShowAddModal] = useState(false);
@@ -67,7 +70,23 @@ const AppBodegaEcuador: React.FC = () => {
     const loadSellers = async () => {
         try {
             const sellers = await sellerService.getAll();
-            setTransferSellers(sellers);
+            // Filtrar solo a Maria y Annabel según petición del usuario
+            const filteredSellers = sellers.filter((s: any) =>
+                s.name.toLowerCase().includes('maria') ||
+                s.name.toLowerCase().includes('annabel')
+            );
+
+            // Si falta alguien de los MAIN_SELLERS (excepto admins), lo agregamos manual para que aparezca
+            const missing = MAIN_SELLERS.filter((ls: any) =>
+                !ls.isAdmin && !filteredSellers.some((fs: any) => fs.name.toLowerCase().includes(ls.name.toLowerCase().split(' ')[0]))
+            ).map((ls: any) => ({
+                id: ls.id,
+                name: ls.name,
+                priceType: 'price2',
+                isActive: true
+            } as any));
+
+            setTransferSellers([...filteredSellers, ...missing]);
         } catch (error) {
             console.error('Error loading sellers', error);
         }
@@ -345,9 +364,15 @@ const AppBodegaEcuador: React.FC = () => {
             }
 
             // Si es Annabel, agregar a su inventario dedicado
-            if (selectedSeller?.name?.toLowerCase().includes('annabel')) {
+            if (selectedSeller?.name?.toLowerCase().includes('annabel') || selectedSeller?.id === 'annabel') {
                 const { annabelInventoryService } = await import('../services/annabelInventoryService');
                 await annabelInventoryService.addProduct(product, qty, unitPrice);
+            }
+
+            // Si es Maria, agregar a su inventario dedicado
+            if (selectedSeller?.name?.toLowerCase().includes('maria') || selectedSeller?.id === 'maria') {
+                const { mariaInventoryService } = await import('../services/mariaInventoryService');
+                await mariaInventoryService.addProduct(product, qty, unitPrice);
             }
 
             // Log entry
@@ -429,73 +454,75 @@ const AppBodegaEcuador: React.FC = () => {
                     />
                 </div>
 
-                {/* Agregar Botón */}
-                <div className="flex space-x-2">
-                    <button
-                        onClick={async () => {
-                            if (!window.confirm("¿Seguro que desea revertir la ULTIMA nota PENDIENTE de Bodega Ecuador? Esto eliminará del stock de Bodega Ecuador los items que se sumaron erróneamente.")) return;
+                {/* Agregar Botón - Solo Admin */}
+                {isAdmin && (
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={async () => {
+                                if (!window.confirm("¿Seguro que desea revertir la ULTIMA nota PENDIENTE de Bodega Ecuador? Esto eliminará del stock de Bodega Ecuador los items que se sumaron erróneamente.")) return;
 
-                            const tId = toast.loading("Procesando corrección...");
-                            try {
-                                const notes = await exitNoteService.getAll();
-                                const pendingNotes = notes.filter(n =>
-                                    (n.sellerId === 'bodega-ecuador' || n.number.includes('ECU')) &&
-                                    n.status === 'pending'
-                                ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+                                const tId = toast.loading("Procesando corrección...");
+                                try {
+                                    const notes = await exitNoteService.getAll();
+                                    const pendingNotes = notes.filter(n =>
+                                        (n.sellerId === 'bodega-ecuador' || n.number.includes('ECU')) &&
+                                        n.status === 'pending'
+                                    ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-                                if (pendingNotes.length === 0) {
-                                    toast.error("No se encontraron notas pendientes", { id: tId });
-                                    return;
-                                }
-
-                                const noteToRevert = pendingNotes[0];
-                                const allInventory = await inventoryService.getAll();
-
-                                for (const item of noteToRevert.items) {
-                                    // Buscar en inventario de Bodega Ecuador
-                                    const targetItem = allInventory.find(inv =>
-                                        inv.productId === item.productId &&
-                                        inv.location === 'Bodega Ecuador'
-                                    );
-
-                                    if (targetItem) {
-                                        const newQty = Math.max(0, targetItem.quantity - item.quantity);
-                                        await inventoryService.update(targetItem.id, { quantity: newQty });
-
-                                        // Loguear
-                                        await addDoc(collection(db, 'inventory_logs'), {
-                                            type: 'correction',
-                                            productId: item.productId,
-                                            productName: item.product.name,
-                                            quantity: item.quantity,
-                                            reason: `Corrección automática: Reversión nota ${noteToRevert.number}`,
-                                            location: 'Bodega Ecuador',
-                                            createdAt: Timestamp.now(),
-                                            user: user?.uid || 'Admin Correction'
-                                        });
+                                    if (pendingNotes.length === 0) {
+                                        toast.error("No se encontraron notas pendientes", { id: tId });
+                                        return;
                                     }
+
+                                    const noteToRevert = pendingNotes[0];
+                                    const allInventory = await inventoryService.getAll();
+
+                                    for (const item of noteToRevert.items) {
+                                        // Buscar en inventario de Bodega Ecuador
+                                        const targetItem = allInventory.find(inv =>
+                                            inv.productId === item.productId &&
+                                            inv.location === 'Bodega Ecuador'
+                                        );
+
+                                        if (targetItem) {
+                                            const newQty = Math.max(0, targetItem.quantity - item.quantity);
+                                            await inventoryService.update(targetItem.id, { quantity: newQty });
+
+                                            // Loguear
+                                            await addDoc(collection(db, 'inventory_logs'), {
+                                                type: 'correction',
+                                                productId: item.productId,
+                                                productName: item.product.name,
+                                                quantity: item.quantity,
+                                                reason: `Corrección automática: Reversión nota ${noteToRevert.number}`,
+                                                location: 'Bodega Ecuador',
+                                                createdAt: Timestamp.now(),
+                                                user: user?.uid || 'Admin Correction'
+                                            });
+                                        }
+                                    }
+                                    toast.success(`Correcto. Nota ${noteToRevert.number} revertida.`, { id: tId });
+                                    loadInventory(); // Recargar
+
+                                } catch (error: any) {
+                                    console.error(error);
+                                    toast.error("Error: " + error.message, { id: tId });
                                 }
-                                toast.success(`Correcto. Nota ${noteToRevert.number} revertida.`, { id: tId });
-                                loadInventory(); // Recargar
+                            }}
+                            className="bg-red-500 text-white p-2 rounded-lg"
+                        >
+                            <Flag className="w-5 h-5" />
+                        </button>
 
-                            } catch (error: any) {
-                                console.error(error);
-                                toast.error("Error: " + error.message, { id: tId });
-                            }
-                        }}
-                        className="bg-red-500 text-white p-2 rounded-lg"
-                    >
-                        <Flag className="w-5 h-5" />
-                    </button>
-
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="flex-1 bg-white/10 hover:bg-white/20 flex items-center justify-center space-x-2 py-2 rounded-lg transition-colors border border-white/30 active:scale-95"
-                    >
-                        <Plus className="w-5 h-5 text-green-300" />
-                        <span className="font-bold text-sm">Agregar Producto</span>
-                    </button>
-                </div>
+                        <button
+                            onClick={() => setShowAddModal(true)}
+                            className="flex-1 bg-white/10 hover:bg-white/20 flex items-center justify-center space-x-2 py-2 rounded-lg transition-colors border border-white/30 active:scale-95"
+                        >
+                            <Plus className="w-5 h-5 text-green-300" />
+                            <span className="font-bold text-sm">Agregar Producto</span>
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Grid de Productos */}
@@ -542,37 +569,41 @@ const AppBodegaEcuador: React.FC = () => {
 
                                 {/* Info */}
                                 <div className="p-2 flex flex-col flex-1">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSelectedItemToDelete(item);
-                                            setShowDeleteModal(true);
-                                        }}
-                                        className="mb-2 w-full bg-red-50 text-red-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-red-100 flex items-center justify-center space-x-1 hover:bg-red-100 active:scale-95"
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                        <span>Eliminar</span>
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditClick(item);
-                                        }}
-                                        className="mb-2 w-full bg-blue-50 text-blue-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-blue-100 flex items-center justify-center space-x-1 hover:bg-blue-100 active:scale-95"
-                                    >
-                                        <Edit className="w-3 h-3" />
-                                        <span>Modificar</span>
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleTransferClick(item);
-                                        }}
-                                        className="mb-2 w-full bg-green-50 text-green-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-green-100 flex items-center justify-center space-x-1 hover:bg-green-100 active:scale-95"
-                                    >
-                                        <Truck className="w-3 h-3" />
-                                        <span>Transferir</span>
-                                    </button>
+                                    {isAdmin && (
+                                        <>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedItemToDelete(item);
+                                                    setShowDeleteModal(true);
+                                                }}
+                                                className="mb-2 w-full bg-red-50 text-red-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-red-100 flex items-center justify-center space-x-1 hover:bg-red-100 active:scale-95"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                                <span>Eliminar</span>
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEditClick(item);
+                                                }}
+                                                className="mb-2 w-full bg-blue-50 text-blue-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-blue-100 flex items-center justify-center space-x-1 hover:bg-blue-100 active:scale-95"
+                                            >
+                                                <Edit className="w-3 h-3" />
+                                                <span>Modificar</span>
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleTransferClick(item);
+                                                }}
+                                                className="mb-2 w-full bg-green-50 text-green-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-green-100 flex items-center justify-center space-x-1 hover:bg-green-100 active:scale-95"
+                                            >
+                                                <Truck className="w-3 h-3" />
+                                                <span>Transferir</span>
+                                            </button>
+                                        </>
+                                    )}
                                     <div className="h-10 mb-1">
                                         <h3 className="text-xs font-medium text-gray-900 line-clamp-2 leading-tight">
                                             {item.product.name}

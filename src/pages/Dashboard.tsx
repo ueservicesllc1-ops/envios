@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  TrendingUp, 
-  DollarSign, 
+import {
+  Package,
+  TrendingUp,
+  DollarSign,
   FileText,
   Plus,
   Eye,
   Users,
-  CreditCard
+  CreditCard,
+  Bell,
+  X
 } from 'lucide-react';
+
 import { DashboardStats } from '../types';
 import { sellerService } from '../services/sellerService';
 import { productService } from '../services/productService';
@@ -18,6 +21,7 @@ import { exitNoteService } from '../services/exitNoteService';
 import { exitNoteAccountingService } from '../services/exitNoteAccountingService';
 import { paymentNoteService } from '../services/paymentNoteService';
 import toast from 'react-hot-toast';
+import NotificationCenter from '../components/Admin/NotificationCenter';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
@@ -46,32 +50,32 @@ const Dashboard: React.FC = () => {
     try {
       setRecalculating(true);
       console.log('🔄 Iniciando recálculo manual de deudas...');
-      
+
       // Cargar datos actualizados
       const [sellersData, exitNotesData, paymentNotesData] = await Promise.all([
         sellerService.getAll(),
         exitNoteService.getAll(),
         paymentNoteService.getAll()
       ]);
-      
+
       let actualTotalDebt = 0;
-      
+
       for (const seller of sellersData) {
         // Obtener todas las notas de salida del vendedor
         const sellerExitNotes = exitNotesData.filter(note => note.sellerId === seller.id);
-        
+
         // Obtener todas las notas de pago del vendedor (aprobadas)
-        const sellerPaymentNotes = paymentNotesData.filter(note => 
+        const sellerPaymentNotes = paymentNotesData.filter(note =>
           note.sellerId === seller.id && note.status === 'approved'
         );
-        
+
         // Calcular deuda real: Notas de salida - Notas de pago aprobadas
         const totalExitNotesValue = sellerExitNotes.reduce((sum, note) => sum + note.totalPrice, 0);
         const totalPaymentNotesValue = sellerPaymentNotes.reduce((sum, note) => sum + note.totalAmount, 0);
         const sellerDebt = totalExitNotesValue - totalPaymentNotesValue;
-        
+
         actualTotalDebt += sellerDebt;
-        
+
         // Forzar actualización de la deuda del vendedor
         await sellerService.update(seller.id, { totalDebt: sellerDebt });
         console.log(`✅ Recalculada deuda del vendedor ${seller.name}:`);
@@ -79,11 +83,11 @@ const Dashboard: React.FC = () => {
         console.log(`  - Notas de pago: $${totalPaymentNotesValue}`);
         console.log(`  - Deuda final: $${sellerDebt}`);
       }
-      
+
       setTotalDebt(actualTotalDebt);
       toast.success(`Deudas recalculadas. Total: $${actualTotalDebt.toLocaleString()}`);
       console.log(`💰 Recalculación completada. Nueva deuda total: $${actualTotalDebt}`);
-      
+
     } catch (error) {
       console.error('Error recalculando deudas:', error);
       toast.error('Error al recalcular deudas');
@@ -95,7 +99,7 @@ const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       // Cargar datos en paralelo
       const [sellersData, productsData, inventoryData, entryNotesData, exitNotesData, salesData, paymentNotesData] = await Promise.all([
         sellerService.getAll(),
@@ -106,21 +110,21 @@ const Dashboard: React.FC = () => {
         exitNoteAccountingService.getAll(),
         paymentNoteService.getAll()
       ]);
-      
+
       console.log('🔍 Datos cargados:');
       console.log('- Vendedores:', sellersData.length);
       console.log('- Notas de salida:', exitNotesData.length);
       console.log('- Notas de pago:', paymentNotesData.length);
       console.log('- Vendedores con deuda previa:', sellersData.map(s => ({ name: s.name, debt: s.totalDebt })));
-      
+
       setSellers(sellersData);
-      
+
       // Calcular total de productos
       const totalProducts = productsData.length;
-      
+
       // Calcular inventario total (cantidad de productos en stock)
       const totalInventory = inventoryData.reduce((sum, item) => sum + item.quantity, 0);
-      
+
       // Calcular valor total del inventario usando precio de venta 1
       const totalValue = inventoryData.reduce((sum, item) => {
         // Buscar el producto para obtener el precio de venta 1
@@ -128,80 +132,80 @@ const Dashboard: React.FC = () => {
         const salePrice = product?.salePrice1 || item.unitPrice;
         return sum + (item.quantity * salePrice);
       }, 0);
-      
+
       // Calcular notas pendientes (solo notas de salida pueden estar pendientes)
       const pendingEntries = 0; // Las notas de entrada no pueden estar pendientes
       const pendingExits = exitNotesData.filter(note => note.status === 'pending').length;
-      
+
       // Calcular ingresos mensuales (todas las notas de entrada del mes)
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-      
+
       // Filtrar solo notas reales (no de prueba)
-      const realEntryNotes = entryNotesData.filter(note => 
+      const realEntryNotes = entryNotesData.filter(note =>
         !note.supplier?.toLowerCase().includes('prueba') &&
         !note.supplier?.toLowerCase().includes('test') &&
         !note.supplier?.toLowerCase().includes('demo')
       );
-      
+
       const monthlyRevenue = realEntryNotes
         .filter(note => {
           const noteDate = new Date(note.date);
-          return noteDate.getMonth() === currentMonth && 
-                 noteDate.getFullYear() === currentYear;
+          return noteDate.getMonth() === currentMonth &&
+            noteDate.getFullYear() === currentYear;
         })
         .reduce((sum, note) => sum + note.totalCost, 0);
-      
+
       // Calcular gastos mensuales (notas de salida)
       // Filtrar solo notas reales (no de prueba)
-      const realExitNotes = exitNotesData.filter(note => 
+      const realExitNotes = exitNotesData.filter(note =>
         !note.customer?.toLowerCase().includes('prueba') &&
         !note.customer?.toLowerCase().includes('test') &&
         !note.customer?.toLowerCase().includes('demo')
       );
-      
+
       const monthlyExpenses = realExitNotes
         .filter(note => {
           const noteDate = new Date(note.date);
-          return noteDate.getMonth() === currentMonth && 
-                 noteDate.getFullYear() === currentYear;
+          return noteDate.getMonth() === currentMonth &&
+            noteDate.getFullYear() === currentYear;
         })
         .reduce((sum, note) => sum + note.totalPrice, 0);
-      
+
       // Calcular deuda total de vendedores basándose en las notas de salida reales
       let actualTotalDebt = 0;
       console.log('💰 Calculando deudas de vendedores...');
-      
+
       for (const seller of sellersData) {
         // Obtener todas las notas de salida del vendedor
         const sellerExitNotes = exitNotesData.filter(note => note.sellerId === seller.id);
         console.log(`📋 Vendedor ${seller.name} (ID: ${seller.id}):`);
         console.log(`  - Notas de salida encontradas: ${sellerExitNotes.length}`);
-        
+
         // Mostrar detalles de cada nota
         sellerExitNotes.forEach(note => {
           console.log(`    * Nota ${note.number}: $${note.totalPrice} - Estado: ${note.status}`);
         });
-        
+
         // Obtener todas las notas de pago del vendedor (aprobadas)
-        const sellerPaymentNotes = paymentNotesData.filter(note => 
+        const sellerPaymentNotes = paymentNotesData.filter(note =>
           note.sellerId === seller.id && note.status === 'approved'
         );
-        
+
         // Calcular deuda real: Notas de salida - Notas de pago aprobadas
         const totalExitNotesValue = sellerExitNotes.reduce((sum, note) => sum + note.totalPrice, 0);
         const totalPaymentNotesValue = sellerPaymentNotes.reduce((sum, note) => sum + note.totalAmount, 0);
         const sellerDebt = totalExitNotesValue - totalPaymentNotesValue;
-        
+
         console.log(`  - Total notas de salida: ${sellerExitNotes.length}`);
         console.log(`  - Total notas de pago aprobadas: ${sellerPaymentNotes.length}`);
         console.log(`  - Valor notas de salida: $${totalExitNotesValue}`);
         console.log(`  - Valor notas de pago: $${totalPaymentNotesValue}`);
         console.log(`  - Deuda calculada: $${sellerDebt}`);
         console.log(`  - Deuda anterior: $${seller.totalDebt || 0}`);
-        
+
         actualTotalDebt += sellerDebt;
-        
+
         // Actualizar la deuda del vendedor en la base de datos si es diferente
         if ((seller.totalDebt || 0) !== sellerDebt) {
           try {
@@ -214,18 +218,18 @@ const Dashboard: React.FC = () => {
           console.log(`✅ Deuda del vendedor ${seller.name} ya está correcta: $${sellerDebt}`);
         }
       }
-      
+
       console.log(`💰 Deuda total calculada: $${actualTotalDebt}`);
       setTotalDebt(actualTotalDebt);
-      
+
       // Cargar ventas pendientes
       const pendingSalesTotal = salesData.reduce((sum, sale) => sum + sale.totalValue, 0);
       setPendingSales(pendingSalesTotal);
-      
+
       // Calcular total de notas
       setTotalEntryNotes(entryNotesData.length);
       setTotalExitNotes(exitNotesData.length);
-      
+
       // Actualizar estadísticas
       setStats({
         totalProducts,
@@ -236,7 +240,7 @@ const Dashboard: React.FC = () => {
         monthlyRevenue,
         monthlyExpenses
       });
-      
+
       setLoading(false);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -440,7 +444,7 @@ const Dashboard: React.FC = () => {
               <p className="text-sm text-gray-500">Registrar nuevo producto</p>
             </div>
           </button>
-          
+
           <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <FileText className="h-5 w-5 text-green-600 mr-3" />
             <div className="text-left">
@@ -448,7 +452,7 @@ const Dashboard: React.FC = () => {
               <p className="text-sm text-gray-500">Registrar compra</p>
             </div>
           </button>
-          
+
           <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             <TrendingUp className="h-5 w-5 text-purple-600 mr-3" />
             <div className="text-left">
@@ -458,8 +462,14 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Notification Center */}
+      <div className="mt-8">
+        <NotificationCenter />
+      </div>
     </div>
   );
 };
 
 export default Dashboard;
+

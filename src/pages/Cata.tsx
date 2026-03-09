@@ -7,6 +7,7 @@ import { productService } from '../services/productService';
 import { exitNoteService } from '../services/exitNoteService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
+import { Capacitor } from '@capacitor/core';
 
 interface CartItem {
     id: string;
@@ -25,10 +26,10 @@ const Cata: React.FC = () => {
     const [showCart, setShowCart] = useState(false);
 
     useEffect(() => {
-        if (!authLoading && user) {
+        if (!authLoading) {
             loadInventory();
         }
-    }, [authLoading, user]);
+    }, [authLoading]);
 
     const loadInventory = async () => {
         try {
@@ -42,11 +43,14 @@ const Cata: React.FC = () => {
             // Calcular stock comprometido (pending/in-transit)
             const committedStock: Record<string, number> = {};
             exitNotesData.forEach(note => {
+                if (!note || !note.items) return;
                 const s = (note.status || '').toLowerCase();
                 if (s === 'pending' || s === 'in-transit') {
                     note.items.forEach(item => {
-                        const pid = item.productId;
-                        committedStock[pid] = (committedStock[pid] || 0) + (item.quantity || 0);
+                        if (item && item.productId) {
+                            const pid = item.productId;
+                            committedStock[pid] = (committedStock[pid] || 0) + (item.quantity || 0);
+                        }
                     });
                 }
             });
@@ -54,6 +58,7 @@ const Cata: React.FC = () => {
             const stockItems: InventoryItem[] = [];
 
             inventoryData.forEach(item => {
+                if (!item || !item.productId) return;
                 const location = (item.location || '').toLowerCase().trim();
                 const isEcuador = location.includes('ecuador') || location === 'ecuador';
 
@@ -170,6 +175,14 @@ const Cata: React.FC = () => {
             <header className="bg-white/80 backdrop-blur-md sticky top-0 z-[100] border-b border-gray-100 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => navigate('/app')}
+                            className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-600"
+                        >
+
+                            <ArrowLeft className="w-6 h-6" />
+                        </button>
+
                         <div>
                             <h1 className="text-xl font-extrabold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent">
                                 Catálogo Ecuador

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut } from 'lucide-react';
 import { vilmaInventoryService, VilmaInventoryItem } from '../services/vilmaInventoryService';
 import { vilmaPaymentService, VilmaPayment } from '../services/vilmaPaymentService';
 import { inventoryService } from '../services/inventoryService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
+import { getSellerSession, clearSellerSession } from '../utils/sellerSession';
 
 type TabType = 'inventario' | 'vendido' | 'devueltos';
 
@@ -61,10 +62,20 @@ const AppVilma: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        const s = getSellerSession();
+        if (!s || !s.isAdmin) { navigate('/app', { replace: true }); return; }
+    }, [navigate]);
+
+    useEffect(() => {
         if (!authLoading && user) {
             loadData();
         }
     }, [authLoading, user, loadData]);
+
+    const handleLogout = () => {
+        clearSellerSession();
+        navigate('/app', { replace: true });
+    };
 
     const handleMarkAsSold = async (item: VilmaInventoryItem) => {
         try {
@@ -187,17 +198,20 @@ const AppVilma: React.FC = () => {
         <div className="min-h-screen bg-gray-50 pb-10">
             {/* Header */}
             <div className="bg-gradient-to-r from-pink-500 to-pink-700 text-white px-4 py-5 shadow-lg">
-                <div className="flex items-center space-x-3">
-                    <button
-                        onClick={() => navigate('/app')}
-                        className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                    >
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <div>
-                        <h1 className="text-xl font-bold">Vilma Uchubanda</h1>
-                        <p className="text-pink-100 text-sm">Inventario y Cuenta</p>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                        <button onClick={() => navigate('/app')} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                            <ArrowLeft className="w-6 h-6" />
+                        </button>
+                        <div>
+                            <h1 className="text-xl font-bold">Vilma Uchubanda</h1>
+                            <p className="text-pink-100 text-sm">👑 Administradora</p>
+                        </div>
                     </div>
+                    <button onClick={handleLogout} className="flex items-center space-x-1 bg-white/20 hover:bg-white/30 px-3 py-2 rounded-xl text-sm font-medium transition-colors">
+                        <LogOut className="w-4 h-4" />
+                        <span>Salir</span>
+                    </button>
                 </div>
             </div>
 

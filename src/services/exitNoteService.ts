@@ -415,30 +415,48 @@ export const exitNoteService = {
     notes?: string
   ): Promise<string> {
     try {
-      // 1. Obtener datos del vendedor
+      // 1. Obtener datos del vendedor (desde DB o MAIN_SELLERS fallback)
       const { sellerService } = await import('./sellerService');
-      const seller = await sellerService.getById(sellerId);
+      let seller = await sellerService.getById(sellerId);
+
+      if (!seller) {
+        // Fallback a los vendedores locales si no está en Firebase
+        const { MAIN_SELLERS } = await import('../utils/sellerSession');
+        const local = MAIN_SELLERS.find(ms => ms.id === sellerId);
+        if (local) {
+          seller = {
+            id: local.id,
+            name: local.name,
+            priceType: 'price2',
+            isActive: true,
+            createdAt: new Date(),
+            email: '',
+            phone: '',
+            city: '',
+            address: '',
+            commission: 0
+          } as any;
+        }
+      }
+
       if (!seller) throw new Error('Vendedor no encontrado');
 
       // 2. Preparar la nota de salida
       const exitNoteData: Omit<ExitNote, 'id'> = {
-        number: `NS-ECU-${Date.now()}`, // Prefijo importante para identificar origen
+        number: `NS-ECU-${Date.now()}`,
         date: new Date(),
-        sellerId: seller.id,
-        seller: seller.name,
-        customer: seller.name,
+        sellerId: seller!.id,
+        seller: seller!.name,
+        customer: seller!.name,
         items: items,
         totalPrice: items.reduce((sum, item) => sum + item.totalPrice, 0),
-        status: 'delivered', // Asumimos entregado para que aparezca en el inventario del vendedor inmediatamente
+        status: 'delivered',
         notes: notes || 'Transferencia directa desde Bodega Ecuador',
         createdAt: new Date(),
         createdBy: 'system'
       };
 
       // 3. Crear la nota en Firestore
-      // Usamos addDoc directamente aquí para evitar la lógica automática de create() que podría interferir o duplicar
-      // aunque create() maneja contabilidad, queremos eso.
-      // create() NO resta stock automáticamente, así que es seguro usarlo.
       const noteId = await this.create(exitNoteData);
 
       // 4. Actualizar inventarios

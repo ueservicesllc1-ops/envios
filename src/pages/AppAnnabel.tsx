@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut, EyeOff } from 'lucide-react';
 import { annabelInventoryService, AnnabelInventoryItem } from '../services/annabelInventoryService';
 import { annabelPaymentService, AnnabelPayment } from '../services/annabelPaymentService';
 import { inventoryService } from '../services/inventoryService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
+import { getSellerSession, clearSellerSession, SellerSession } from '../utils/sellerSession';
 
 type TabType = 'inventario' | 'vendido' | 'devueltos';
 
 const AppAnnabel: React.FC = () => {
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAnonymousAuth();
+    const [session, setSessionState] = useState<SellerSession | null>(null);
+    const isReadOnly = !session?.isAdmin;
 
     const [loading, setLoading] = useState(true);
     const [allItems, setAllItems] = useState<AnnabelInventoryItem[]>([]);
@@ -61,10 +64,22 @@ const AppAnnabel: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        const s = getSellerSession();
+        if (!s) { navigate('/app', { replace: true }); return; }
+        if (!s.isAdmin && s.id !== 'annabel') { navigate('/app', { replace: true }); return; }
+        setSessionState(s);
+    }, [navigate]);
+
+    useEffect(() => {
         if (!authLoading && user) {
             loadData();
         }
     }, [authLoading, user, loadData]);
+
+    const handleLogout = () => {
+        clearSellerSession();
+        navigate('/app', { replace: true });
+    };
 
     const handleMarkAsSold = async (item: AnnabelInventoryItem) => {
         try {
@@ -186,17 +201,23 @@ const AppAnnabel: React.FC = () => {
         <div className="min-h-screen bg-gray-50 pb-10">
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-500 to-purple-700 text-white px-4 py-5 shadow-lg">
-                <div className="flex items-center space-x-3">
-                    <button
-                        onClick={() => navigate('/app')}
-                        className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-                    >
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <div>
-                        <h1 className="text-xl font-bold">Annabel Diaz</h1>
-                        <p className="text-purple-100 text-sm">Inventario y Cuenta</p>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                        <button onClick={() => navigate('/app')} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+                            <ArrowLeft className="w-6 h-6" />
+                        </button>
+                        <div>
+                            <h1 className="text-xl font-bold">Annabel Diaz</h1>
+                            <p className="text-purple-100 text-sm flex items-center space-x-1">
+                                {isReadOnly && <><EyeOff className="w-3 h-3" /><span>Solo lectura</span></>}
+                                {!isReadOnly && <span>Inventario y Cuenta</span>}
+                            </p>
+                        </div>
                     </div>
+                    <button onClick={handleLogout} className="flex items-center space-x-1 bg-white/20 hover:bg-white/30 px-3 py-2 rounded-xl text-sm font-medium transition-colors">
+                        <LogOut className="w-4 h-4" />
+                        <span>Salir</span>
+                    </button>
                 </div>
             </div>
 
@@ -209,17 +230,13 @@ const AppAnnabel: React.FC = () => {
                         <p className="text-4xl font-bold">${totalDebt.toFixed(2)}</p>
                     </div>
                     <div className="p-4">
-                        <button
-                            onClick={() => {
-                                setPayAmount('');
-                                setShowPayModal(true);
-                            }}
-                            disabled={totalDebt <= 0}
-                            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95"
-                        >
-                            <CreditCard className="w-5 h-5" />
-                            <span>Realizar Pago</span>
-                        </button>
+                        {!isReadOnly && (
+                            <button onClick={() => { setPayAmount(''); setShowPayModal(true); }} disabled={totalDebt <= 0}
+                                className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95">
+                                <CreditCard className="w-5 h-5" />
+                                <span>Realizar Pago</span>
+                            </button>
+                        )}
                         <button
                             onClick={() => setShowReportModal(true)}
                             className="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95"
@@ -240,8 +257,8 @@ const AppAnnabel: React.FC = () => {
                     <button
                         onClick={() => setActiveTab('inventario')}
                         className={`flex-1 py-2.5 px-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center space-x-1.5 ${activeTab === 'inventario'
-                                ? 'bg-purple-600 text-white shadow-md'
-                                : 'text-gray-500 hover:bg-gray-50'
+                            ? 'bg-purple-600 text-white shadow-md'
+                            : 'text-gray-500 hover:bg-gray-50'
                             }`}
                     >
                         <Package className="w-4 h-4" />
@@ -250,8 +267,8 @@ const AppAnnabel: React.FC = () => {
                     <button
                         onClick={() => setActiveTab('vendido')}
                         className={`flex-1 py-2.5 px-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center space-x-1.5 ${activeTab === 'vendido'
-                                ? 'bg-purple-600 text-white shadow-md'
-                                : 'text-gray-500 hover:bg-gray-50'
+                            ? 'bg-purple-600 text-white shadow-md'
+                            : 'text-gray-500 hover:bg-gray-50'
                             }`}
                     >
                         <ShoppingCart className="w-4 h-4" />
@@ -260,8 +277,8 @@ const AppAnnabel: React.FC = () => {
                     <button
                         onClick={() => setActiveTab('devueltos')}
                         className={`flex-1 py-2.5 px-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center space-x-1.5 ${activeTab === 'devueltos'
-                                ? 'bg-purple-600 text-white shadow-md'
-                                : 'text-gray-500 hover:bg-gray-50'
+                            ? 'bg-purple-600 text-white shadow-md'
+                            : 'text-gray-500 hover:bg-gray-50'
                             }`}
                     >
                         <RotateCcw className="w-4 h-4" />
@@ -281,7 +298,7 @@ const AppAnnabel: React.FC = () => {
                         ) : (
                             <div className="grid grid-cols-2 gap-3">
                                 {inventoryItems.map(item => (
-                                    <ProductCard key={item.id} item={item} showSoldButton showReturnButton />
+                                    <ProductCard key={item.id} item={item} showSoldButton={!isReadOnly} showReturnButton={!isReadOnly} />
                                 ))}
                             </div>
                         )}

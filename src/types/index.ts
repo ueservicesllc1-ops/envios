@@ -133,6 +133,7 @@ export interface Seller {
   totalDebt?: number;
   lastDeliveryDate?: Date;
   slug?: string; // Slug único para URL amigable (ej: "yenifer")
+  fcmTokens?: string[]; // Tokens para notificaciones push
   createdAt: Date;
 }
 
