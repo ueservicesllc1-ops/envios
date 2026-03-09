@@ -1,6 +1,9 @@
 {
   "name": "envios-ecuador",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "description": "Sistema de gestión para empresa de envíos a Ecuador",
   "homepage": "/",
   "private": true,
@@ -53,7 +56,7 @@
     "serve": "serve -s build -l 3000",
     "server": "ts-node --project server/tsconfig.json server/index.ts",
     "server:dev": "nodemon --exec ts-node --project server/tsconfig.json server/index.ts",
-    "server:prod": "ts-node --project server/tsconfig.json server/index.ts",
+    "server:prod": "NODE_ENV=production ts-node --project server/tsconfig.json server/index.ts",
     "update:perfume-prices": "ts-node --project server/tsconfig.json server/scripts/update-perfume-prices.ts",
     "translate:perfumes": "ts-node --project server/tsconfig.json server/scripts/translate-perfume-descriptions.ts"
   },
