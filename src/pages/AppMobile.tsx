@@ -97,6 +97,7 @@ const AppMobile: React.FC = () => {
     const handleSellerLogin = () => {
         if (!selectedSellerId) { toast.error('Selecciona un vendedor'); return; }
         if (sellerPin.length < 4) { toast.error('El PIN debe tener al menos 4 dígitos'); return; }
+        // Find seller from the fetched list
         const s = sellers.find(sel => sel.id === selectedSellerId);
         if (!s) return;
         toast.success(`Bienvenido, ${s.name}`);
@@ -105,10 +106,10 @@ const AppMobile: React.FC = () => {
         navigate(`/app/vendedor/${s.id}`);
     };
 
-    const currentSellerInfo = MAIN_SELLERS.find(s => s.id === session?.id) || MAIN_SELLERS[0];
+    const currentSellerInfo = MAIN_SELLERS.find((s: any) => s.id === session?.id) || MAIN_SELLERS[0];
     const visibleSellers = session?.isAdmin
         ? MAIN_SELLERS
-        : MAIN_SELLERS.filter(s => s.id === session?.id);
+        : MAIN_SELLERS.filter((s: any) => s.id === session?.id);
 
     // ── SPLASH ──────────────────────────────────────────────────────────────
     if (showSplash) {
@@ -146,7 +147,7 @@ const AppMobile: React.FC = () => {
                         Selecciona tu perfil
                     </p>
                     <div className="space-y-3 max-w-sm mx-auto w-full">
-                        {MAIN_SELLERS.map(seller => (
+                        {MAIN_SELLERS.map((seller: any) => (
                             <button
                                 key={seller.id}
                                 onClick={() => handleSellerCard(seller)}
@@ -284,7 +285,7 @@ const AppMobile: React.FC = () => {
                         {session.isAdmin ? 'Vendedoras' : 'Mi Perfil'}
                     </p>
                     <div className="space-y-3">
-                        {visibleSellers.map(seller => (
+                        {visibleSellers.map((seller: any) => (
                             <button key={seller.id} onClick={() => navigate(seller.route)}
                                 className={`w-full bg-gradient-to-r ${seller.gradient} rounded-2xl shadow-sm p-4 flex items-center justify-between active:scale-95 transition-all`}>
                                 <div className="flex items-center space-x-3">

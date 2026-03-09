@@ -58,6 +58,7 @@ import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
 import ReturnsPolicyPage from './pages/ReturnsPolicyPage';
 import UserAddresses from './pages/UserAddresses';
+// Forzado de re-compilación
 import UserProfile from './pages/UserProfile';
 import TestEmail from './pages/TestEmail';
 import Cata from './pages/Cata';

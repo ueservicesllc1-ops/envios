@@ -447,7 +447,7 @@ export const exitNoteService = {
       if (!seller) {
         // Fallback a los vendedores locales si no está en Firebase
         const { MAIN_SELLERS } = await import('../utils/sellerSession');
-        const local = MAIN_SELLERS.find(ms => ms.id === sellerId);
+        const local = MAIN_SELLERS.find((ms: any) => ms.id === sellerId);
         if (local) {
           seller = {
             id: local.id,

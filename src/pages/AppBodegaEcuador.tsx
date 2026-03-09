@@ -12,6 +12,7 @@ import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { addDoc, collection, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { MAIN_SELLERS, getSellerSession } from '../utils/sellerSession';
+// Forzado de re-compilación
 
 const AppBodegaEcuador: React.FC = () => {
     const navigate = useNavigate();
