@@ -71,17 +71,27 @@ const AppBodegaEcuador: React.FC = () => {
     const loadSellers = async () => {
         try {
             const sellers = await sellerService.getAll();
-            // Incluir a Maria, Annabel y Vilma
-            const filteredSellers = sellers.filter((s: any) =>
-                s.name.toLowerCase().includes('maria') ||
-                s.name.toLowerCase().includes('annabel') ||
-                s.name.toLowerCase().includes('vilma')
-            );
 
-            // Si falta alguien de los MAIN_SELLERS, lo agregamos manual para que aparezca
-            const missing = MAIN_SELLERS.filter((ls: any) =>
-                !filteredSellers.some((fs: any) => fs.name.toLowerCase().includes(ls.name.toLowerCase().split(' ')[0]))
-            ).map((ls: any) => ({
+            // 1. Obtener los nombres de los vendedores principales
+            const mainNames = MAIN_SELLERS.map(ms => ms.name.toLowerCase());
+            const mainFirstNames = MAIN_SELLERS.map(ms => ms.name.split(' ')[0].toLowerCase());
+
+            // 2. Filtrar de la base de datos
+            const filteredSellers = sellers.filter((s: any) => {
+                const nameLow = s.name.toLowerCase();
+                return mainNames.some(mn => nameLow.includes(mn)) ||
+                    mainFirstNames.some(mfn => nameLow.includes(mfn));
+            });
+
+            // 3. Identificar quién falta de MAIN_SELLERS
+            const missing = MAIN_SELLERS.filter(ls => {
+                const lsNameLow = ls.name.toLowerCase();
+                const lsFirstName = ls.name.split(' ')[0].toLowerCase();
+                return !filteredSellers.some(fs =>
+                    fs.name.toLowerCase().includes(lsNameLow) ||
+                    fs.name.toLowerCase().includes(lsFirstName)
+                );
+            }).map(ls => ({
                 id: ls.id,
                 name: ls.name,
                 priceType: 'price2',
