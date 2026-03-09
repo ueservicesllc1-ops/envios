@@ -207,6 +207,9 @@ const Dashboard: React.FC = () => {
         actualTotalDebt += sellerDebt;
 
         // Actualizar la deuda del vendedor en la base de datos si es diferente
+        // IMPORTANTE: Ya no actualizamos la DB automáticamente al cargar
+        // para ahorrar escrituras. El usuario debe usar el botón Recalcular.
+        /*
         if ((seller.totalDebt || 0) !== sellerDebt) {
           try {
             await sellerService.update(seller.id, { totalDebt: sellerDebt });
@@ -217,6 +220,7 @@ const Dashboard: React.FC = () => {
         } else {
           console.log(`✅ Deuda del vendedor ${seller.name} ya está correcta: $${sellerDebt}`);
         }
+        */
       }
 
       console.log(`💰 Deuda total calculada: $${actualTotalDebt}`);

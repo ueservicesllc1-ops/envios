@@ -34,11 +34,14 @@ const Cata: React.FC = () => {
     const loadInventory = async () => {
         try {
             setLoading(true);
-            const [productsData, inventoryData, exitNotesData] = await Promise.all([
+            const [productsData, inventoryData, pendingNotes, transitNotes] = await Promise.all([
                 productService.getAll(),
                 inventoryService.getAll(),
-                exitNoteService.getAll()
+                exitNoteService.getByStatus('pending'),
+                exitNoteService.getByStatus('in-transit')
             ]);
+
+            const exitNotesData = [...pendingNotes, ...transitNotes];
 
             // Calcular stock comprometido (pending/in-transit)
             const committedStock: Record<string, number> = {};

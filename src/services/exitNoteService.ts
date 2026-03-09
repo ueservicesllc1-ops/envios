@@ -228,27 +228,52 @@ export const exitNoteService = {
     }
   },
 
+  // Obtener notas de salida por estado
+  async getByStatus(status: string): Promise<ExitNote[]> {
+    try {
+      const q = query(
+        collection(db, 'exitNotes'),
+        where('status', '==', status),
+        orderBy('date', 'desc')
+      );
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        date: convertTimestamp(doc.data().date),
+        receivedAt: doc.data().receivedAt ? convertTimestamp(doc.data().receivedAt) : undefined,
+        createdAt: convertTimestamp(doc.data().createdAt)
+      })) as ExitNote[];
+    } catch (error) {
+      console.error('Error getting exit notes by status:', error);
+      // Fallback a getAll si falla por falta de índice
+      const allNotes = await this.getAll();
+      return allNotes.filter(note => note.status === status);
+    }
+  },
+
   // Obtener notas de salida por vendedor
   async getBySeller(sellerId: string): Promise<ExitNote[]> {
     try {
-      // Por ahora, obtener todas las notas y filtrar en el cliente
-      // para evitar el error de índice compuesto
-      const q = query(collection(db, 'exitNotes'), orderBy('date', 'desc'));
+      const q = query(
+        collection(db, 'exitNotes'),
+        where('sellerId', '==', sellerId),
+        orderBy('date', 'desc')
+      );
       const querySnapshot = await getDocs(q);
 
-      const allNotes = querySnapshot.docs.map(doc => ({
+      return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         date: convertTimestamp(doc.data().date),
         createdAt: convertTimestamp(doc.data().createdAt)
       })) as ExitNote[];
-
-      // Filtrar por sellerId en el cliente
-      return allNotes.filter(note => note.sellerId === sellerId);
     } catch (error) {
       console.error('Error getting exit notes by seller:', error);
-      toast.error('Error al cargar las notas de salida del vendedor');
-      throw error;
+      // Fallback a getAll si falla por falta de índice
+      const allNotes = await this.getAll();
+      return allNotes.filter(note => note.sellerId === sellerId);
     }
   },
 

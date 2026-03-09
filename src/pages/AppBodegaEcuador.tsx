@@ -70,15 +70,16 @@ const AppBodegaEcuador: React.FC = () => {
     const loadSellers = async () => {
         try {
             const sellers = await sellerService.getAll();
-            // Filtrar solo a Maria y Annabel según petición del usuario
+            // Incluir a Maria, Annabel y Vilma
             const filteredSellers = sellers.filter((s: any) =>
                 s.name.toLowerCase().includes('maria') ||
-                s.name.toLowerCase().includes('annabel')
+                s.name.toLowerCase().includes('annabel') ||
+                s.name.toLowerCase().includes('vilma')
             );
 
-            // Si falta alguien de los MAIN_SELLERS (excepto admins), lo agregamos manual para que aparezca
+            // Si falta alguien de los MAIN_SELLERS, lo agregamos manual para que aparezca
             const missing = MAIN_SELLERS.filter((ls: any) =>
-                !ls.isAdmin && !filteredSellers.some((fs: any) => fs.name.toLowerCase().includes(ls.name.toLowerCase().split(' ')[0]))
+                !filteredSellers.some((fs: any) => fs.name.toLowerCase().includes(ls.name.toLowerCase().split(' ')[0]))
             ).map((ls: any) => ({
                 id: ls.id,
                 name: ls.name,
