@@ -2271,10 +2271,10 @@ const ExitNotes: React.FC = () => {
                             min="0"
                             step="0.01"
                             value={item.unitPrice}
-                            className="w-full px-2 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 text-xs"
+                            className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs text-gray-900"
                             placeholder="Precio"
-                            title="Precio de venta del vendedor (cargado automáticamente según el tipo de precio)"
-                            readOnly
+                            title="Precio de venta (puedes editarlo manualmente)"
+                            onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
                           />
                         </div>
                         <div className="w-20 text-right">

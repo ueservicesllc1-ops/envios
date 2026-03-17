@@ -255,6 +255,12 @@ const WarehouseEcuador: React.FC = () => {
     setExitNoteItems(newItems);
   };
 
+  const updateExitNoteItemPrice = (index: number, price: number) => {
+    const newItems = [...exitNoteItems];
+    newItems[index].unitPrice = price;
+    setExitNoteItems(newItems);
+  };
+
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
     setEditFormData({
@@ -1133,8 +1139,15 @@ const WarehouseEcuador: React.FC = () => {
                                       className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
                                     />
                                   </td>
-                                  <td className="px-4 py-2 text-sm text-gray-900">
-                                    ${item.unitPrice.toLocaleString()}
+                                  <td className="px-4 py-2">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={item.unitPrice}
+                                      onChange={(e) => updateExitNoteItemPrice(index, parseFloat(e.target.value) || 0)}
+                                      className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900"
+                                    />
                                   </td>
                                   <td className="px-4 py-2 text-sm font-medium text-gray-900">
                                     ${(item.unitPrice * item.quantity).toLocaleString()}

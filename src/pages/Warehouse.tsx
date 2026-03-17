@@ -337,6 +337,12 @@ const Warehouse: React.FC = () => {
     setExitNoteItems(newItems);
   };
 
+  const updateExitNoteItemPrice = (index: number, price: number) => {
+    const newItems = [...exitNoteItems];
+    newItems[index].unitPrice = price;
+    setExitNoteItems(newItems);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -811,7 +817,16 @@ const Warehouse: React.FC = () => {
                                       className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
                                     />
                                   </td>
-                                  <td className="px-4 py-2 text-sm text-gray-900">${item.unitPrice}</td>
+                                   <td className="px-4 py-2">
+                                     <input
+                                       type="number"
+                                       min="0"
+                                       step="0.01"
+                                       value={item.unitPrice}
+                                       onChange={(e) => updateExitNoteItemPrice(index, parseFloat(e.target.value) || 0)}
+                                       className="w-24 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900"
+                                     />
+                                   </td>
                                   <td className="px-4 py-2 text-sm font-bold text-gray-900">
                                     ${(item.unitPrice * item.quantity).toLocaleString()}
                                   </td>
