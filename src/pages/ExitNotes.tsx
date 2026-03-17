@@ -924,10 +924,24 @@ const ExitNotes: React.FC = () => {
         return;
       }
 
-      const selectedSeller = sellers.find(s => s.id === editingNote.sellerId);
+      let selectedSeller = sellers.find(s => s.id === editingNote.sellerId);
+      
+      // Si no se encuentra en la lista, intentar usar la información de la nota o crear un objeto mínimo
       if (!selectedSeller) {
-        toast.error('No se encontró el vendedor original de la nota');
-        return;
+        if (editingNote.sellerId === 'bodega-ecuador' || editingNote.seller === 'Bodega Ecuador') {
+          selectedSeller = {
+            id: 'bodega-ecuador',
+            name: 'Bodega Ecuador',
+            priceType: 'price1'
+          } as any;
+        } else {
+          // Fallback usando los datos de la propia nota
+          selectedSeller = {
+            id: editingNote.sellerId,
+            name: editingNote.seller,
+            priceType: 'price1' // Por defecto
+          } as any;
+        }
       }
 
       // Si no hay items, crear una nota vacía
