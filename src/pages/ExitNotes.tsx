@@ -943,6 +943,10 @@ const ExitNotes: React.FC = () => {
           } as any;
         }
       }
+      if (!selectedSeller) {
+        toast.error('No se pudo identificar al vendedor de la nota');
+        return;
+      }
 
       // Si no hay items, crear una nota vacía
       let exitNoteItems: any[] = [];
@@ -950,7 +954,7 @@ const ExitNotes: React.FC = () => {
       let totalWeightInGrams = 0;
 
       if (items.length > 0) {
-        const result = buildExitNoteItems(selectedSeller);
+        const result = buildExitNoteItems(selectedSeller as Seller);
         exitNoteItems = result.exitNoteItems;
         totalPrice = result.totalPrice;
         totalWeightInGrams = result.totalWeightInGrams;
@@ -1212,7 +1216,7 @@ const ExitNotes: React.FC = () => {
         for (const entry of accountingEntries) {
           await exitNoteAccountingService.update(entry.id, {
             totalValue: totalPrice,
-            notes: `Venta a vendedor - ${selectedSeller.name}`
+            notes: `Venta a vendedor - ${selectedSeller?.name || editingNote.seller}`
           });
         }
       } catch (accountingError) {
