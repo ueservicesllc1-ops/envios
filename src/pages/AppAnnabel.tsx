@@ -7,6 +7,7 @@ import { inventoryService } from '../services/inventoryService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { getSellerSession, clearSellerSession, SellerSession } from '../utils/sellerSession';
+import { exitNoteService } from '../services/exitNoteService';
 
 type TabType = 'inventario' | 'vendido' | 'devueltos';
 
@@ -33,6 +34,11 @@ const AppAnnabel: React.FC = () => {
 
     // Zoom imagen
     const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+    // Edición de precio
+    const [editingItem, setEditingItem] = useState<AnnabelInventoryItem | null>(null);
+    const [newPrice, setNewPrice] = useState('');
+    const [updatingPrice, setUpdatingPrice] = useState(false);
 
     // Filtrar por status
     const inventoryItems = allItems.filter(i => i.status === 'inventario' && i.quantity > 0);
@@ -130,6 +136,56 @@ const AppAnnabel: React.FC = () => {
         }
     };
 
+    const handleUpdatePrice = async () => {
+        if (!editingItem) return;
+        const price = parseFloat(newPrice);
+        if (isNaN(price) || price < 0) {
+            toast.error('Ingresa un precio válido');
+            return;
+        }
+
+        setUpdatingPrice(true);
+        try {
+            // 1. Actualizar inventario de Annabel
+            await annabelInventoryService.updatePrice(editingItem.id, price, editingItem.quantity);
+
+            // 2. Actualizar notas de salida para que la deuda en el Dashboard sea correcta
+            const allNotes = await exitNoteService.getAll();
+            const annabelNotes = allNotes.filter(n =>
+                n.sellerId === 'annabel' &&
+                (n.status === 'delivered' || n.status === 'received' || n.status === 'pending' || n.status === 'in-transit') &&
+                n.items.some(i => i.productId === editingItem.productId)
+            );
+
+            for (const note of annabelNotes) {
+                const updatedItems = note.items.map(item => {
+                    if (item.productId === editingItem.productId) {
+                        const newTotal = price * item.quantity;
+                        return { ...item, unitPrice: price, totalPrice: newTotal };
+                    }
+                    return item;
+                });
+
+                const newTotalPrice = updatedItems.reduce((sum, i) => sum + (i.totalPrice || 0), 0);
+
+                await exitNoteService.update(note.id!, {
+                    items: updatedItems,
+                    totalPrice: newTotalPrice
+                });
+            }
+
+            toast.success('Precio actualizado en inventario y notas');
+            setEditingItem(null);
+            setNewPrice('');
+            loadData();
+        } catch (error) {
+            console.error('Error updating price:', error);
+            toast.error('Error al actualizar el precio');
+        } finally {
+            setUpdatingPrice(false);
+        }
+    };
+
     if (loading || authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -167,8 +223,21 @@ const AppAnnabel: React.FC = () => {
                     <p className="text-[10px] text-gray-400 truncate mb-2">{item.sku}</p>
                 )}
                 <div className="mt-auto pt-2 border-t border-gray-50 flex justify-between items-center">
-                    <span className="text-[10px] text-gray-500">Precio venta</span>
-                    <span className="text-sm font-bold text-purple-600">${item.unitPrice.toFixed(2)}</span>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] text-gray-500">Precio venta</span>
+                        <span className="text-sm font-bold text-purple-600">${item.unitPrice.toFixed(2)}</span>
+                    </div>
+                    {!isReadOnly && (
+                        <button
+                            onClick={() => {
+                                setEditingItem(item);
+                                setNewPrice(item.unitPrice.toString());
+                            }}
+                            className="p-1 px-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-[10px] font-bold transition-colors"
+                        >
+                            Editar
+                        </button>
+                    )}
                 </div>
 
                 {(showSoldButton || showReturnButton) && (
@@ -486,6 +555,55 @@ const AppAnnabel: React.FC = () => {
                     >
                         <X className="w-6 h-6" />
                     </button>
+                </div>
+            )}
+
+            {/* Modal Editar Precio */}
+            {editingItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setEditingItem(null)}
+                    />
+                    <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden z-10">
+                        <div className="bg-purple-600 px-5 py-4 flex items-center justify-between text-white">
+                            <h3 className="font-bold text-lg">Editar Precio</h3>
+                            <button onClick={() => setEditingItem(null)}>
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                                {editingItem.imageUrl && <img src={editingItem.imageUrl} className="w-12 h-12 rounded object-cover" />}
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="text-sm font-bold truncate">{editingItem.productName}</p>
+                                    <p className="text-xs text-gray-500">Cantidad: {editingItem.quantity}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Nuevo Precio Unitario</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                    <input
+                                        type="number"
+                                        value={newPrice}
+                                        onChange={e => setNewPrice(e.target.value)}
+                                        className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xl font-bold text-gray-800 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                                        placeholder="0.00"
+                                        step="0.01"
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleUpdatePrice}
+                                disabled={updatingPrice}
+                                className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white font-bold py-3 rounded-xl transition-all"
+                            >
+                                {updatingPrice ? 'Actualizando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

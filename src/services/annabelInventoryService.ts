@@ -85,6 +85,13 @@ class AnnabelInventoryService {
         });
     }
 
+    async updatePrice(id: string, newPrice: number, quantity: number): Promise<void> {
+        await updateDoc(doc(db, this.collectionName, id), {
+            unitPrice: newPrice,
+            totalValue: newPrice * quantity
+        });
+    }
+
     async remove(id: string): Promise<void> {
         await deleteDoc(doc(db, this.collectionName, id));
     }

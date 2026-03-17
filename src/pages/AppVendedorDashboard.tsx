@@ -8,6 +8,7 @@ import { sellerInventoryService } from '../services/sellerInventoryService';
 import { paymentNoteService } from '../services/paymentNoteService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
+import { getSellerSession } from '../utils/sellerSession';
 
 const AppVendedorDashboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ const AppVendedorDashboard: React.FC = () => {
     const [sellerNotes, setSellerNotes] = useState<ExitNote[]>([]);
     const [inventory, setInventory] = useState<SellerInventoryItem[]>([]);
     const [activeTab, setActiveTab] = useState<'shipments' | 'inventory' | 'accounting'>('shipments');
+    const [isAdmin, setIsAdmin] = useState(false);
 
     // Filtro de notas
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed'>('all');
@@ -33,6 +35,11 @@ const AppVendedorDashboard: React.FC = () => {
 
     // Zoom Imagen
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    // Edición de precio
+    const [editingItem, setEditingItem] = useState<SellerInventoryItem | null>(null);
+    const [newPrice, setNewPrice] = useState('');
+    const [updatingPrice, setUpdatingPrice] = useState(false);
 
     const loadData = React.useCallback(async () => {
         try {
@@ -91,6 +98,11 @@ const AppVendedorDashboard: React.FC = () => {
     useEffect(() => {
         if (!authLoading && user && id) {
             loadData();
+            // Verificar si el usuario actual es admin
+            const session = getSellerSession();
+            if (session?.isAdmin) {
+                setIsAdmin(true);
+            }
         }
         if (authError) {
             toast.error('Error de autenticación. Por favor, recarga la página.');
@@ -262,6 +274,59 @@ const AppVendedorDashboard: React.FC = () => {
         }
     };
 
+    const handleUpdatePrice = async () => {
+        if (!editingItem) return;
+        const price = parseFloat(newPrice);
+        if (isNaN(price) || price < 0) {
+            toast.error('Ingresa un precio válido');
+            return;
+        }
+
+        setUpdatingPrice(true);
+        try {
+            // 1. Actualizar inventario actual
+            await sellerInventoryService.update(editingItem.id, {
+                unitPrice: price,
+                totalValue: price * editingItem.quantity
+            });
+
+            // 2. Actualizar todas las notas de salida entregadas que contienen este producto
+            // para que la deuda se recalcule correctamente.
+            const affectedNotes = sellerNotes.filter(n =>
+                (n.status === 'delivered' || n.status === 'received' || n.status === 'pending' || n.status === 'in-transit') &&
+                n.items.some(i => i.productId === editingItem.productId)
+            );
+
+            for (const note of affectedNotes) {
+                const updatedItems = note.items.map(item => {
+                    if (item.productId === editingItem.productId) {
+                        const newTotal = price * item.quantity;
+                        return { ...item, unitPrice: price, totalPrice: newTotal };
+                    }
+                    return item;
+                });
+
+                const newTotalPrice = updatedItems.reduce((sum, i) => sum + (i.totalPrice || 0), 0);
+
+                // Actualizar la nota en Firebase
+                await exitNoteService.update(note.id!, {
+                    items: updatedItems,
+                    totalPrice: newTotalPrice
+                });
+            }
+
+            toast.success('Precio actualizado en inventario y notas');
+            setEditingItem(null);
+            setNewPrice('');
+            loadData();
+        } catch (error) {
+            console.error('Error updating price:', error);
+            toast.error('Error al actualizar el precio');
+        } finally {
+            setUpdatingPrice(false);
+        }
+    };
+
     if (loading || authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -426,8 +491,22 @@ const AppVendedorDashboard: React.FC = () => {
                                             <h4 className="font-bold text-gray-800 text-xs line-clamp-2 h-8 mb-1">{item.product.name}</h4>
                                             <p className="text-[10px] text-gray-400 mb-2 truncate">{item.product.sku}</p>
                                             <div className="mt-auto border-t border-gray-50 pt-2 flex justify-between items-center">
-                                                <span className="text-[10px] text-gray-500">Precio Venta</span>
-                                                <span className="text-sm font-bold text-indigo-600">${item.unitPrice?.toFixed(2) || item.product.salePrice1?.toFixed(2)}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-gray-500">Precio Venta</span>
+                                                    <span className="text-sm font-bold text-indigo-600">${item.unitPrice?.toFixed(2) || item.product.salePrice1?.toFixed(2)}</span>
+                                                </div>
+                                                {isAdmin && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingItem(item);
+                                                            setNewPrice((item.unitPrice || item.product.salePrice1 || 0).toString());
+                                                        }}
+                                                        className="p-1 px-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-[10px] font-bold transition-colors"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -552,6 +631,55 @@ const AppVendedorDashboard: React.FC = () => {
                     >
                         <X className="w-6 h-6" />
                     </button>
+                </div>
+            )}
+
+            {/* Modal Editar Precio */}
+            {editingItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setEditingItem(null)}
+                    />
+                    <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden z-10">
+                        <div className="bg-indigo-600 px-5 py-4 flex items-center justify-between text-white">
+                            <h3 className="font-bold text-lg">Editar Precio</h3>
+                            <button onClick={() => setEditingItem(null)}>
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+                                {editingItem.product.imageUrl && <img src={editingItem.product.imageUrl} className="w-12 h-12 rounded object-cover" />}
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="text-sm font-bold truncate">{editingItem.product.name}</p>
+                                    <p className="text-xs text-gray-500">Cantidad: {editingItem.quantity}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Nuevo Precio Unitario</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+                                    <input
+                                        type="number"
+                                        value={newPrice}
+                                        onChange={e => setNewPrice(e.target.value)}
+                                        className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xl font-bold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        placeholder="0.00"
+                                        step="0.01"
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleUpdatePrice}
+                                disabled={updatingPrice}
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-bold py-3 rounded-xl transition-all"
+                            >
+                                {updatingPrice ? 'Actualizando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
