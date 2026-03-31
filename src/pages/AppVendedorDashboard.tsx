@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, DollarSign, Package, TrendingUp, Calendar, ChevronRight, Truck, CheckCircle, Clock, CreditCard, X, Box, FileText, ClipboardList } from 'lucide-react';
-import { Seller, ExitNote, SellerInventoryItem } from '../types';
+import { ArrowLeft, DollarSign, Package, TrendingUp, Calendar, ChevronRight, Truck, CheckCircle, Clock, CreditCard, X, Box, FileText, ClipboardList, Plus, Minus, Search, Save } from 'lucide-react';
+import { Seller, ExitNote, SellerInventoryItem, Product } from '../types';
 import { sellerService } from '../services/sellerService';
 import { exitNoteService } from '../services/exitNoteService';
 import { sellerInventoryService } from '../services/sellerInventoryService';
 import { paymentNoteService } from '../services/paymentNoteService';
+import { productService } from '../services/productService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { getSellerSession } from '../utils/sellerSession';
@@ -21,8 +22,14 @@ const AppVendedorDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [sellerNotes, setSellerNotes] = useState<ExitNote[]>([]);
     const [inventory, setInventory] = useState<SellerInventoryItem[]>([]);
-    const [activeTab, setActiveTab] = useState<'shipments' | 'inventory' | 'accounting'>('shipments');
+    const [activeTab, setActiveTab] = useState<'shipments' | 'inventory' | 'balances' | 'accounting'>('shipments');
     const [isAdmin, setIsAdmin] = useState(false);
+
+    // Estados para Saldos
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
+    const [reportedBalances, setReportedBalances] = useState<{ productId: string; quantity: number }[]>([]);
+    const [searchBalanceTerm, setSearchBalanceTerm] = useState('');
+    const [savingBalances, setSavingBalances] = useState(false);
 
     // Filtro de notas
     const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed'>('all');
@@ -55,6 +62,7 @@ const AppVendedorDashboard: React.FC = () => {
                     return;
                 }
                 setSeller(sellerData);
+                setReportedBalances(sellerData.reportedBalances || []);
             } catch (sellerError) {
                 console.error('Error loading seller:', sellerError);
                 toast.error('Error al cargar datos del vendedor');
@@ -85,6 +93,14 @@ const AppVendedorDashboard: React.FC = () => {
             } catch (inventoryError) {
                 console.error('Error loading inventory:', inventoryError);
                 setInventory([]);
+            }
+
+            // Cargar productos para saldos
+            try {
+                const prodData = await productService.getAll();
+                setAllProducts(prodData.filter(p => !p.isConsolidated));
+            } catch (pError) {
+                console.error('Error loading products', pError);
             }
 
         } catch (error) {
@@ -327,6 +343,20 @@ const AppVendedorDashboard: React.FC = () => {
         }
     };
 
+    const handleSaveBalances = async () => {
+        if (!seller) return;
+        setSavingBalances(true);
+        try {
+            await sellerService.update(seller.id, { reportedBalances });
+            toast.success('Saldos reportados guardados exitosamente');
+        } catch (error) {
+            console.error(error);
+            toast.error('Error guardando los saldos');
+        } finally {
+            setSavingBalances(false);
+        }
+    };
+
     if (loading || authLoading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -370,14 +400,21 @@ const AppVendedorDashboard: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab('inventory')}
-                        className={`flex-1 py-2 px-3 rounded-xl text-sm font-bold transition-all flex flex-col items-center justify-center ${activeTab === 'inventory' ? 'bg-white text-indigo-600 shadow-md' : 'bg-indigo-700/50 text-indigo-200 hover:bg-indigo-700'}`}
+                        className={`flex-1 py-2 px-1 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col items-center justify-center ${activeTab === 'inventory' ? 'bg-white text-indigo-600 shadow-md' : 'bg-indigo-700/50 text-indigo-200 hover:bg-indigo-700'}`}
                     >
                         <ClipboardList className="w-5 h-5 mb-1" />
                         <span>Inventario</span>
                     </button>
                     <button
+                        onClick={() => setActiveTab('balances')}
+                        className={`flex-1 py-2 px-1 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col items-center justify-center ${activeTab === 'balances' ? 'bg-white text-indigo-600 shadow-md' : 'bg-indigo-700/50 text-indigo-200 hover:bg-indigo-700'}`}
+                    >
+                        <Package className="w-5 h-5 mb-1" />
+                        <span>Saldos</span>
+                    </button>
+                    <button
                         onClick={() => setActiveTab('accounting')}
-                        className={`flex-1 py-2 px-3 rounded-xl text-sm font-bold transition-all flex flex-col items-center justify-center ${activeTab === 'accounting' ? 'bg-white text-indigo-600 shadow-md' : 'bg-indigo-700/50 text-indigo-200 hover:bg-indigo-700'}`}
+                        className={`flex-1 py-2 px-1 rounded-xl text-xs sm:text-sm font-bold transition-all flex flex-col items-center justify-center ${activeTab === 'accounting' ? 'bg-white text-indigo-600 shadow-md' : 'bg-indigo-700/50 text-indigo-200 hover:bg-indigo-700'}`}
                     >
                         <FileText className="w-5 h-5 mb-1" />
                         <span>Cuentas</span>
@@ -470,49 +507,170 @@ const AppVendedorDashboard: React.FC = () => {
                             </div>
                         ) : (
                             <div className="grid grid-cols-2 gap-3">
-                                {inventory.map(item => (
-                                    <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                                        <div
-                                            className="relative w-full pt-[100%] bg-gray-100 cursor-pointer"
-                                            onClick={() => item.product.imageUrl && setSelectedImage(item.product.imageUrl)}
-                                        >
-                                            <div className="absolute inset-0">
-                                                {item.product.imageUrl ? (
-                                                    <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="flex items-center justify-center h-full text-gray-300"><Package className="w-10 h-10" /></div>
-                                                )}
-                                            </div>
-                                            <div className="absolute top-2 right-2 bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
-                                                x{item.quantity}
-                                            </div>
-                                        </div>
-                                        <div className="p-3 flex flex-col flex-1">
-                                            <h4 className="font-bold text-gray-800 text-xs line-clamp-2 h-8 mb-1">{item.product.name}</h4>
-                                            <p className="text-[10px] text-gray-400 mb-2 truncate">{item.product.sku}</p>
-                                            <div className="mt-auto border-t border-gray-50 pt-2 flex justify-between items-center">
-                                                <div className="flex flex-col">
-                                                    <span className="text-[10px] text-gray-500">Precio Venta</span>
-                                                    <span className="text-sm font-bold text-indigo-600">${item.unitPrice?.toFixed(2) || item.product.salePrice1?.toFixed(2)}</span>
+                                {inventory.map(item => {
+                                    const productExitNotes = sellerNotes.filter(n => n.items.some(i => i.productId === item.productId)).map(n => n.number);
+                                    const exitNotesString = productExitNotes.length > 0 ? productExitNotes.join(', ') : 'N/A';
+                                    return (
+                                        <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                                            <div
+                                                className="relative w-full pt-[100%] bg-gray-100 cursor-pointer"
+                                                onClick={() => item.product.imageUrl && setSelectedImage(item.product.imageUrl)}
+                                            >
+                                                <div className="absolute inset-0">
+                                                    {item.product.imageUrl ? (
+                                                        <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="flex items-center justify-center h-full text-gray-300"><Package className="w-10 h-10" /></div>
+                                                    )}
                                                 </div>
-                                                {isAdmin && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setEditingItem(item);
-                                                            setNewPrice((item.unitPrice || item.product.salePrice1 || 0).toString());
-                                                        }}
-                                                        className="p-1 px-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-[10px] font-bold transition-colors"
-                                                    >
-                                                        Editar
-                                                    </button>
-                                                )}
+                                                <div className="absolute top-2 right-2 bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+                                                    x{item.quantity}
+                                                </div>
+                                            </div>
+                                            <div className="p-3 flex flex-col flex-1">
+                                                <h4 className="font-bold text-gray-800 text-xs line-clamp-2 h-8 mb-1">{item.product.name}</h4>
+                                                <p className="text-[10px] text-gray-400 mb-0.5 truncate">{item.product.sku}</p>
+                                                <p className="text-[9px] font-bold text-indigo-500 mb-2 truncate" title={exitNotesString}>NS: {exitNotesString}</p>
+                                                <div className="mt-auto border-t border-gray-50 pt-2 flex justify-between items-center">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] text-gray-500">Precio Venta</span>
+                                                        <span className="text-sm font-bold text-indigo-600">${item.unitPrice?.toFixed(2) || item.product.salePrice1?.toFixed(2)}</span>
+                                                    </div>
+                                                    {isAdmin && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingItem(item);
+                                                                setNewPrice((item.unitPrice || item.product.salePrice1 || 0).toString());
+                                                            }}
+                                                            className="p-1 px-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-[10px] font-bold transition-colors"
+                                                        >
+                                                            Editar
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* 2.5 Tab Saldos */}
+                {activeTab === 'balances' && (
+                    <div className="space-y-4 animate-fade-in">
+                        <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex justify-between items-center">
+                            <div className="pr-2">
+                                <h3 className="text-indigo-800 font-bold mb-1 leading-tight text-sm sm:text-base">Stock Reportado</h3>
+                                <p className="text-[10px] sm:text-xs text-indigo-600 leading-tight">Agrega productos que actualmente tienes para comparar con el inventario del sistema.</p>
+                            </div>
+                            <button 
+                                onClick={handleSaveBalances} 
+                                disabled={savingBalances}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 sm:px-4 rounded-xl font-bold flex items-center shadow-md disabled:opacity-50 transition-colors whitespace-nowrap"
+                            >
+                                <Save className="w-4 h-4 sm:mr-2" />
+                                <span className="hidden sm:inline">{savingBalances ? 'Guardando...' : 'Guardar'}</span>
+                            </button>
+                        </div>
+
+                        {/* Buscador de productos para agregar */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                                type="text"
+                                placeholder="Buscar producto por nombre o SKU..."
+                                value={searchBalanceTerm}
+                                onChange={(e) => setSearchBalanceTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            />
+                        </div>
+
+                        {/* Comparativa */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="p-2 sm:p-3 bg-gray-50 border-b border-gray-100 flex font-bold text-[10px] sm:text-xs text-gray-500 uppercase items-center">
+                                <span className="flex-1">Producto</span>
+                                <span className="w-8 sm:w-16 text-center" title="Inventario Sistema">Inv</span>
+                                <span className="w-20 sm:w-28 text-center">Físico</span>
+                                <span className="w-10 sm:w-16 text-center">Dif</span>
+                            </div>
+                            
+                            <div className="max-h-[60vh] overflow-y-auto">
+                                {allProducts
+                                    .filter(p => {
+                                        if (!searchBalanceTerm) {
+                                            return inventory.some(i => i.productId === p.id) || reportedBalances.some(r => r.productId === p.id);
+                                        }
+                                        return p.name.toLowerCase().includes(searchBalanceTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchBalanceTerm.toLowerCase());
+                                    })
+                                    .map(product => {
+                                        const reportedItem = reportedBalances.find(r => r.productId === product.id);
+                                        const reportedQty = reportedItem ? reportedItem.quantity : 0;
+                                        const inventoryItem = inventory.find(i => i.productId === product.id);
+                                        const invQty = inventoryItem ? inventoryItem.quantity : 0;
+                                        const diff = reportedQty - invQty;
+                                        
+                                        const updateReportedQuantity = (newQty: number) => {
+                                            if (newQty < 0) newQty = 0;
+                                            setReportedBalances(prev => {
+                                                const exists = prev.find(p => p.productId === product.id);
+                                                if (exists) {
+                                                    return prev.map(p => p.productId === product.id ? { ...p, quantity: newQty } : p);
+                                                }
+                                                return [...prev, { productId: product.id, quantity: newQty }];
+                                            });
+                                        };
+
+                                        return (
+                                            <div key={product.id} className="p-2 sm:p-3 border-b border-gray-50 flex items-center hover:bg-gray-50 transition-colors">
+                                                <div className="flex-1 flex items-center space-x-2 overflow-hidden mr-2">
+                                                    {product.imageUrl ? (
+                                                        <img src={product.imageUrl} alt={product.name} className="w-8 h-8 rounded object-cover hidden sm:block" />
+                                                    ) : (
+                                                        <div className="w-8 h-8 rounded bg-gray-100 hidden sm:flex items-center justify-center"><Package className="w-4 h-4 text-gray-400" /></div>
+                                                    )}
+                                                    <div className="truncate flex-1">
+                                                        <p className="text-xs sm:text-sm font-bold text-gray-800 truncate" title={product.name}>{product.name}</p>
+                                                        <p className="text-[9px] sm:text-[10px] text-gray-400">{product.sku}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="w-8 sm:w-16 text-center text-xs sm:text-sm font-bold text-gray-600">
+                                                    {invQty}
+                                                </div>
+                                                
+                                                <div className="w-20 sm:w-28 flex items-center justify-center space-x-1 sm:space-x-2">
+                                                    <button 
+                                                        onClick={() => updateReportedQuantity(reportedQty - 1)}
+                                                        className="w-5 h-5 sm:w-7 sm:h-7 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 flex-shrink-0"
+                                                    >
+                                                        <Minus className="w-3 h-3" />
+                                                    </button>
+                                                    <input 
+                                                        type="number"
+                                                        value={reportedQty === 0 ? '' : reportedQty}
+                                                        placeholder="0"
+                                                        onChange={(e) => updateReportedQuantity(parseInt(e.target.value) || 0)}
+                                                        className="w-8 sm:w-12 text-center font-bold text-indigo-600 bg-indigo-50 border-none rounded p-1 sm:p-2 text-xs sm:text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                                    />
+                                                    <button 
+                                                        onClick={() => updateReportedQuantity(reportedQty + 1)}
+                                                        className="w-5 h-5 sm:w-7 sm:h-7 rounded bg-indigo-100 hover:bg-indigo-200 flex items-center justify-center text-indigo-600 flex-shrink-0"
+                                                    >
+                                                        <Plus className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className={`w-10 sm:w-16 text-center text-xs sm:text-sm font-bold ${diff === 0 ? 'text-green-500' : diff > 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                                                    {diff > 0 ? `+${diff}` : diff}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -650,7 +808,7 @@ const AppVendedorDashboard: React.FC = () => {
                         </div>
                         <div className="p-5 space-y-4">
                             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-                                {editingItem.product.imageUrl && <img src={editingItem.product.imageUrl} className="w-12 h-12 rounded object-cover" />}
+                                {editingItem.product.imageUrl && <img src={editingItem.product.imageUrl} alt={editingItem.product.name} className="w-12 h-12 rounded object-cover" />}
                                 <div className="flex-1 overflow-hidden">
                                     <p className="text-sm font-bold truncate">{editingItem.product.name}</p>
                                     <p className="text-xs text-gray-500">Cantidad: {editingItem.quantity}</p>

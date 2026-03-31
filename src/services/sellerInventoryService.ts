@@ -22,7 +22,8 @@ class SellerInventoryService {
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        lastDeliveryDate: doc.data().lastDeliveryDate?.toDate() || new Date()
+        lastDeliveryDate: doc.data().lastDeliveryDate?.toDate() || new Date(),
+        returnedDate: doc.data().returnedDate?.toDate() || undefined
       })) as SellerInventoryItem[];
     } catch (error) {
       console.error('Error getting seller inventory:', error);
@@ -40,7 +41,8 @@ class SellerInventoryService {
       const items = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        lastDeliveryDate: doc.data().lastDeliveryDate?.toDate() || new Date()
+        lastDeliveryDate: doc.data().lastDeliveryDate?.toDate() || new Date(),
+        returnedDate: doc.data().returnedDate?.toDate() || undefined
       })) as SellerInventoryItem[];
 
       // Ordenar por fecha de entrega en el cliente
@@ -228,7 +230,8 @@ class SellerInventoryService {
         const newReturnedQuantity = (item.returnedQuantity || 0) + quantityToMark;
 
         await this.update(item.id, {
-          returnedQuantity: newReturnedQuantity
+          returnedQuantity: newReturnedQuantity,
+          returnedDate: Timestamp.now() as any
         });
 
         remaining -= quantityToMark;
@@ -244,7 +247,7 @@ class SellerInventoryService {
   }
 
   // Desmarcar productos como devueltos (revertir markAsReturned)
-  async unmarkAsReturned(sellerId: string, productId: string, quantity: number): Promise<void> {
+  async unmarkAsReturned(sellerId: string, productId: string, quantity: number, force: boolean = false): Promise<void> {
     try {
       let remaining = quantity;
       const items = await this.getBySeller(sellerId);
@@ -264,8 +267,10 @@ class SellerInventoryService {
         remaining -= quantityToUnmark;
       }
 
-      if (remaining > 0) {
+      if (remaining > 0 && !force) {
         throw new Error('No hay suficientes productos marcados como devueltos para desmarcar la cantidad solicitada');
+      } else if (remaining > 0 && force) {
+        console.warn(`No se pudo desmarcar completamente ${remaining} unidades del producto ${productId} (forzado)`);
       }
     } catch (error) {
       console.error('Error unmarking as returned:', error);

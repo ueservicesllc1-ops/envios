@@ -570,7 +570,7 @@ const AppMaria: React.FC = () => {
                         </div>
                         <div className="p-5 space-y-4">
                             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-                                {editingItem.imageUrl && <img src={editingItem.imageUrl} className="w-12 h-12 rounded object-cover" />}
+                                {editingItem.imageUrl && <img src={editingItem.imageUrl} alt={editingItem.productName} className="w-12 h-12 rounded object-cover" />}
                                 <div className="flex-1 overflow-hidden">
                                     <p className="text-sm font-bold truncate">{editingItem.productName}</p>
                                     <p className="text-xs text-gray-500">Cantidad: {editingItem.quantity}</p>

@@ -92,6 +92,7 @@ export interface ExitNote {
   createdBy: string;
   paymentStatus?: 'pending' | 'partial' | 'paid'; // Estado de pago
   amountPaid?: number; // Monto pagado
+  isInternal?: boolean; // Si es una nota de salida interna (movimientos de admin)
 }
 
 export interface ExitNoteItem {
@@ -135,6 +136,7 @@ export interface Seller {
   slug?: string; // Slug único para URL amigable (ej: "yenifer")
   fcmTokens?: string[]; // Tokens para notificaciones push
   createdAt: Date;
+  reportedBalances?: { productId: string; quantity: number }[]; // Saldos reportados por el vendedor
 }
 
 // Tipos para Proveedores
@@ -201,6 +203,7 @@ export interface SellerInventoryItem {
   lastDeliveryDate: Date;
   exitNoteId?: string; // ID de la nota de salida que generó este inventario
   returnedQuantity?: number; // Cantidad devuelta (productos marcados como devueltos)
+  returnedDate?: Date; // Fecha en la que se marcó como devuelto el último lote
 }
 
 // Tipos para Notas de Pago

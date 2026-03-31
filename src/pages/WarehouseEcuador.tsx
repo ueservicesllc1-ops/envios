@@ -117,12 +117,10 @@ const WarehouseEcuador: React.FC = () => {
 
     const inventoryItem = getInventoryForProduct(product.id);
 
-    // Verificar si está en Ecuador y si YA LLEGÓ (no está en tránsito ni pendiente)
+    // Verificar si está en Ecuador
     const isEcuador = inventoryItem?.location?.toLowerCase().includes('ecuador') || inventoryItem?.location === 'Ecuador';
-    const status = (inventoryItem?.status || '').toLowerCase();
-    const isArrived = status !== 'in-transit' && status !== 'pending';
 
-    return matchesSearch && isEcuador && isArrived;
+    return matchesSearch && isEcuador;
   });
 
   const getStockStatus = (quantity: number) => {
@@ -486,14 +484,10 @@ const WarehouseEcuador: React.FC = () => {
     );
   }
 
-  // Filtrar productos que están en Ecuador y YA LLEGARON, ajustando stock por notas pendientes
-  const ecuadorProducts = inventory
-    .filter(item => {
+  const ecuadorProducts = inventory.filter(item => {
       const location = item.location?.toLowerCase() || '';
-      const status = (item.status || '').toLowerCase();
       const isEcuador = location.includes('ecuador') || item.location === 'Ecuador';
-      const isArrived = status !== 'in-transit' && status !== 'pending';
-      return isEcuador && isArrived;
+      return isEcuador;
     })
     .map(item => {
       const committed = committedStock[item.productId] || 0;
@@ -662,10 +656,7 @@ const WarehouseEcuador: React.FC = () => {
                 const committed = committedStock[product.id] || 0;
                 const displayQuantity = Math.max(0, (inventoryItem.quantity || 0) - committed);
 
-                // Si el usuario quiere que NO aparezcan los productos de notas pendientes, 
-                // podríamos retornar null aquí si displayQuantity <= 0.
-                // Vamos a probar ocultándolos si quedan en 0 por compromiso.
-                if (displayQuantity <= 0) return null;
+                // NO ocultarlos si quedan en 0, para que el usuario sepa que existen aunque no tengan stock disponible.
 
                 return (
                   <tr key={product.id} className="hover:bg-gray-50">

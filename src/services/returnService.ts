@@ -1,15 +1,17 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDoc,
-  getDocs, 
-  query, 
-  orderBy,
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
   where,
-  Timestamp 
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  writeBatch,
+  serverTimestamp,
+  orderBy,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Return } from '../types';
@@ -267,70 +269,114 @@ export const returnService = {
         throw new Error('La nota de devolución debe tener al menos un producto');
       }
 
-      // Verificar que el vendedor tiene suficiente inventario
+      // Verificar que el vendedor tiene suficiente inventario real (restando lo ya devuelto)
       const sellerInventory = await sellerInventoryService.getBySeller(returnData.sellerId);
       for (const item of returnData.items) {
-        const inventoryItem = sellerInventory.find(inv => inv.productId === item.productId);
-        if (!inventoryItem || inventoryItem.quantity < item.quantity) {
-          throw new Error(`Inventario insuficiente para ${item.product.name}. Disponible: ${inventoryItem?.quantity || 0}, Solicitado: ${item.quantity}`);
+        // Encontrar todos los items de este producto (puede haber varias entradas)
+        const productItems = sellerInventory.filter(inv => inv.productId === item.productId);
+        const totalAvailable = productItems.reduce((sum, inv) => sum + (inv.quantity - (inv.returnedQuantity || 0)), 0);
+        
+        if (totalAvailable < item.quantity) {
+          throw new Error(`Inventario insuficiente para ${item.product.name}. Realmente disponible: ${totalAvailable}, Solicitado: ${item.quantity}`);
         }
       }
 
-      // 1. Marcar productos como devueltos en el inventario del vendedor (no remover)
-      for (const item of returnData.items) {
-        await sellerInventoryService.markAsReturned(
-          returnData.sellerId,
-          item.productId,
-          item.quantity
-        );
-      }
-
-      // 2. Agregar productos a la bodega Ecuador
-      for (const item of returnData.items) {
-        const product = item.product;
-        await inventoryService.updateStockAfterEntry(
-          item.productId,
-          item.quantity,
-          product.cost || 0,
-          item.unitPrice
-        );
-
-        // Actualizar la ubicación a Ecuador
-        const inventoryItem = await inventoryService.getByProductId(item.productId);
-        if (inventoryItem) {
-          await inventoryService.update(inventoryItem.id, {
-            location: 'Bodega Ecuador'
-          });
-        }
-      }
-
-      // 3. Reducir la deuda del vendedor
-      const seller = await sellerService.getById(returnData.sellerId);
-      if (seller) {
-        const currentDebt = seller.totalDebt || 0;
-        const newDebt = Math.max(0, currentDebt - returnData.totalValue);
-        await sellerService.update(returnData.sellerId, {
-          totalDebt: newDebt
-        });
-      }
-
-      // 4. Crear la nota de devolución con status 'approved'
-      const returnNote: Omit<Return, 'id'> = {
+      // 5. Crear nota de devolución y ejecutar todo en un BATCH atómico
+      // Esto evita que el inventario se marque como devuelto si algo falla al final
+      const batch = writeBatch(db);
+      const returnRef = doc(collection(db, 'returns'));
+      
+      const returnNote: Return = {
         ...returnData,
+        id: returnRef.id,
         status: 'approved',
         approvedAt: new Date(),
         approvedBy: 'admin',
         createdAt: returnData.createdAt || new Date()
       };
 
-      const docRef = await addDoc(collection(db, 'returns'), {
+      // Agregar la nota de devolución al batch
+      batch.set(returnRef, {
         ...returnNote,
         createdAt: convertToTimestamp(returnNote.createdAt),
         approvedAt: convertToTimestamp(returnNote.approvedAt!)
       });
+
+      // 1. Marcar productos como devueltos en el inventario del vendedor en el batch
+      // Nota: MarkAsReturned debe soportar opcionalmente un batch para ser atómico
+      // Como markAsReturned no soporta batch, lo haremos manual aquí para el SellerInventory
+      for (const item of returnData.items) {
+        // Encontrar cada item de este producto
+        const sellerItems = sellerInventory.filter(inv => inv.productId === item.productId);
+        let remainingToReturn = item.quantity;
+        
+        for (const inv of sellerItems) {
+          if (remainingToReturn <= 0) break;
+          const availableInItem = inv.quantity - (inv.returnedQuantity || 0);
+          const amountToReturnFromThis = Math.min(remainingToReturn, availableInItem);
+          
+          if (amountToReturnFromThis > 0) {
+            const invRef = doc(db, 'sellerInventory', inv.id);
+            batch.update(invRef, {
+              returnedQuantity: (inv.returnedQuantity || 0) + amountToReturnFromThis,
+              returnedDate: serverTimestamp()
+            });
+            remainingToReturn -= amountToReturnFromThis;
+          }
+        }
+      }
+
+      // 2. Agregar productos a la bodega Ecuador en el batch
+      // Nota: Similar a lo anterior, hacemos la lógica de inventoryService aquí pero en batch
+      for (const item of returnData.items) {
+        const productItems = await inventoryService.getAll(); // Para buscar el item en bodega
+        const bodegaItem = productItems.find((inv: any) => 
+          inv.productId === item.productId && inv.location === 'Bodega Ecuador'
+        );
+
+        if (bodegaItem) {
+          const bodegaRef = doc(db, 'inventory', bodegaItem.id);
+          batch.update(bodegaRef, {
+            quantity: bodegaItem.quantity + item.quantity,
+            totalCost: bodegaItem.totalCost + (item.product.cost * item.quantity),
+            totalPrice: bodegaItem.totalPrice + (item.unitPrice * item.quantity),
+            totalValue: bodegaItem.totalCost + (item.product.cost * item.quantity), // Simplificado
+            lastUpdated: serverTimestamp()
+          });
+        } else {
+          // Si no existe en la bodega, crear un nuevo registro
+          const newBodegaRef = doc(collection(db, 'inventory'));
+          batch.set(newBodegaRef, {
+            productId: item.productId,
+            product: item.product,
+            quantity: item.quantity,
+            cost: item.product.cost || 0,
+            unitPrice: item.unitPrice,
+            totalCost: (item.product.cost || 0) * item.quantity,
+            totalPrice: item.unitPrice * item.quantity,
+            totalValue: (item.product.cost || 0) * item.quantity,
+            location: 'Bodega Ecuador',
+            status: 'stock',
+            lastUpdated: serverTimestamp()
+          });
+        }
+      }
+
+      // 3. Reducir deuda del vendedor en el batch
+      const seller = await sellerService.getById(returnData.sellerId);
+      if (seller) {
+        const sellerRef = doc(db, 'sellers', seller.id);
+        const currentDebt = seller.totalDebt || 0;
+        batch.update(sellerRef, {
+          totalDebt: Math.max(0, currentDebt - returnData.totalValue)
+        });
+      }
+
+      // 4. Ejecutar el batch
+      await batch.commit();
       
-      toast.success('Nota de devolución creada exitosamente. Productos movidos a Bodega Ecuador y deuda actualizada.');
-      return docRef.id;
+      toast.success('Nota de devolución creada exitosamente (Manejo Atómico).');
+      return returnRef.id;
     } catch (error: any) {
       console.error('Error creating admin return:', error);
       toast.error(error.message || 'Error al crear la nota de devolución');
@@ -357,7 +403,8 @@ export const returnService = {
         await sellerInventoryService.unmarkAsReturned(
           returnDoc.sellerId,
           item.productId,
-          item.quantity
+          item.quantity,
+          true // force = true
         );
       }
 
@@ -365,7 +412,8 @@ export const returnService = {
       for (const item of returnDoc.items) {
         await inventoryService.reduceStock(
           item.productId,
-          item.quantity
+          item.quantity,
+          true // force = true
         );
       }
 

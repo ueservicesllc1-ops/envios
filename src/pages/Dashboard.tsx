@@ -9,6 +9,7 @@ import {
   Users,
   CreditCard,
   Bell,
+  RotateCcw,
   X
 } from 'lucide-react';
 
@@ -40,6 +41,7 @@ const Dashboard: React.FC = () => {
   const [pendingSales, setPendingSales] = useState(0); // Added state for pending sales
   const [totalEntryNotes, setTotalEntryNotes] = useState(0);
   const [totalExitNotes, setTotalExitNotes] = useState(0);
+  const [totalReturns, setTotalReturns] = useState(0);
   const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
@@ -61,8 +63,8 @@ const Dashboard: React.FC = () => {
       let actualTotalDebt = 0;
 
       for (const seller of sellersData) {
-        // Obtener todas las notas de salida del vendedor
-        const sellerExitNotes = exitNotesData.filter(note => note.sellerId === seller.id);
+        // Obtener todas las notas de salida del vendedor (excluyendo internas)
+        const sellerExitNotes = exitNotesData.filter(note => note.sellerId === seller.id && !note.isInternal);
 
         // Obtener todas las notas de pago del vendedor (aprobadas)
         const sellerPaymentNotes = paymentNotesData.filter(note =>
@@ -133,9 +135,9 @@ const Dashboard: React.FC = () => {
         return sum + (item.quantity * salePrice);
       }, 0);
 
-      // Calcular notas pendientes (solo notas de salida pueden estar pendientes)
+      // Calcular notas pendientes (solo notas de salida pueden estar pendientes, excluyendo internas)
       const pendingEntries = 0; // Las notas de entrada no pueden estar pendientes
-      const pendingExits = exitNotesData.filter(note => note.status === 'pending').length;
+      const pendingExits = exitNotesData.filter(note => note.status === 'pending' && !note.isInternal).length;
 
       // Calcular ingresos mensuales (todas las notas de entrada del mes)
       const currentMonth = new Date().getMonth();
@@ -157,11 +159,12 @@ const Dashboard: React.FC = () => {
         .reduce((sum, note) => sum + note.totalCost, 0);
 
       // Calcular gastos mensuales (notas de salida)
-      // Filtrar solo notas reales (no de prueba)
+      // Filtrar solo notas reales (no de prueba y no internas)
       const realExitNotes = exitNotesData.filter(note =>
         !note.customer?.toLowerCase().includes('prueba') &&
         !note.customer?.toLowerCase().includes('test') &&
-        !note.customer?.toLowerCase().includes('demo')
+        !note.customer?.toLowerCase().includes('demo') &&
+        !note.isInternal
       );
 
       const monthlyExpenses = realExitNotes
@@ -177,8 +180,8 @@ const Dashboard: React.FC = () => {
       console.log('💰 Calculando deudas de vendedores...');
 
       for (const seller of sellersData) {
-        // Obtener todas las notas de salida del vendedor
-        const sellerExitNotes = exitNotesData.filter(note => note.sellerId === seller.id);
+        // Obtener todas las notas de salida del vendedor (excluyendo internas)
+        const sellerExitNotes = exitNotesData.filter(note => note.sellerId === seller.id && !note.isInternal);
         console.log(`📋 Vendedor ${seller.name} (ID: ${seller.id}):`);
         console.log(`  - Notas de salida encontradas: ${sellerExitNotes.length}`);
 
@@ -232,7 +235,12 @@ const Dashboard: React.FC = () => {
 
       // Calcular total de notas
       setTotalEntryNotes(entryNotesData.length);
-      setTotalExitNotes(exitNotesData.length);
+      setTotalExitNotes(exitNotesData.filter(n => !n.isInternal).length);
+
+      // Cargar devoluciones
+      const { returnService } = await import('../services/returnService');
+      const returnsData = await returnService.getAll();
+      setTotalReturns(returnsData.length);
 
       // Actualizar estadísticas
       setStats({
@@ -293,6 +301,16 @@ const Dashboard: React.FC = () => {
         onClick: recalculateDebts,
         loading: recalculating
       }
+    },
+    {
+      title: 'Devoluciones',
+      value: totalReturns,
+      icon: RotateCcw,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
+      change: 'Gestionar historial',
+      changeType: 'positive' as const,
+      onClick: () => window.location.href = '/returns'
     },
     {
       title: 'Total Vendedores',

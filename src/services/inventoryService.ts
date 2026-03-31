@@ -121,6 +121,39 @@ export const inventoryService = {
     }
   },
 
+  // Obtener todos los items de inventario para un producto (en todas las ubicaciones)
+  async getStockByProduct(productId: string): Promise<InventoryItem[]> {
+    try {
+      const q = query(collection(db, 'inventory'), where('productId', '==', productId));
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        lastUpdated: convertTimestamp(doc.data().lastUpdated)
+      })) as InventoryItem[];
+    } catch (error) {
+      console.error('Error getting all inventory for product:', error);
+      throw error;
+    }
+  },
+
+  // Obtener stock disponible total excluyendo Ecuador (para validaciones de USA)
+  async getAvailableStockByProduct(productId: string): Promise<number> {
+    try {
+      const items = await this.getStockByProduct(productId);
+      const availableItems = items.filter(item => 
+        !item.location || 
+        (!item.location.toLowerCase().includes('ecuador') && item.location !== 'Bodega Ecuador')
+      );
+      
+      return availableItems.reduce((sum, item) => sum + item.quantity, 0);
+    } catch (error) {
+      console.error('Error calculating available stock:', error);
+      throw error;
+    }
+  },
+
   // Obtener todo el inventario
   async getAll(): Promise<InventoryItem[]> {
     try {
@@ -200,13 +233,19 @@ export const inventoryService = {
 
       if (location) {
         existingItem = await this.getByProductIdAndLocation(productId, location);
-        // Si no se encuentra en la ubicación especificada, buscar en todas las ubicaciones como fallback
+        // Si no se encuentra en la ubicación especificada, buscar fallback
         if (!existingItem) {
-          existingItem = await this.getByProductId(productId);
-          console.warn(`Producto ${productId} no encontrado en ${location}, usando primera ubicación disponible`);
+          const items = await this.getStockByProduct(productId);
+          existingItem = items.find(i => i.quantity >= quantity && i.location !== location) || items[0] || null;
+          console.warn(`Producto ${productId} no encontrado en ${location}, usando otra ubicación con stock`);
         }
       } else {
-        existingItem = await this.getByProductId(productId);
+        // Buscar en todas las ubicaciones y preferir las que tengan stock y NO sean Ecuador
+        const items = await this.getStockByProduct(productId);
+        existingItem = items.find(i => 
+          i.quantity >= quantity && 
+          (!i.location || (!i.location.toLowerCase().includes('ecuador') && i.location !== 'Bodega Ecuador'))
+        ) || items.find(i => i.quantity >= quantity) || items[0] || null;
       }
 
       if (existingItem && existingItem.quantity >= quantity) {
@@ -265,7 +304,7 @@ export const inventoryService = {
   },
 
   // Remover stock del inventario
-  async removeStock(productId: string, quantity: number, location?: string, silent: boolean = false): Promise<void> {
+  async removeStock(productId: string, quantity: number, location?: string, silent: boolean = false, force: boolean = false): Promise<void> {
     try {
       let existingItem: InventoryItem | null = null;
 
@@ -281,10 +320,14 @@ export const inventoryService = {
       }
 
       if (!existingItem) {
-        existingItem = await this.getByProductId(productId);
+        const items = await this.getStockByProduct(productId);
+        existingItem = items.find(i => 
+          i.quantity >= quantity && 
+          (!i.location || (!i.location.toLowerCase().includes('ecuador') && i.location !== 'Bodega Ecuador'))
+        ) || items.find(i => i.quantity >= quantity) || items[0] || null;
       }
 
-      if (existingItem && existingItem.quantity >= quantity) {
+      if (existingItem && (existingItem.quantity >= quantity || force)) {
         const newQuantity = existingItem.quantity - quantity;
         const newTotalCost = (existingItem.totalCost / existingItem.quantity) * newQuantity;
         const newTotalPrice = (existingItem.totalPrice / existingItem.quantity) * newQuantity;
@@ -309,8 +352,8 @@ export const inventoryService = {
   },
 
   // Reducir stock (alias para removeStock)
-  async reduceStock(productId: string, quantity: number): Promise<void> {
-    return this.removeStock(productId, quantity);
+  async reduceStock(productId: string, quantity: number, force: boolean = false): Promise<void> {
+    return this.removeStock(productId, quantity, undefined, false, force);
   },
 
   // Devolver stock al inventario después de eliminar/cancelar pedido

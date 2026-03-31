@@ -57,6 +57,8 @@ const ExitNotes: React.FC = () => {
   const [showRemoveProductModal, setShowRemoveProductModal] = useState(false);
   const [productToRemove, setProductToRemove] = useState<{ index: number; item: any } | null>(null);
   const [removalReason, setRemovalReason] = useState<'not-sent' | 'damaged'>('not-sent');
+  const [activeTab, setActiveTab] = useState<'all' | 'internal'>('all');
+  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
 
   const resetForm = () => {
     setFormData({ sellerId: '', notes: '' });
@@ -789,18 +791,9 @@ const ExitNotes: React.FC = () => {
       const toastId = toast.loading('Verificando disponibilidad real de stock...');
       try {
         for (const item of items) {
-          // Consultamos directamente al inventario para asegurar que el dato es fresco y coincide con la lógica del backend
-          let inventoryItem;
-
-          // La lógica de updateStockAfterExit usa getByProductId si no hay location explítica.
-          // Para Bodega Ecuador, ExitNotes usa la lógica especial, pero updateStockAfterExit recibe location=undefined en la llamada loop (line 786).
-          // Para otros vendedores, location también es undefined en la llamada loop (line 816).
-          // Por tanto, debemos validar contra getByProductId (primera coincidencia) que es lo que usará el servicio.
-
-          inventoryItem = await inventoryService.getByProductId(item.productId);
-
-          const realStock = inventoryItem ? inventoryItem.quantity : 0;
-
+          // Consultamos directamente al inventario para asegurar que el dato es fresco y coincide con la lógica de stock disponible (excluyendo Ecuador)
+          const realStock = await inventoryService.getAvailableStockByProduct(item.productId);
+ 
           if (realStock < item.quantity) {
             const product = products.find(p => p.id === item.productId);
             toast.dismiss(toastId);
@@ -829,82 +822,103 @@ const ExitNotes: React.FC = () => {
 
       setIsSaving(true);
 
-      const exitNoteData = {
-        number: `NS-${Date.now()}`,
-        date: new Date(),
-        sellerId: selectedSeller.id,
-        seller: selectedSeller.name,
-        customer: selectedSeller.name,
-        items: exitNoteItems,
-        totalPrice,
-        status: 'pending' as const,
-        notes: formData.notes,
-        createdAt: new Date(),
-        createdBy: 'admin'
-      };
+      const updatedProducts: { productId: string, quantity: number }[] = [];
+      let createdNoteId: string | null = null;
+      let createdShippingId: string | null = null;
 
-      const createdExitNote = await exitNoteService.create(exitNoteData);
+      try {
+        const exitNoteData = {
+          number: `NS-${Date.now()}`,
+          date: new Date(),
+          sellerId: selectedSeller.id,
+          seller: selectedSeller.name,
+          customer: selectedSeller.name,
+          items: exitNoteItems,
+          totalPrice,
+          status: 'pending' as const,
+          notes: formData.notes,
+          createdAt: new Date(),
+          createdBy: 'admin'
+        };
 
-      const shippingPackageData = {
-        recipient: selectedSeller.name,
-        address: selectedSeller.address || 'Dirección no especificada',
-        city: selectedSeller.city || 'Ciudad no especificada',
-        phone: selectedSeller.phone || 'Teléfono no especificado',
-        weight: totalWeightInGrams / 1000,
-        dimensions: 'Funda',
-        status: 'pending' as const,
-        shippingDate: new Date(),
-        cost: 28,
-        notes: `Nota de salida: ${exitNoteData.number} - ${formData.notes || 'Sin notas adicionales'}`,
-        sellerId: selectedSeller.id
-      };
+        createdNoteId = await exitNoteService.create(exitNoteData);
 
-      const shippingId = await shippingService.create(shippingPackageData);
+        const shippingPackageData = {
+          recipient: selectedSeller.name,
+          address: selectedSeller.address || 'Dirección no especificada',
+          city: selectedSeller.city || 'Ciudad no especificada',
+          phone: selectedSeller.phone || 'Teléfono no especificado',
+          weight: totalWeightInGrams / 1000,
+          dimensions: 'Funda',
+          status: 'pending' as const,
+          shippingDate: new Date(),
+          cost: 28,
+          notes: `Nota de salida: ${exitNoteData.number} - ${formData.notes || 'Sin notas adicionales'}`,
+          sellerId: selectedSeller.id
+        };
 
-      await exitNoteService.update(createdExitNote, {
-        shippingId,
-        notes: `${formData.notes || ''} - Envío: ${shippingId}`.trim()
-      });
+        createdShippingId = await shippingService.create(shippingPackageData);
 
-      // Lógica especial para Bodega Ecuador
-      if (selectedSeller.id === 'bodega-ecuador') {
-        // Reducir de bodega principal
-        for (const item of exitNoteItems) {
-          await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id);
+        await exitNoteService.update(createdNoteId, {
+          shippingId: createdShippingId,
+          notes: `${formData.notes || ''} - Envío: ${createdShippingId}`.trim()
+        });
+
+        // Lógica de actualización de stock (con registro para rollback)
+        if (selectedSeller.id === 'bodega-ecuador') {
+          for (const item of exitNoteItems) {
+            await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdNoteId, selectedSeller.id);
+            updatedProducts.push({ productId: item.productId, quantity: item.quantity });
+          }
+          toast.success('Nota de salida para Bodega Ecuador creada.');
+        } else {
+          // Comportamiento normal para otros vendedores
+          const isEcuadorNote = exitNoteData.number?.includes('ECU') || exitNoteData.number?.startsWith('NS-ECU-');
+          const location = isEcuadorNote ? 'Bodega Ecuador' : undefined;
+
+          for (const item of exitNoteItems) {
+            await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdNoteId, selectedSeller.id, location);
+            updatedProducts.push({ productId: item.productId, quantity: item.quantity });
+          }
+
+          for (const item of exitNoteItems) {
+            await sellerInventoryService.addToSellerInventory(
+              selectedSeller.id,
+              item.productId,
+              item.product,
+              item.quantity,
+              item.unitPrice
+            );
+          }
+          toast.success('Nota de salida y paquete de envío creados correctamente');
         }
 
-        toast.success('Nota de salida para Bodega Ecuador creada.');
-
-      } else {
-        // Comportamiento normal para otros vendedores
-
-        // Determinar si la nota es de Ecuador basándose en el número de nota (Legacy check or specific logic)
-        // Si el número contiene "ECU" o empieza con "NS-ECU-", es de Ecuador
-        const isEcuadorNote = exitNoteData.number?.includes('ECU') || exitNoteData.number?.startsWith('NS-ECU-');
-        const location = isEcuadorNote ? 'Bodega Ecuador' : undefined;
-
-        for (const item of exitNoteItems) {
-          await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdExitNote, selectedSeller.id, location);
+        closeModal();
+        loadNotes();
+      } catch (innerError) {
+        console.error('Error durante la creación/actualización de nota:', innerError);
+        
+        // ROLLBACK: Revertir stock
+        for (const update of updatedProducts) {
+          try {
+            // Nota: Para Bodega Ecuador no sabemos la ubicación exacta, 
+            // pero addStock/updateStockAfterEntry usualmente agrega a 'Bodega Principal'
+            await inventoryService.returnStockAfterDelete(update.productId, update.quantity, true);
+          } catch (rollbackError) {
+            console.error('Error durante rollback de stock:', rollbackError);
+          }
         }
 
-        for (const item of exitNoteItems) {
-          await sellerInventoryService.addToSellerInventory(
-            selectedSeller.id,
-            item.productId,
-            item.product,
-            item.quantity,
-            item.unitPrice
-          );
-        }
+        // ROLLBACK: Eliminar nota y paquete si se crearon
+        if (createdNoteId) await exitNoteService.delete(createdNoteId).catch(console.error);
+        if (createdShippingId) await shippingService.delete(createdShippingId).catch(console.error);
 
-        toast.success('Nota de salida y paquete de envío creados correctamente');
+        throw innerError;
       }
 
-      closeModal();
-      loadNotes();
     } catch (error) {
       console.error('Error creating exit note:', error);
-      toast.error('Error al crear la nota de salida');
+      toast.error(`Error al crear la nota de salida: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setIsSaving(false);
     }
@@ -1006,10 +1020,9 @@ const ExitNotes: React.FC = () => {
           }
 
           if (quantityNeeded > 0) {
-            // Consultar stock REAL
-            const inventoryItem = await inventoryService.getByProductId(newItem.productId);
-            const realStock = inventoryItem ? inventoryItem.quantity : 0;
-
+            // Consultar stock REAL (excluyendo Ecuador para validación de origen)
+            const realStock = await inventoryService.getAvailableStockByProduct(newItem.productId);
+ 
             if (realStock < quantityNeeded) {
               const product = products.find(p => p.id === newItem.productId);
               toast.dismiss(toastId);
@@ -1684,11 +1697,106 @@ const ExitNotes: React.FC = () => {
     }
   };
 
-  const filteredNotes = notes.filter(note =>
-    note.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    note.seller.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    note.customer.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleBulkMoveToInternal = async () => {
+    if (selectedNotes.size === 0) return;
+    
+    const count = selectedNotes.size;
+    const actionLabel = activeTab === 'all' ? 'mover a internas' : 'mover a globales';
+    if (!window.confirm(`¿Seguro que desea ${actionLabel} las ${count} notas seleccionadas?`)) return;
+
+    const toastId = toast.loading(`Actualizando ${count} notas...`);
+    try {
+      const newStatus = activeTab === 'all' ? true : false;
+      
+      const promises = Array.from(selectedNotes).map(noteId => 
+        exitNoteService.update(noteId, { isInternal: newStatus })
+      );
+      
+      await Promise.all(promises);
+      
+      toast.success(`${count} notas actualizadas correctamente`, { id: toastId });
+      setSelectedNotes(new Set());
+      await loadNotes();
+    } catch (error) {
+      console.error('Error in bulk update:', error);
+      toast.error('Error al actualizar las notas', { id: toastId });
+    }
+  };
+
+  const toggleSelectNote = (noteId: string) => {
+    const newSelected = new Set(selectedNotes);
+    if (newSelected.has(noteId)) {
+      newSelected.delete(noteId);
+    } else {
+      newSelected.add(noteId);
+    }
+    setSelectedNotes(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedNotes.size === filteredNotes.length) {
+      setSelectedNotes(new Set());
+    } else {
+      setSelectedNotes(new Set(filteredNotes.map(n => n.id)));
+    }
+  };
+
+  const handleToggleInternal = async (note: ExitNote) => {
+    try {
+      const newStatus = !note.isInternal;
+      const actionLabel = newStatus ? 'interna' : 'global';
+      
+      if (!window.confirm(`¿Seguro que desea marcar esta nota como ${actionLabel}?`)) return;
+
+      await exitNoteService.update(note.id, { isInternal: newStatus });
+      toast.success(`Nota marcada como ${actionLabel}`);
+      await loadNotes();
+    } catch (error) {
+      console.error('Error toggling internal status:', error);
+      toast.error('Error al cambiar el tipo de nota');
+    }
+  };
+
+  const handleMoveEcuToInternal = async () => {
+    const ecuNotes = notes.filter(n => 
+      (n.number?.toLowerCase().includes('ecu') || 
+       n.seller?.toLowerCase().includes('ecuador')) && 
+      !n.isInternal
+    );
+
+    if (ecuNotes.length === 0) {
+      toast.success("No hay notas de Ecuador nuevas para mover.");
+      return;
+    }
+
+    if (!window.confirm(`¿Seguro que desea mover ${ecuNotes.length} notas que contienen 'ECU' o 'Ecuador' a la pestaña de Notas Internas?`)) return;
+    
+    const toastId = toast.loading(`Moviendo ${ecuNotes.length} notas...`);
+    try {
+      for (const note of ecuNotes) {
+        await exitNoteService.update(note.id, { isInternal: true });
+      }
+
+      toast.success(`${ecuNotes.length} notas movidas correctamente`, { id: toastId });
+      await loadNotes();
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al mover notas", { id: toastId });
+    }
+  };
+
+  const filteredNotes = notes.filter(note => {
+    const matchesSearch = 
+      note.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      note.seller.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      note.customer.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (activeTab === 'internal') {
+      return matchesSearch && note.isInternal === true;
+    }
+    // Por defecto mostramos las que NO son internas
+    return matchesSearch && !note.isInternal;
+  });
 
   const handleDownloadPdf = (note: ExitNote) => {
     try {
@@ -1724,6 +1832,16 @@ const ExitNotes: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             Nueva Nota
           </button>
+          {isAdmin && (
+            <button
+              onClick={handleMoveEcuToInternal}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center"
+              title="Mover notas de Ecuador a la pestaña interna"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Mover Ecuador a Internas
+            </button>
+          )}
           <button
             onClick={loadTemporaryNotes}
             className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors flex items-center"
@@ -1748,6 +1866,35 @@ const ExitNotes: React.FC = () => {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'all'
+              ? 'border-primary-600 text-primary-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          Notas Globales
+        </button>
+        <button
+          onClick={() => setActiveTab('internal')}
+          className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'internal'
+              ? 'border-primary-600 text-primary-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          Notas de Salida Interna
+          {notes.filter(n => n.isInternal).length > 0 && (
+            <span className="ml-2 px-2 py-0.5 text-xs bg-primary-100 text-primary-600 rounded-full">
+              {notes.filter(n => n.isInternal).length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="card">
@@ -1756,8 +1903,10 @@ const ExitNotes: React.FC = () => {
               <Truck className="h-6 w-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Notas</p>
-              <p className="text-2xl font-bold text-gray-900">{notes.length}</p>
+              <p className="text-sm font-medium text-gray-600">Total Notas ({activeTab === 'internal' ? 'Int.' : 'Global'})</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {notes.filter(n => activeTab === 'internal' ? n.isInternal : !n.isInternal).length}
+              </p>
             </div>
           </div>
         </div>
@@ -1770,7 +1919,7 @@ const ExitNotes: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Pendientes</p>
               <p className="text-2xl font-bold text-gray-900">
-                {notes.filter(n => n.status === 'pending').length}
+                {notes.filter(n => (activeTab === 'internal' ? n.isInternal : !n.isInternal) && n.status === 'pending').length}
               </p>
             </div>
           </div>
@@ -1784,7 +1933,7 @@ const ExitNotes: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">En Tránsito</p>
               <p className="text-2xl font-bold text-gray-900">
-                {notes.filter(n => n.status === 'in-transit').length}
+                {notes.filter(n => (activeTab === 'internal' ? n.isInternal : !n.isInternal) && n.status === 'in-transit').length}
               </p>
             </div>
           </div>
@@ -1798,7 +1947,7 @@ const ExitNotes: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Entregadas</p>
               <p className="text-2xl font-bold text-gray-900">
-                {notes.filter(n => n.status === 'delivered').length}
+                {notes.filter(n => (activeTab === 'internal' ? n.isInternal : !n.isInternal) && n.status === 'delivered').length}
               </p>
             </div>
           </div>
@@ -1812,7 +1961,7 @@ const ExitNotes: React.FC = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Valor Total</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${notes.reduce((sum, note) => sum + note.totalPrice, 0).toLocaleString()}
+                ${notes.filter(n => activeTab === 'internal' ? n.isInternal : !n.isInternal).reduce((sum, note) => sum + note.totalPrice, 0).toLocaleString()}
               </p>
             </div>
           </div>
@@ -1834,10 +1983,29 @@ const ExitNotes: React.FC = () => {
               />
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-500">
               {filteredNotes.length} notas encontradas
             </span>
+            {isAdmin && (
+              <button
+                onClick={handleMoveEcuToInternal}
+                className="bg-purple-600 text-white px-3 py-1.5 rounded-md hover:bg-purple-700 transition-colors flex items-center text-sm shadow-sm"
+                title="Mover notas de Ecuador a la pestaña interna"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-2" />
+                Mover Ecuador a Internas
+              </button>
+            )}
+            {isAdmin && selectedNotes.size > 0 && (
+              <button
+                onClick={handleBulkMoveToInternal}
+                className="bg-indigo-600 text-white px-4 py-1.5 rounded-md hover:bg-indigo-700 transition-colors flex items-center text-sm shadow-md"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Mover Seleccionadas ({selectedNotes.size})
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1848,6 +2016,16 @@ const ExitNotes: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                {isAdmin && (
+                  <th className="px-3 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+                      checked={filteredNotes.length > 0 && selectedNotes.size === filteredNotes.length}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                )}
                 <th className="table-header">#</th>
                 <th className="table-header">Fecha</th>
                 <th className="table-header">Número</th>
@@ -1864,6 +2042,16 @@ const ExitNotes: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredNotes.map((note, index) => (
                 <tr key={note.id} className="hover:bg-gray-50">
+                  {isAdmin && (
+                    <td className="px-3 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+                        checked={selectedNotes.has(note.id)}
+                        onChange={() => toggleSelectNote(note.id)}
+                      />
+                    </td>
+                  )}
                   <td className="table-cell">
                     <span className="text-sm font-medium text-gray-900">
                       {index + 1}
@@ -1986,6 +2174,15 @@ const ExitNotes: React.FC = () => {
                           title="Regenerar Faltantes en Bodega Ecuador"
                         >
                           <RotateCcw className="h-4 w-4" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleToggleInternal(note)}
+                          className={`p-1 ${note.isInternal ? 'text-blue-600 hover:text-blue-800' : 'text-gray-400 hover:text-purple-600'}`}
+                          title={note.isInternal ? "Mover a Notas Globales" : "Mover a Notas Internas"}
+                        >
+                          <Package className="h-4 w-4" />
                         </button>
                       )}
                       <button

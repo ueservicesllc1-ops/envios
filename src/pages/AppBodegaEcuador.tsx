@@ -145,9 +145,9 @@ const AppBodegaEcuador: React.FC = () => {
                         const committed = committedStock[product.id] || 0;
                         const realQuantity = Math.max(0, item.quantity - committed);
 
-                        // Mostrar si corresponde a Ecuador, ya llegó y tiene stock FÍSICO > 0
-                        // (Aunque esté comprometido, queremos verlo en la lista)
-                        if (item.quantity > 0 && isArrived) {
+                        // Mostrar si corresponde a Ecuador y tiene stock FÍSICO > 0
+                        // (Aunque esté en tránsito o pendiente, queremos verlo)
+                        if (item.quantity > 0) {
                             stockItems.push({
                                 ...item,
                                 quantity: item.quantity,
@@ -367,7 +367,8 @@ const AppBodegaEcuador: React.FC = () => {
             await exitNoteService.createTransferFromBodegaEcuador(
                 transferSellerId,
                 [exitNoteItem],
-                `Transferencia desde App Bodega Ecuador${transferNotes ? ` - ${transferNotes}` : ''}`
+                `Transferencia desde App Bodega Ecuador${transferNotes ? ` - ${transferNotes}` : ''}`,
+                isAdmin
             );
 
             // Si es Vilma, agregar a su inventario dedicado

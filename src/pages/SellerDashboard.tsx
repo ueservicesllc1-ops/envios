@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Package,
   TrendingUp,
@@ -24,7 +26,10 @@ import {
   Edit,
   Save,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  ClipboardList,
+  Search,
+  Minus
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { sellerService } from '../services/sellerService';
@@ -57,13 +62,16 @@ const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[], sold
     const approvedReturns = await returnService.getBySeller(sellerId);
     const approvedReturnsItems = approvedReturns
       .filter(r => r.status === 'approved')
-      .flatMap(r => r.items);
+      .flatMap(r => r.items.map(item => ({ ...item, createdAt: r.createdAt })));
 
-    // Crear mapa de productos devueltos por productId
-    const returnedMap = new Map<string, number>();
+    // Crear mapa de productos devueltos por productId (con su fecha)
+    const returnedMap = new Map<string, { quantity: number; date?: Date }>();
     for (const returnItem of approvedReturnsItems) {
-      const current = returnedMap.get(returnItem.productId) || 0;
-      returnedMap.set(returnItem.productId, current + returnItem.quantity);
+      const current = returnedMap.get(returnItem.productId) || { quantity: 0 };
+      returnedMap.set(returnItem.productId, {
+        quantity: current.quantity + returnItem.quantity,
+        date: returnItem.createdAt // Usar la fecha de creación de la devolución
+      });
     }
 
     console.log(`Productos devueltos encontrados: ${returnedMap.size}`);
@@ -85,7 +93,7 @@ const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[], sold
         } else {
           // Crear nuevo producto
           const unitPrice = item.unitPrice || 0;
-          const returnedQty = returnedMap.get(item.productId) || 0;
+          const returnInfo = returnedMap.get(item.productId);
           inventoryMap.set(item.productId, {
             sellerId: sellerId,
             productId: item.productId,
@@ -94,7 +102,8 @@ const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[], sold
             unitPrice: unitPrice,
             totalValue: unitPrice * item.quantity,
             status: note.status === 'delivered' || note.status === 'received' ? 'stock' : 'in-transit',
-            returnedQuantity: returnedQty // Preservar cantidad devuelta
+            returnedQuantity: returnInfo ? returnInfo.quantity : 0,
+            returnedDate: returnInfo ? returnInfo.date : undefined
           });
         }
       }
@@ -135,11 +144,9 @@ const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[], sold
       }
 
       if (existingItem) {
-        // Actualizar producto existente preservando returnedQuantity
-        // Usar el máximo entre el existente y el calculado desde devoluciones
-        const existingReturnedQty = existingItem.returnedQuantity || 0;
-        const calculatedReturnedQty = newItem.returnedQuantity || 0;
-        const finalReturnedQty = Math.max(existingReturnedQty, calculatedReturnedQty);
+        // Usar ÚNICAMENTE lo calculado desde devoluciones aprobadas como base para sincronizar
+        // Esto corrige casos donde una nota de devolución falló pero alcanzó a marcar items como devueltos
+        const finalReturnedQty = newItem.returnedQuantity || 0;
 
         await sellerInventoryService.update(existingItem.id, {
           quantity: newItem.quantity,
@@ -147,7 +154,8 @@ const syncSellerInventory = async (sellerId: string, exitNotes: ExitNote[], sold
           totalValue: newItem.totalValue,
           status: newItem.status,
           product: newItem.product,
-          returnedQuantity: finalReturnedQty
+          returnedQuantity: finalReturnedQty,
+          returnedDate: newItem.returnedDate || existingItem.returnedDate
         });
       } else {
         // Crear nuevo producto solo si no existe
@@ -204,6 +212,7 @@ interface Seller {
   priceType?: 'price1' | 'price2';
   isActive: boolean;
   slug?: string;
+  reportedBalances?: { productId: string; quantity: number }[];
 }
 
 interface SellerInventoryItem {
@@ -218,6 +227,7 @@ interface SellerInventoryItem {
   lastDeliveryDate: Date;
   exitNoteId?: string;
   returnedQuantity?: number; // Cantidad devuelta (productos marcados como devueltos)
+  returnedDate?: Date; // Fecha en la que se marcó como devuelto el último lote
 }
 
 
@@ -243,6 +253,12 @@ const SellerDashboard: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_deposit'>('cash');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+
+  // Estados para Saldos
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [reportedBalances, setReportedBalances] = useState<{ productId: string; quantity: number }[]>([]);
+  const [searchBalanceTerm, setSearchBalanceTerm] = useState('');
+  const [savingBalances, setSavingBalances] = useState(false);
 
   // Estados para modal de generar pedido
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -281,6 +297,7 @@ const SellerDashboard: React.FC = () => {
   const [returnItems, setReturnItems] = useState<Array<{ productId: string; product: any; quantity: number; unitPrice: number; reason?: string }>>([]);
   const [returnNotes, setReturnNotes] = useState('');
   const [viewingReturn, setViewingReturn] = useState<Return | null>(null);
+  const [showReturned, setShowReturned] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -398,8 +415,7 @@ const SellerDashboard: React.FC = () => {
       const salesData = await soldProductService.getBySeller(sellerId);
       setSoldProducts(salesData);
 
-      const exitNotesData = await exitNoteService.getAll();
-      const sellerExitNotes = exitNotesData.filter(note => note.sellerId === sellerId);
+      const sellerExitNotes = await exitNoteService.getBySeller(sellerId);
       setExitNotes(sellerExitNotes);
 
       await syncSellerInventory(sellerId, sellerExitNotes, salesData);
@@ -449,6 +465,8 @@ const SellerDashboard: React.FC = () => {
       });
 
       setAdminInventory(inventoryWithProducts);
+      setAllProducts(productsData.filter(p => !p.isConsolidated));
+      setReportedBalances(currentSeller?.reportedBalances || []);
 
       setLoading(false);
     } catch (error) {
@@ -499,6 +517,82 @@ const SellerDashboard: React.FC = () => {
       toast.error('Error al cargar productos de la tienda');
     }
   };
+  
+  const repairInventory = async () => {
+    if (!seller) return;
+    try {
+      setLoading(true);
+      toast.loading('Reparando inventario...', { id: 'repairing' });
+      
+      const salesData = await soldProductService.getBySeller(seller.id);
+      const sellerExitNotes = await exitNoteService.getBySeller(seller.id);
+      
+      await syncSellerInventory(seller.id, sellerExitNotes, salesData);
+      
+      await loadData();
+      toast.success('Inventario reparado y sincronizado correctamente', { id: 'repairing' });
+    } catch (error) {
+      console.error('Error repairing inventory:', error);
+      toast.error('Error al reparar el inventario', { id: 'repairing' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFromInventory = async (item: SellerInventoryItem) => {
+    if (!window.confirm(`¿Estás seguro de que quieres ELIMINAR el producto "${item.product.name}" de este inventario?\n\nSe eliminará de las notas de salida y el stock regresará a la bodega correspondiente.`)) return;
+
+    try {
+      setLoading(true);
+      toast.loading('Eliminando y restaurando inventario...', { id: 'deleteInventory' });
+
+      const relatedNotes = exitNotes.filter(note => note.items.some(i => i.productId === item.productId));
+      const { inventoryService } = await import('../services/inventoryService');
+      
+      for (const note of relatedNotes) {
+        const removedItem = note.items.find(i => i.productId === item.productId);
+        if (!removedItem) continue;
+
+        const newItems = note.items.filter(i => i.productId !== item.productId);
+        
+        if (newItems.length === 0) {
+          // Si no quedan items, eliminamos la nota completa 
+          // (exitNoteService.delete ya devuelve a bodega, pero para evitar doble devolución, validaremos)
+          await exitNoteService.delete(note.id);
+        } else {
+          const newTotalPrice = newItems.reduce((sum, current) => sum + ((current.unitPrice || 0) * (current.quantity || 0)), 0);
+          
+          await exitNoteService.update(note.id, {
+            items: newItems,
+            totalPrice: newTotalPrice
+          });
+
+          const isEcuadorNote = note.number?.includes('ECU') || note.number?.startsWith('NS-ECU-');
+          const location = isEcuadorNote ? 'Bodega Ecuador' : 'Bodega Principal';
+          const productData = await productService.getById(removedItem.productId);
+          
+          if (productData) {
+            await inventoryService.updateStockAfterEntry(
+              removedItem.productId,
+              removedItem.quantity,
+              productData.cost,
+              productData.salePrice1,
+              location
+            );
+          }
+        }
+      }
+
+      await sellerInventoryService.delete(item.id);
+      await loadData();
+      toast.success('Producto eliminado exitosamente', { id: 'deleteInventory' });
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al intentar eliminar', { id: 'deleteInventory' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -507,6 +601,20 @@ const SellerDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
       toast.error('Error al cerrar sesión');
+    }
+  };
+
+  const handleSaveBalances = async () => {
+    if (!seller) return;
+    setSavingBalances(true);
+    try {
+      await sellerService.update(seller.id, { reportedBalances });
+      toast.success('Saldos reportados guardados exitosamente');
+    } catch (error) {
+      console.error(error);
+      toast.error('Error guardando los saldos');
+    } finally {
+      setSavingBalances(false);
     }
   };
 
@@ -1540,6 +1648,141 @@ const SellerDashboard: React.FC = () => {
     );
   };
 
+  const renderBalances = () => {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold flex items-center">
+            <ClipboardList className="w-6 h-6 mr-2 text-primary-600" />
+            Stock Reportado
+          </h2>
+          <button
+            onClick={handleSaveBalances}
+            disabled={savingBalances}
+            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors shadow-sm"
+          >
+            <Save className="w-5 h-5 mr-2" />
+            {savingBalances ? 'Guardando...' : 'Guardar Saldos'}
+          </button>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="p-4 border-b border-gray-200 bg-gray-50/50 rounded-t-xl">
+            <div className="flex items-center space-x-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Buscar producto por nombre o SKU..."
+                  value={searchBalanceTerm}
+                  onChange={(e) => setSearchBalanceTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-sm text-gray-500">
+              Agrega productos que actualmente la vendedora reporta tener para comparar con el inventario del sistema.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Producto</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Inventario Sistema</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Stock Físico (Reportado)</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Diferencia</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {allProducts
+                  .filter(p => {
+                    if (!searchBalanceTerm) {
+                      return sellerInventory.some(i => i.productId === p.id) || reportedBalances.some(r => r.productId === p.id);
+                    }
+                    return p.name.toLowerCase().includes(searchBalanceTerm.toLowerCase()) || p.sku.toLowerCase().includes(searchBalanceTerm.toLowerCase());
+                  })
+                  .map(product => {
+                    const reportedItem = reportedBalances.find(r => r.productId === product.id);
+                    const reportedQty = reportedItem ? reportedItem.quantity : 0;
+                    const inventoryItem = sellerInventory.find(i => i.productId === product.id);
+                    const invQty = inventoryItem ? inventoryItem.quantity : 0;
+                    const diff = reportedQty - invQty;
+
+                    const updateReportedQuantity = (newQty: number) => {
+                      if (newQty < 0) newQty = 0;
+                      setReportedBalances(prev => {
+                        const exists = prev.find(p => p.productId === product.id);
+                        if (exists) {
+                          return prev.map(p => p.productId === product.id ? { ...p, quantity: newQty } : p);
+                        }
+                        return [...prev, { productId: product.id, quantity: newQty }];
+                      });
+                    };
+
+                    return (
+                      <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            {product.imageUrl ? (
+                              <img className="h-10 w-10 flex-shrink-0 rounded-md object-cover shadow-sm" src={product.imageUrl} alt={product.name} />
+                            ) : (
+                              <div className="h-10 w-10 flex-shrink-0 rounded-md bg-gray-100 flex items-center justify-center">
+                                <Package className="h-5 w-5 text-gray-400" />
+                              </div>
+                            )}
+                            <div className="ml-4 max-w-[300px]">
+                              <div className="text-sm font-bold text-gray-900 truncate" title={product.name}>{product.name}</div>
+                              <div className="text-[11px] text-gray-500">{product.sku}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="text-base font-bold text-gray-700">{invQty}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            <button
+                              onClick={() => updateReportedQuantity(reportedQty - 1)}
+                              className="p-1 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <input
+                              type="number"
+                              min="0"
+                              value={reportedQty === 0 ? '' : reportedQty}
+                              placeholder="0"
+                              onChange={(e) => updateReportedQuantity(parseInt(e.target.value) || 0)}
+                              className="w-16 text-center text-sm font-bold text-primary-700 bg-primary-50 border-none rounded-md focus:ring-2 focus:ring-primary-500 p-2"
+                            />
+                            <button
+                              onClick={() => updateReportedQuantity(reportedQty + 1)}
+                              className="p-1 rounded-md text-primary-500 hover:text-primary-600 hover:bg-primary-100 transition-colors"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                            diff === 0 ? 'bg-green-100 text-green-800' : diff > 0 ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {diff > 0 ? `+${diff}` : diff}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderInventory = () => {
     // Calcular el valor actual del inventario (productos existentes, excluyendo devueltos)
     // Usar el unitPrice del inventario del vendedor, no recalcular desde el producto
@@ -1563,6 +1806,28 @@ const SellerDashboard: React.FC = () => {
       <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Mi Inventario</h2>
+          <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+            <input
+              type="checkbox"
+              id="showReturned"
+              checked={showReturned}
+              onChange={(e) => setShowReturned(e.target.checked)}
+              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
+            />
+            <label htmlFor="showReturned" className="text-sm font-medium text-gray-700 cursor-pointer">
+              Ver items devueltos
+            </label>
+          </div>
+          {isAdminPreview && (
+            <button
+              onClick={repairInventory}
+              className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-lg border border-orange-200 text-sm font-bold flex items-center hover:bg-orange-200 transition-colors"
+              title="Corregir discrepancias entre notas de devolución e inventario"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              REPARAR INVENTARIO
+            </button>
+          )}
         </div>
 
         {/* Resumen de valores del inventario */}
@@ -1604,20 +1869,33 @@ const SellerDashboard: React.FC = () => {
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {sellerInventory.map((item, index) => {
-                  const returnedQty = item.returnedQuantity || 0;
+                {sellerInventory
+                  .filter(item => {
+                    const returnedQty = item.returnedQuantity || 0;
+                    const isFullyReturned = returnedQty > 0 && returnedQty >= item.quantity;
+                    return showReturned || !isFullyReturned;
+                  })
+                  .map((item, index) => {
+                    const returnedQty = item.returnedQuantity || 0;
                   const availableQty = item.quantity - returnedQty;
                   const isReturned = returnedQty > 0;
-                  const isFullyReturned = returnedQty >= item.quantity;
+                  const isFullyReturned = returnedQty > 0 && returnedQty >= item.quantity;
 
-                  return (
-                    <tr
-                      key={item.id}
-                      className={`${isFullyReturned ? 'bg-gray-100 opacity-60' : isReturned ? 'bg-gray-50 opacity-75' : 'hover:bg-gray-50'}`}
-                    >
+                  // Calcular en qué notas de salida se envió este producto
+                  const productExitNotes = exitNotes
+                    .filter(note => note.items.some(i => i.productId === item.productId))
+                    .map(note => note.number);
+                  const exitNotesString = productExitNotes.length > 0 ? productExitNotes.join(', ') : 'N/A';
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`${isFullyReturned ? 'bg-gray-100 opacity-60' : isReturned ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                      >
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
                         {index + 1}
                       </td>
@@ -1640,10 +1918,20 @@ const SellerDashboard: React.FC = () => {
                           <div className="ml-4">
                             <div className={`text-sm font-medium ${isFullyReturned ? 'text-gray-400' : 'text-gray-900'}`}>
                               {item.product.name}
-                              {isFullyReturned && <span className="ml-2 text-xs text-red-600 font-bold">(DEVUELTO)</span>}
-                              {isReturned && !isFullyReturned && <span className="ml-2 text-xs text-orange-600 font-semibold">({returnedQty} devuelto{returnedQty > 1 ? 's' : ''})</span>}
+                              {isFullyReturned && <span className="ml-2 text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-bold">DEVUELTO</span>}
+                              {isReturned && !isFullyReturned && <span className="ml-2 text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-semibold">({returnedQty} dev)</span>}
                             </div>
-                            <div className={`text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>SKU: {item.product.sku}</div>
+                            <div className={`text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>
+                              SKU: {item.product.sku}
+                              <div className={`mt-0.5 text-[11px] font-bold ${isFullyReturned ? 'text-gray-400' : 'text-indigo-600'}`}>
+                                NS: {exitNotesString}
+                              </div>
+                              {isReturned && item.returnedDate && (
+                                <span className="ml-2 text-[10px] text-gray-400 italic">
+                                  Fecha devolución: {new Date(item.returnedDate).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1682,6 +1970,15 @@ const SellerDashboard: React.FC = () => {
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm ${isFullyReturned ? 'text-gray-400' : 'text-gray-500'}`}>
                         {new Date(item.lastDeliveryDate).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        <button
+                          onClick={() => handleDeleteFromInventory(item)}
+                          className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-full transition-colors inline-flex items-center justify-center shadow-sm border border-red-100"
+                          title="Eliminar producto"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1806,6 +2103,117 @@ const SellerDashboard: React.FC = () => {
     </div>
   );
 
+  const handleDownloadIndividualExitNotePdf = (note: ExitNote) => {
+    try {
+      const doc = new jsPDF();
+
+      // Header
+      doc.setFontSize(22);
+      doc.setTextColor(44, 62, 80);
+      doc.text("NOTA DE SALIDA", 105, 20, { align: "center" });
+
+      // Info
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Número: ${note.number}`, 14, 35);
+      doc.text(`Fecha: ${new Date(note.date).toLocaleDateString('es-ES')}`, 14, 40);
+      doc.text(`Cliente: ${note.customer || 'N/A'}`, 14, 45);
+      doc.text(`Vendedor: ${seller?.name || 'N/A'}`, 14, 50);
+      doc.text(`Generado por: Dashboard Vendedor`, 14, 55);
+
+      const tableData = (note.items || []).map((item, index) => [
+        index + 1,
+        item.product?.name || 'N/A',
+        item.product?.sku || '-',
+        item.quantity,
+        `$${(item.unitPrice || 0).toLocaleString()}`,
+        `$${(item.quantity * (item.unitPrice || 0)).toLocaleString()}`
+      ]);
+
+      autoTable(doc, {
+        startY: 65,
+        head: [['#', 'Producto', 'SKU', 'Cant.', 'u/Price', 'Total']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [0, 150, 136] },
+        foot: [['', '', '', 'TOTAL PRODUCTOS', note.items.reduce((sum, i) => sum + i.quantity, 0), `$${(note.totalPrice || 0).toLocaleString()}`]],
+        footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' }
+      });
+
+      doc.save(`Nota_${note.number}_${Date.now()}.pdf`);
+      toast.success('Nota descargada exitosamente');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Error al generar el PDF de la nota');
+    }
+  };
+
+  const handleDownloadExitNotesPdf = () => {
+    if (!seller || exitNotes.length === 0) {
+      toast.error('No hay notas de salida para descargar');
+      return;
+    }
+
+    try {
+      const doc = new jsPDF();
+
+      // Título
+      doc.setFontSize(18);
+      doc.text(`Reporte de Notas de Salida - ${seller.name}`, 14, 20);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Fecha de reporte: ${new Date().toLocaleDateString('es-ES')}`, 14, 28);
+
+      const tableData: any[] = [];
+      let grandTotal = 0;
+
+      // Ordenar por fecha descendente
+      const sortedNotes = [...exitNotes].sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      const getStatusNoteText = (status: string) => {
+        switch (status) {
+          case 'delivered': return 'Entregada';
+          case 'in-transit': return 'En Tránsito';
+          case 'pending': return 'Pendiente';
+          case 'received': return 'Recibida';
+          default: return 'Cancelada';
+        }
+      };
+
+      sortedNotes.forEach((note) => {
+        const qty = note.items.reduce((sum, item) => sum + item.quantity, 0);
+        tableData.push([
+          new Date(note.date).toLocaleDateString('es-ES'),
+          note.number,
+          note.customer || '-',
+          `${note.items.length} productos (${qty} unidades)`,
+          `$${(note.totalPrice || 0).toLocaleString()}`,
+          getStatusNoteText(note.status)
+        ]);
+        grandTotal += (note.totalPrice || 0);
+      });
+
+      autoTable(doc, {
+        startY: 35,
+        head: [['Fecha', 'Número', 'Cliente', 'Detalle', 'Valor Total', 'Estado']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillGray: true, fillColor: [0, 150, 136], textColor: 255 },
+        foot: [['', '', '', 'VALOR TOTAL DE NOTAS', `$${grandTotal.toLocaleString()}`, '']],
+        footStyles: { fillColor: [240, 240, 240], fontStyle: 'bold' }
+      });
+
+      doc.save(`NotasSalida_${seller.name.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+      toast.success('PDF de notas de salida descargado');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Error al generar el PDF');
+    }
+  };
+
   const renderExitNotes = () => {
     // Calcular el total de todas las notas de salida
     const totalExitNotesValue = exitNotes.reduce((sum, note) => sum + (note.totalPrice || 0), 0);
@@ -1814,6 +2222,15 @@ const SellerDashboard: React.FC = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-900">Mis Notas de Salida</h2>
+          {exitNotes.length > 0 && (
+            <button
+              onClick={handleDownloadExitNotesPdf}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors flex items-center text-sm"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Descargar PDF Notas de Salida
+            </button>
+          )}
         </div>
 
         {/* Resumen de totales */}
@@ -1899,13 +2316,23 @@ const SellerDashboard: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => setViewingExitNote(note)}
-                        className="text-primary-600 hover:text-primary-900 flex items-center"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver detalles
-                      </button>
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => setViewingExitNote(note)}
+                          className="text-primary-600 hover:text-primary-900 flex items-center"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver detalles
+                        </button>
+                        <button
+                          onClick={() => handleDownloadIndividualExitNotePdf(note)}
+                          className="text-indigo-600 hover:text-indigo-900 flex items-center"
+                          title="Descargar Nota en PDF"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2015,11 +2442,77 @@ const SellerDashboard: React.FC = () => {
     </div>
   );
 
-  const renderPaymentNotes = () => {
-    // Calcular la deuda total basada en el valor histórico (todas las notas de salida recibidas)
-    const historicalInventoryValue = exitNotes.reduce((sum, note) => {
-      return sum + note.totalPrice;
-    }, 0);
+  const handleDownloadIndividualPaymentPdf = (payment: any) => {
+    try {
+      const doc = new jsPDF();
+
+      // Header
+      doc.setFontSize(22);
+      doc.setTextColor(41, 128, 185);
+      doc.text("COMPROBANTE DE PAGO", 105, 20, { align: "center" });
+
+      // Info
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Número de Comprobante: ${payment.number}`, 14, 35);
+      doc.text(`Fecha de Emisión: ${new Date(payment.createdAt).toLocaleDateString('es-ES')}`, 14, 40);
+      doc.text(`Vendedor: ${seller?.name || 'N/A'}`, 14, 45);
+      doc.text(`Estado: ${payment.status === 'approved' ? 'Aprobado' : payment.status === 'pending' ? 'Pendiente' : 'Rechazado'}`, 14, 50);
+
+      doc.setLineWidth(0.5);
+      doc.line(14, 55, 196, 55);
+
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text(`Resumen del Pago`, 14, 65);
+
+      doc.setFontSize(11);
+      doc.text(`Tipo:`, 14, 75);
+      doc.text(payment.type === 'full' ? 'Liquidación Total' : 'Abono Parcial', 60, 75);
+
+      doc.text(`Monto Pagado:`, 14, 82);
+      doc.setFontSize(16);
+      doc.setTextColor(39, 174, 96);
+      doc.text(`$${(payment.totalAmount || 0).toLocaleString()}`, 60, 82);
+
+      doc.setFontSize(11);
+      doc.setTextColor(0);
+      if (payment.reference) {
+        doc.text(`Referencia:`, 14, 92);
+        doc.text(payment.reference, 60, 92);
+      }
+
+      if (payment.notes) {
+        doc.text(`Notas Adicionales:`, 14, 105);
+        doc.setFontSize(10);
+        doc.setTextColor(80);
+        const splitNotes = doc.splitTextToSize(payment.notes, 170);
+        doc.text(splitNotes, 14, 112);
+      }
+
+      // Footer
+      doc.setFontSize(9);
+      doc.setTextColor(150);
+      doc.text(`Este documento es un comprobante de transacción interna generado el ${new Date().toLocaleString('es-ES')}`, 105, 280, { align: "center" });
+
+      doc.save(`Pago_${payment.number}_${Date.now()}.pdf`);
+      toast.success('Comprobante de pago descargado');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Error al generar el comprobante de pago');
+    }
+  };
+
+    const renderPaymentNotes = () => {
+      // Calcular el valor total de devoluciones aprobadas para restarlo de la deuda
+      const totalReturnedValue = returns
+        .filter(r => r.status === 'approved')
+        .reduce((sum, r) => sum + r.totalValue, 0);
+
+      // Calcular la deuda total basada en el valor histórico (todas las notas de salida recibidas)
+      const historicalInventoryValue = exitNotes.reduce((sum, note) => {
+        return sum + (note.totalPrice || 0);
+      }, 0) - totalReturnedValue;
 
     // Calcular los pagos realizados (notas de pago aprobadas)
     const approvedPayments = paymentNotes
@@ -2110,13 +2603,23 @@ const SellerDashboard: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => setViewingPaymentNote(note)}
-                        className="text-primary-600 hover:text-primary-900 flex items-center"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver detalles
-                      </button>
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => setViewingPaymentNote(note)}
+                          className="text-primary-600 hover:text-primary-900 flex items-center"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver detalles
+                        </button>
+                        <button
+                          onClick={() => handleDownloadIndividualPaymentPdf(note)}
+                          className="text-indigo-600 hover:text-indigo-900 flex items-center"
+                          title="Descargar Comprobante de Pago en PDF"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2199,6 +2702,116 @@ const SellerDashboard: React.FC = () => {
           return 'Rechazada';
         default:
           return status;
+      }
+    };
+
+    const handleDownloadIndividualReturnPdf = (returnItem: Return) => {
+      try {
+        const doc = new jsPDF();
+
+        // Header
+        doc.setFontSize(22);
+        doc.setTextColor(44, 62, 80);
+        doc.text("NOTA DE DEVOLUCIÓN", 105, 20, { align: "center" });
+
+        // Info
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Número: ${returnItem.number}`, 14, 35);
+        doc.text(`Fecha: ${new Date(returnItem.createdAt).toLocaleDateString('es-ES')}`, 14, 40);
+        doc.text(`Vendedor: ${seller?.name || 'N/A'}`, 14, 45);
+        doc.text(`Estado: ${getStatusText(returnItem.status)}`, 14, 50);
+
+        const tableData = (returnItem.items || []).map((item, index) => [
+          index + 1,
+          item.product?.name || 'N/A',
+          item.product?.sku || '-',
+          item.quantity,
+          `$${(item.unitPrice || 0).toLocaleString()}`,
+          `$${(item.quantity * (item.unitPrice || 0)).toLocaleString()}`
+        ]);
+
+        autoTable(doc, {
+          startY: 60,
+          head: [['#', 'Producto', 'SKU', 'Cant.', 'u/Price', 'Total']],
+          body: tableData,
+          theme: 'striped',
+          headStyles: { fillColor: [181, 63, 63] },
+          foot: [['', '', '', 'TOTAL PRODUCTOS', returnItem.items.reduce((sum, i) => sum + i.quantity, 0), `$${(returnItem.totalValue || 0).toLocaleString()}`]],
+          footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' }
+        });
+
+        if (returnItem.notes) {
+          const finalY = (doc as any).lastAutoTable.cursor.y || 80;
+          doc.text("Notas:", 14, finalY + 10);
+          doc.setFontSize(9);
+          doc.text(returnItem.notes, 14, finalY + 15);
+        }
+
+        doc.save(`Devolucion_${returnItem.number}_${Date.now()}.pdf`);
+        toast.success('Reporte de devolución descargado');
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Error al generar el PDF de devolución');
+      }
+    };
+
+    const handleDownloadReturnsPdf = () => {
+      if (!seller || returns.length === 0) {
+        toast.error('No hay devoluciones para descargar');
+        return;
+      }
+
+      try {
+        const doc = new jsPDF();
+
+        // Título
+        doc.setFontSize(18);
+        doc.text(`Listado de Devoluciones - ${seller.name}`, 14, 20);
+
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Fecha de reporte: ${new Date().toLocaleDateString('es-ES')}`, 14, 28);
+
+        const tableData: any[] = [];
+        let totalReturnedQty = 0;
+
+        // Ordenar por fecha descendente
+        const sortedReturns = [...returns].sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        sortedReturns.forEach((ret) => {
+          ret.items.forEach((item) => {
+            tableData.push([
+              new Date(ret.createdAt).toLocaleDateString('es-ES'),
+              ret.number || 'S/N',
+              item.product?.name || 'Falta nombre',
+              item.product?.sku || '-',
+              item.quantity,
+              item.unitPrice ? `$${item.unitPrice.toLocaleString()}` : '-',
+              `$${(item.quantity * (item.unitPrice || 0)).toLocaleString()}`,
+              getStatusText(ret.status)
+            ]);
+            totalReturnedQty += item.quantity;
+          });
+        });
+
+        autoTable(doc, {
+          startY: 35,
+          head: [['Fecha', 'Número', 'Producto', 'SKU', 'Cant.', 'Precio', 'Total', 'Estado']],
+          body: tableData,
+          theme: 'grid',
+          headStyles: { fillGray: true, fillColor: [63, 81, 181], textColor: 255 },
+          foot: [['', '', '', 'TOTAL PRODUCTOS', totalReturnedQty, '', '', '']],
+          footStyles: { fillColor: [240, 240, 240], fontStyle: 'bold' }
+        });
+
+        doc.save(`Devoluciones_${seller.name.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+        toast.success('PDF de devoluciones descargado');
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+        toast.error('Error al generar el PDF');
       }
     };
 
@@ -2297,13 +2910,24 @@ const SellerDashboard: React.FC = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-900">Mis Devoluciones</h2>
-          <button
-            onClick={handleAddReturnItem}
-            className="btn-primary flex items-center"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Devolución
-          </button>
+          <div className="flex space-x-2">
+            {returns.length > 0 && (
+              <button
+                onClick={handleDownloadReturnsPdf}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors flex items-center text-sm"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Descargar PDF Devueltos
+              </button>
+            )}
+            <button
+              onClick={handleAddReturnItem}
+              className="btn-primary flex items-center"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Devolución
+            </button>
+          </div>
         </div>
 
         {returns.length === 0 ? (
@@ -2346,13 +2970,23 @@ const SellerDashboard: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => setViewingReturn(returnItem)}
-                        className="text-primary-600 hover:text-primary-900 flex items-center"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver
-                      </button>
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => setViewingReturn(returnItem)}
+                          className="text-primary-600 hover:text-primary-900 flex items-center"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver detalles
+                        </button>
+                        <button
+                          onClick={() => handleDownloadIndividualReturnPdf(returnItem)}
+                          className="text-indigo-600 hover:text-indigo-900 flex items-center"
+                          title="Descargar Devolución en PDF"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -3301,6 +3935,16 @@ const SellerDashboard: React.FC = () => {
             Inventario
           </button>
           <button
+            onClick={() => setActiveSection('balances')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'balances'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+          >
+            <ClipboardList className="h-5 w-5 inline mr-2" />
+            Saldos
+          </button>
+          <button
             onClick={() => setActiveSection('sales')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeSection === 'sales'
                 ? 'border-primary-500 text-primary-600'
@@ -3387,6 +4031,7 @@ const SellerDashboard: React.FC = () => {
       <div className="px-2 sm:px-6 py-4 sm:py-8">
         {activeSection === 'dashboard' && renderDashboard()}
         {activeSection === 'inventory' && renderInventory()}
+        {activeSection === 'balances' && renderBalances()}
         {activeSection === 'sales' && renderSales()}
         {activeSection === 'exit-notes' && renderExitNotes()}
         {activeSection === 'shipping-packages' && renderShippingPackages()}

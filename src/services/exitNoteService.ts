@@ -39,22 +39,24 @@ export const exitNoteService = {
         createdAt: convertToTimestamp(note.createdAt)
       });
 
-      // Registrar venta en contabilidad automáticamente
-      try {
-        await exitNoteAccountingService.create({
-          noteNumber: note.number,
-          sellerName: note.seller,
-          totalValue: note.totalPrice,
-          date: note.date,
-          status: note.status,
-          notes: `Venta a vendedor - ${note.seller}`
-        });
-      } catch (accountingError) {
-        console.error('Error creating accounting entry:', accountingError);
-        // No lanzar error para no interrumpir la creación de la nota
+      // Registrar venta en contabilidad automáticamente (solo si no es interna)
+      if (!note.isInternal) {
+        try {
+          await exitNoteAccountingService.create({
+            noteNumber: note.number,
+            sellerName: note.seller,
+            totalValue: note.totalPrice,
+            date: note.date,
+            status: note.status,
+            notes: `Venta a vendedor - ${note.seller}`
+          });
+        } catch (accountingError) {
+          console.error('Error creating accounting entry:', accountingError);
+          // No lanzar error para no interrumpir la creación de la nota
+        }
       }
 
-      toast.success('Nota de salida creada exitosamente');
+      toast.success(note.isInternal ? 'Nota de salida interna creada' : 'Nota de salida creada exitosamente');
       return docRef.id;
     } catch (error) {
       console.error('Error creating exit note:', error);
@@ -233,21 +235,22 @@ export const exitNoteService = {
     try {
       const q = query(
         collection(db, 'exitNotes'),
-        where('status', '==', status),
-        orderBy('date', 'desc')
+        where('status', '==', status)
       );
       const querySnapshot = await getDocs(q);
 
-      return querySnapshot.docs.map(doc => ({
+      const notes = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         date: convertTimestamp(doc.data().date),
         receivedAt: doc.data().receivedAt ? convertTimestamp(doc.data().receivedAt) : undefined,
         createdAt: convertTimestamp(doc.data().createdAt)
       })) as ExitNote[];
+      
+      // Ordenar localmente
+      return notes.sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
-      console.error('Error getting exit notes by status:', error);
-      // Fallback a getAll si falla por falta de índice
+      // Fallback a getAll si falla
       const allNotes = await this.getAll();
       return allNotes.filter(note => note.status === status);
     }
@@ -258,20 +261,19 @@ export const exitNoteService = {
     try {
       const q = query(
         collection(db, 'exitNotes'),
-        where('sellerId', '==', sellerId),
-        orderBy('date', 'desc')
+        where('sellerId', '==', sellerId)
       );
       const querySnapshot = await getDocs(q);
 
-      return querySnapshot.docs.map(doc => ({
+      const notes = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         date: convertTimestamp(doc.data().date),
         createdAt: convertTimestamp(doc.data().createdAt)
       })) as ExitNote[];
+
+      return notes.sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
-      console.error('Error getting exit notes by seller:', error);
-      // Fallback a getAll si falla por falta de índice
       const allNotes = await this.getAll();
       return allNotes.filter(note => note.sellerId === sellerId);
     }
@@ -437,7 +439,8 @@ export const exitNoteService = {
   async createTransferFromBodegaEcuador(
     sellerId: string,
     items: ExitNoteItem[],
-    notes?: string
+    notes?: string,
+    isInternal: boolean = false
   ): Promise<string> {
     try {
       // 1. Obtener datos del vendedor (desde DB o MAIN_SELLERS fallback)
@@ -468,7 +471,7 @@ export const exitNoteService = {
 
       // 2. Preparar la nota de salida
       const exitNoteData: Omit<ExitNote, 'id'> = {
-        number: `NS-ECU-${Date.now()}`,
+        number: isInternal ? `NSI-ECU-${Date.now()}` : `NS-ECU-${Date.now()}`,
         date: new Date(),
         sellerId: seller!.id,
         seller: seller!.name,
@@ -476,7 +479,8 @@ export const exitNoteService = {
         items: items,
         totalPrice: items.reduce((sum, item) => sum + item.totalPrice, 0),
         status: 'delivered',
-        notes: notes || 'Transferencia directa desde Bodega Ecuador',
+        isInternal: isInternal,
+        notes: notes || (isInternal ? 'Movimiento interno desde Bodega Ecuador' : 'Transferencia directa desde Bodega Ecuador'),
         createdAt: new Date(),
         createdBy: 'system'
       };

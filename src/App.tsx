@@ -102,7 +102,7 @@ function App() {
 
   return (
     <PayPalScriptProvider options={paypalOptions}>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <MobileRedirect />
         <CartProvider>
           <OnlineTracker /> {/* Tracking de presencia */}
