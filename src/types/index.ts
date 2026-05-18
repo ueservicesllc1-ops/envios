@@ -44,6 +44,7 @@ export interface InventoryItem {
   sellerId?: string; // ID del vendedor (si está asignado)
   exitNoteId?: string; // ID de la nota de salida asociada
   lastUpdated: Date;
+  realQuantity?: number; // Stock real disponible (restando compromisos)
 }
 
 // Tipos para Notas de Entrada
@@ -93,6 +94,7 @@ export interface ExitNote {
   paymentStatus?: 'pending' | 'partial' | 'paid'; // Estado de pago
   amountPaid?: number; // Monto pagado
   isInternal?: boolean; // Si es una nota de salida interna (movimientos de admin)
+  isCompoundInterest?: boolean; // Si la nota está seleccionada para interés compuesto
 }
 
 export interface ExitNoteItem {

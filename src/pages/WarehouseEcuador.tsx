@@ -119,7 +119,10 @@ const WarehouseEcuador: React.FC = () => {
             const committedStock: Record<string, number> = {};
             exitNotesData.forEach(note => {
                 const s = (note.status || '').toLowerCase();
-                if (s === 'pending' || s === 'in-transit') {
+                // Solo restar stock comprometido si la nota es de Ecuador
+                const isEcuadorNote = note.number?.includes('ECU') || note.number?.startsWith('NS-ECU-');
+                
+                if (isEcuadorNote && (s === 'pending' || s === 'in-transit')) {
                     note.items.forEach(item => {
                         const pid = item.productId;
                         committedStock[pid] = (committedStock[pid] || 0) + (item.quantity || 0);
@@ -146,11 +149,11 @@ const WarehouseEcuador: React.FC = () => {
                         const realQuantity = Math.max(0, item.quantity - committed);
 
                         // Mostrar si corresponde a Ecuador y tiene stock FÍSICO > 0
-                        // (Aunque esté en tránsito o pendiente, queremos verlo)
                         if (item.quantity > 0) {
                             stockItems.push({
                                 ...item,
-                                quantity: item.quantity,
+                                quantity: item.quantity, // Mostramos stock físico
+                                realQuantity: realQuantity, // Guardamos stock real para info extra si se requiere
                                 product: product
                             });
                         }

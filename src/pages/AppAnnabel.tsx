@@ -385,7 +385,7 @@ const AppAnnabel: React.FC = () => {
                         ) : (
                             <div className="grid grid-cols-2 gap-3">
                                 {soldItems.map(item => (
-                                    <ProductCard key={item.id} item={item} />
+                                    <ProductCard key={item.id} item={item} showReturnButton={!isReadOnly} />
                                 ))}
                             </div>
                         )}

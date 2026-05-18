@@ -1,689 +1,479 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { entryNoteService } from '../services/entryNoteService';
-import { productService } from '../services/productService';
-import { EntryNote, EntryNoteItem, Product } from '../types';
+import { exitNoteService } from '../services/exitNoteService';
+import { ExitNote, ExitNoteItem } from '../types';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { calculateCostPlusShipping } from '../utils/shippingCost';
-
-interface CalculatedEntryNote {
-  note: EntryNote;
-  investment: number;
-  saleValue: number;
-  monthlyRate: number;
-  compoundedValue: number;
-  compoundedProfit: number;
-}
-
-interface ProductGainMetric {
-  productId: string;
-  name: string;
-  sku?: string;
-  salePrice1?: number;
-  totalCost: number;
-  totalSale: number;
-  quantity: number;
-  margin: number;
-}
+import { TrendingUp, DollarSign, Percent, Calendar, RefreshCcw, Package, AlertCircle, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const CompoundInterest: React.FC = () => {
-  const [entryNotes, setEntryNotes] = useState<EntryNote[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<ExitNote[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [months, setMonths] = useState<number>(6);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [excludedNoteIds, setExcludedNoteIds] = useState<string[]>([]);
-  const [productSearch, setProductSearch] = useState<string>('');
-  const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
+  const [frequency, setFrequency] = useState<1 | 2>(1); // 1 = Mensual, 2 = Quincenal
+  const [activeMode, setActiveMode] = useState<'notes' | 'simulator'>('notes');
+  
+  // States for Simulator
+  const [weeklyInvestment, setWeeklyInvestment] = useState<number>(1000);
+  const [extraWeeklyInvestment, setExtraWeeklyInvestment] = useState<number>(0);
+  const [profitMargin, setProfitMargin] = useState<number>(30);
+  const [simulationWeeks, setSimulationWeeks] = useState<number>(12);
 
-  const loadEntryNotes = async () => {
+  const loadNotes = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const notes = await entryNoteService.getAll();
-      setEntryNotes(notes);
-      setExcludedNoteIds((prev) =>
-        prev.filter((id) => notes.some((note) => note.id === id))
-      );
+      const compoundNotes = await exitNoteService.getCompoundInterestNotes();
+      setNotes(compoundNotes);
     } catch (err) {
       console.error(err);
-      setError('No se pudieron cargar las notas de entrada.');
+      toast.error('Error al cargar las notas de interés compuesto');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadProducts = async () => {
-    try {
-      const data = await productService.getAll();
-      setProducts(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   useEffect(() => {
-    loadEntryNotes();
-    loadProducts();
+    loadNotes();
   }, []);
 
-  const handleMonthsChange = (value: number) => {
-    if (Number.isNaN(value)) {
-      setMonths(0);
-      return;
-    }
-    setMonths(Math.max(0, value));
-  };
-
-  const productsById = useMemo(() => {
-    const map = new Map<string, Product>();
-    products.forEach((product) => {
-      map.set(product.id, product);
-    });
-    return map;
-  }, [products]);
-
-  const productsBySku = useMemo(() => {
-    const map = new Map<string, Product>();
-    products.forEach((product) => {
-      if (product.sku) {
-        map.set(product.sku, product);
-      }
-    });
-    return map;
-  }, [products]);
-
-  const findCatalogProduct = (item: EntryNoteItem): Product | undefined => {
-    if (item.productId) {
-      const byId = productsById.get(item.productId);
-      if (byId) {
-        return byId;
-      }
-    }
-
-    if (item.product?.id) {
-      const byId = productsById.get(item.product.id);
-      if (byId) {
-        return byId;
-      }
-    }
-
-    if (item.product?.sku) {
-      const bySku = productsBySku.get(item.product.sku);
-      if (bySku) {
-        return bySku;
-      }
-    }
-
-    return undefined;
-  };
-
-  const computeCostData = (item: EntryNoteItem) => {
-    const catalogProduct = findCatalogProduct(item);
-    const quantity = item.quantity ?? 0;
-    const safeQuantity = quantity > 0 ? quantity : 1;
-
-    const baseCostPerUnit =
-      item.cost !== undefined
-        ? item.cost
-        : item.totalCost !== undefined
-        ? item.totalCost / safeQuantity
-        : catalogProduct?.cost ?? item.product?.cost ?? 0;
-
-    const weightPerUnit =
-      item.weight ?? catalogProduct?.weight ?? item.product?.weight ?? 0;
-
-    const costPlusShippingPerUnit = calculateCostPlusShipping(
-      baseCostPerUnit,
-      weightPerUnit
-    );
-
-    const baseCostTotal =
-      item.totalCost !== undefined
-        ? item.totalCost
-        : baseCostPerUnit * safeQuantity;
-
-    const shippingPerUnit = costPlusShippingPerUnit - baseCostPerUnit;
-    const totalShipping = shippingPerUnit * safeQuantity;
-    const totalCostWithShipping = baseCostTotal + totalShipping;
-
-    return {
-      catalogProduct,
-      quantity,
-      safeQuantity,
-      baseCostPerUnit,
-      costPlusShippingPerUnit,
-      baseCostTotal,
-      shippingPerUnit,
-      totalShipping,
-      totalCostWithShipping,
-    };
-  };
-
-  const excludedNoteIdsSet = useMemo(
-    () => new Set(excludedNoteIds),
-    [excludedNoteIds]
-  );
-
-  const activeEntryNotes = useMemo(
-    () => entryNotes.filter((note) => !excludedNoteIdsSet.has(note.id)),
-    [entryNotes, excludedNoteIdsSet]
-  );
-
-  const toggleNoteExclusion = (noteId: string) => {
-    setExcludedNoteIds((prev) =>
-      prev.includes(noteId)
-        ? prev.filter((id) => id !== noteId)
-        : [...prev, noteId]
-    );
-  };
-
-  const calculations = useMemo<CalculatedEntryNote[]>(() => {
-    const effectiveMonths = Math.max(0, months);
-
-    return entryNotes.map((note) => {
-      const investment =
-        note.items && note.items.length > 0
-          ? note.items.reduce(
-              (sum, item) => sum + computeCostData(item).totalCostWithShipping,
-              0
-            )
-          : note.totalCost ?? 0;
-
-      const saleValue =
-        note.items?.reduce((sum, item) => {
-          const quantity = item.quantity || 0;
-
-          const catalogProduct = findCatalogProduct(item);
-
-          const price1 =
-            catalogProduct?.salePrice1 ??
-            item.product?.salePrice1 ??
-            item.unitPrice ??
-            (item.totalPrice && quantity > 0
-              ? item.totalPrice / quantity
-              : undefined) ??
-            0;
-
-          return sum + price1 * quantity;
-        }, 0) ??
-        note.totalPrice ??
-        0;
-
-      const monthlyRate =
-        investment > 0 ? (saleValue - investment) / investment : 0;
-      const compoundedValue =
-        investment > 0
-          ? investment * Math.pow(1 + monthlyRate, effectiveMonths)
-          : 0;
+  const calculations = useMemo(() => {
+    return notes.map(note => {
+      // Calcular inversión (costo de productos + envío estimado $26)
+      const productCost = note.items.reduce((sum, item) => sum + (item.product.cost * item.quantity), 0);
+      const shippingCost = 26; // Costo de envío estándar
+      const investment = productCost + shippingCost;
+      
+      const saleValue = note.totalPrice;
+      const immediateProfit = saleValue - investment;
+      const monthlyRate = investment > 0 ? immediateProfit / investment : 0;
+      
+      const periods = months * frequency;
+      const compoundedValue = investment * Math.pow(1 + monthlyRate, periods);
       const compoundedProfit = compoundedValue - investment;
 
       return {
         note,
         investment,
         saleValue,
+        immediateProfit,
         monthlyRate,
         compoundedValue,
-        compoundedProfit,
+        compoundedProfit
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryNotes, months, productsById, productsBySku]);
-
-  const activeCalculations = useMemo(
-    () =>
-      calculations.filter(
-        (item) => !excludedNoteIdsSet.has(item.note.id)
-      ),
-    [calculations, excludedNoteIdsSet]
-  );
+  }, [notes, months, frequency]);
 
   const totals = useMemo(() => {
-    const totalInvestment = activeCalculations.reduce(
-      (acc, item) => acc + item.investment,
-      0
-    );
-    const totalCompoundedValue = activeCalculations.reduce(
-      (acc, item) => acc + item.compoundedValue,
-      0
-    );
+    const totalInvestment = calculations.reduce((acc, curr) => acc + curr.investment, 0);
+    const totalCompoundedValue = calculations.reduce((acc, curr) => acc + curr.compoundedValue, 0);
     const totalProfit = totalCompoundedValue - totalInvestment;
-
-    const weightedMonthlyRate =
-      totalInvestment > 0
-        ? activeCalculations.reduce(
-            (acc, item) => acc + item.monthlyRate * item.investment,
-            0
-          ) / totalInvestment
-        : 0;
+    
+    const weightedMonthlyRate = totalInvestment > 0 
+      ? calculations.reduce((acc, curr) => acc + (curr.monthlyRate * curr.investment), 0) / totalInvestment
+      : 0;
 
     return {
       totalInvestment,
       totalCompoundedValue,
       totalProfit,
-      weightedMonthlyRate,
+      weightedMonthlyRate
     };
-  }, [activeCalculations]);
+  }, [calculations]);
 
-  const productMetrics = useMemo<ProductGainMetric[]>(() => {
-    // Calcular margen por producto individual usando costo + envío vs precio 1
-    return products
-      .filter((product) => {
-        // Solo incluir productos que tengan costo y precio 1
-        const hasCost = product.cost !== undefined && product.cost > 0;
-        const hasPrice1 = product.salePrice1 !== undefined && product.salePrice1 > 0;
-        return hasCost && hasPrice1;
-      })
-      .map((product) => {
-        const cost = product.cost ?? 0;
-        const weight = product.weight ?? 0;
-        const costPlusShipping = calculateCostPlusShipping(cost, weight);
-        const salePrice1 = product.salePrice1 ?? 0;
-        const margin = costPlusShipping > 0 ? (salePrice1 - costPlusShipping) / costPlusShipping : 0;
+  const monthlyProjection = useMemo(() => {
+    const projection = [];
+    let currentCapital = totals.totalInvestment;
+    const periods = months * frequency;
 
-        return {
-          productId: product.id,
-          name: product.name,
-          sku: product.sku,
-          salePrice1: salePrice1,
-          totalCost: costPlusShipping,
-          totalSale: salePrice1,
-          quantity: 1, // Siempre 1 porque es por producto individual
-          margin: margin,
-        };
+    for (let i = 1; i <= periods; i++) {
+      currentCapital = currentCapital * (1 + totals.weightedMonthlyRate);
+      projection.push({
+        period: i,
+        label: frequency === 1 ? `Mes ${i}` : `Quincena ${i}`,
+        value: currentCapital
       });
-  }, [products]);
+    }
+    return projection;
+  }, [totals, months, frequency]);
 
-  const filteredProductMetrics = useMemo(() => {
-    const normalizedSearch = productSearch.trim().toLowerCase();
+  const weeklySimulatorProjection = useMemo(() => {
+    const projection = [];
+    const marginDecimal = profitMargin / 100;
+    
+    // Suponemos que cada semana se invierte la misma cantidad inicial 
+    // hasta que empiezan a llegar los retornos de las semanas anteriores
+    const history: any[] = [];
+    const weeks = isNaN(simulationWeeks) ? 0 : simulationWeeks;
 
-    const result = normalizedSearch
-      ? productMetrics.filter(
-          (metric) =>
-            metric.name.toLowerCase().includes(normalizedSearch) ||
-            (metric.sku && metric.sku.toLowerCase().includes(normalizedSearch))
-        )
-      : [...productMetrics];
+    for (let w = 1; w <= weeks; w++) {
+      let baseInvestment = w <= 2 ? weeklyInvestment : 0;
+      let revenueThisWeek = 0;
 
-    return result.sort((a, b) => {
-      const diff = (a.margin || 0) - (b.margin || 0);
-      return sortDirection === 'desc' ? diff * -1 : diff;
-    });
-  }, [productMetrics, productSearch, sortDirection]);
+      // El retorno llega con 2 semanas de retraso
+      if (w > 2) {
+        const investmentFromTwoWeeksAgo = history[w - 3].totalInvestment;
+        revenueThisWeek = investmentFromTwoWeeksAgo * (1 + marginDecimal);
+      }
+
+      // La inversión de esta semana es lo que recibimos + la inyección extra semanal
+      const totalInvestmentThisWeek = (w > 2 ? revenueThisWeek : weeklyInvestment) + extraWeeklyInvestment;
+
+      history.push({ week: w, totalInvestment: totalInvestmentThisWeek, revenue: revenueThisWeek });
+      
+      projection.push({
+        week: w,
+        outflow: (w <= 2 ? weeklyInvestment : 0) + extraWeeklyInvestment, // Capital "fresco" inyectado
+        reinvestment: w > 2 ? revenueThisWeek : 0,
+        revenue: revenueThisWeek,
+        totalInvestment: totalInvestmentThisWeek
+      });
+    }
+    return projection;
+  }, [weeklyInvestment, extraWeeklyInvestment, profitMargin, simulationWeeks]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-6 p-6 pb-20">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Interés Compuesto
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+            <TrendingUp className="h-8 w-8 mr-3 text-primary-600" />
+            Estrategia de Crecimiento
           </h1>
-          <p className="mt-2 max-w-3xl text-sm text-gray-600">
-            Calcula el rendimiento proyectado de tus notas de entrada asumiendo
-            un retorno cada 30 días. El porcentaje mensual se obtiene al comparar
-            el costo total con el valor de venta 1. Ajusta el periodo en meses
-            para simular la capitalización compuesta.
+          <p className="text-gray-600 mt-1">
+            Analiza y proyecta el crecimiento de tu capital mediante reinversión.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={loadEntryNotes}
-          disabled={loading}
-          className="inline-flex items-center gap-2 self-start rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading && (
-            <svg
-              className="h-4 w-4 animate-spin"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-              />
-            </svg>
-          )}
-          Recargar datos
-        </button>
-      </div>
-
-      {excludedNoteIds.length > 0 && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-          {excludedNoteIds.length === 1
-            ? '1 nota está excluida del cálculo actual de interés compuesto.'
-            : `${excludedNoteIds.length} notas están excluidas del cálculo actual de interés compuesto.`}
-        </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Inversión total</p>
-          <p className="mt-2 text-2xl font-semibold text-gray-900">
-            {formatCurrency(totals.totalInvestment)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Valor compuesto proyectado
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-gray-900">
-            {formatCurrency(totals.totalCompoundedValue)}
-          </p>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Ganancia estimada
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-primary-600">
-            {formatCurrency(totals.totalProfit)}
-          </p>
+        <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-200">
+          <button
+            onClick={() => setActiveMode('notes')}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeMode === 'notes' ? 'bg-primary-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            Interés Compuesto (Notas)
+          </button>
+          <button
+            onClick={() => setActiveMode('simulator')}
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeMode === 'simulator' ? 'bg-primary-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+          >
+            Simulador de Flujo Semanal
+          </button>
         </div>
       </div>
 
-      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-700">
-              Periodo de capitalización (meses)
-            </p>
-            <p className="text-xs text-gray-500">
-              Cada mes representa un ciclo de 30 días con el retorno calculado
-              entre costo y venta 1.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="range"
-              min={0}
-              max={36}
-              value={months}
-              onChange={(event) =>
-                handleMonthsChange(Number(event.target.value))
-              }
-              className="h-1 w-40 cursor-pointer rounded-full bg-primary-100 accent-primary-500"
-            />
-            <input
-              type="number"
-              min={0}
-              max={120}
-              value={months}
-              onChange={(event) =>
-                handleMonthsChange(Number(event.target.value))
-              }
-              className="w-20 rounded-md border border-gray-300 px-3 py-2 text-right text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            />
-            <span className="text-sm text-gray-500">meses</span>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-md bg-primary-50 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-primary-600">
-              Rendimiento mensual promedio
-            </p>
-            <p className="mt-2 text-lg font-semibold text-primary-700">
-              {(totals.weightedMonthlyRate * 100).toFixed(2)}%
-            </p>
-          </div>
-          <div className="rounded-md bg-gray-50 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-              Ganancia mensual promedio
-            </p>
-            <p className="mt-2 text-lg font-semibold text-gray-900">
-              {formatCurrency(
-                totals.totalInvestment * totals.weightedMonthlyRate
-              )}
-            </p>
-          </div>
-          <div className="rounded-md bg-gray-50 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-              Valor al final del periodo
-            </p>
-            <p className="mt-2 text-lg font-semibold text-gray-900">
-              {formatCurrency(totals.totalCompoundedValue)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Incluir
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Nota
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Fecha
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Inversión (Costo)
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Venta 1
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  % retorno mensual
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Ganancia mensual
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Valor compuesto
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Ganancia total periodo
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {loading && (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="px-6 py-10 text-center text-sm text-gray-500"
+      {activeMode === 'notes' ? (
+        <>
+          {/* Control de Meses */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-primary-500" />
+                    Periodo de Capitalización
+                  </label>
+                  <span className="text-primary-600 font-bold text-lg">{months} meses</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="24"
+                  value={months}
+                  onChange={(e) => setMonths(parseInt(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                  <span>1 mes</span>
+                  <span>12 meses (1 año)</span>
+                  <span>24 meses (2 años)</span>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-3">
+                <label className="text-sm font-semibold text-gray-700">Frecuencia de Rotación</label>
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                  <button
+                    onClick={() => setFrequency(1)}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${frequency === 1 ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500 hover:text-gray-700'}`}
                   >
-                    Cargando notas de entrada...
-                  </td>
-                </tr>
-              )}
-
-              {!loading && calculations.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="px-6 py-10 text-center text-sm text-gray-500"
+                    MENSUAL
+                  </button>
+                  <button
+                    onClick={() => setFrequency(2)}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${frequency === 2 ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500 hover:text-gray-700'}`}
                   >
-                    No hay notas de entrada registradas.
-                  </td>
-                </tr>
-              )}
+                    QUINCENAL (2x mes)
+                  </button>
+                </div>
+              </div>
 
-              {!loading &&
-                calculations.map((item) => {
-                  const isExcluded = excludedNoteIdsSet.has(item.note.id);
-                  const monthlyProfit = item.investment * item.monthlyRate;
-                  const valueTextClass = isExcluded
-                    ? 'text-gray-400'
-                    : 'text-gray-900';
-                  const highlightTextClass = isExcluded
-                    ? 'text-gray-400'
-                    : 'text-primary-600';
-                  return (
-                    <tr
-                      key={item.note.id}
-                      className={isExcluded ? 'bg-gray-50 text-gray-500' : ''}
-                    >
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <label className="inline-flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            checked={!isExcluded}
-                            onChange={() => toggleNoteExclusion(item.note.id)}
-                          />
-                          <span className="text-xs text-gray-500">
-                            {isExcluded ? 'Excluida' : 'Incluida'}
-                          </span>
-                        </label>
-                      </td>
-                      <td
-                        className={`px-6 py-4 text-sm font-medium ${valueTextClass}`}
-                      >
-                        {item.note.number || item.note.id}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {formatDate(item.note.date)}
-                      </td>
-                      <td
-                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
-                      >
-                        {formatCurrency(item.investment)}
-                      </td>
-                      <td
-                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
-                      >
-                        {formatCurrency(item.saleValue)}
-                      </td>
-                      <td
-                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
-                      >
-                        {(item.monthlyRate * 100).toFixed(2)}%
-                      </td>
-                      <td
-                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
-                      >
-                        {formatCurrency(monthlyProfit)}
-                      </td>
-                      <td
-                        className={`px-6 py-4 text-right text-sm ${valueTextClass}`}
-                      >
-                        {formatCurrency(item.compoundedValue)}
-                      </td>
-                      <td
-                        className={`px-6 py-4 text-right text-sm ${highlightTextClass}`}
-                      >
-                        {formatCurrency(item.compoundedProfit)}
+              <div className="flex gap-4">
+                <div className="px-6 py-4 bg-primary-50 rounded-xl border border-primary-100">
+                  <p className="text-xs font-bold text-primary-600 uppercase tracking-wider">Rendimiento Mensual</p>
+                  <p className="text-2xl font-black text-primary-700">{(totals.weightedMonthlyRate * 100).toFixed(2)}%</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Totales */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                <DollarSign className="h-16 w-16" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Inversión Inicial Total</p>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{formatCurrency(totals.totalInvestment)}</p>
+              <p className="text-xs text-gray-400 mt-2">Costo productos + Envío ($26/nota)</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                <TrendingUp className="h-16 w-16" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Valor Compuesto ({months} Meses)</p>
+              <p className="text-3xl font-bold text-primary-600 mt-1">{formatCurrency(totals.totalCompoundedValue)}</p>
+              <p className="text-xs text-green-600 mt-2 font-medium">
+                {frequency === 1 ? 'Reinvirtiendo 1 vez al mes' : 'Reinvirtiendo cada 15 días (2 veces al mes)'}
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
+                <TrendingUp className="h-16 w-16" />
+              </div>
+              <p className="text-sm font-medium text-gray-500">Ganancia Neta Proyectada</p>
+              <p className="text-3xl font-bold text-green-600 mt-1">{formatCurrency(totals.totalProfit)}</p>
+              <p className="text-xs text-gray-400 mt-2">Diferencia entre capital inicial y final</p>
+            </div>
+          </div>
+
+          {/* Proyección Detallada por Periodo */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <Calendar className="h-5 w-5 mr-2 text-primary-600" />
+              Proyección de Capital Recibido por {frequency === 1 ? 'Mes' : 'Quincena'}
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              {monthlyProjection.map((step) => (
+                <div 
+                  key={step.period} 
+                  className="flex flex-col items-center p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-primary-300 hover:bg-primary-50 transition-all cursor-default min-w-[140px]"
+                >
+                  <span className="text-[10px] font-black text-gray-400 uppercase">{step.label}</span>
+                  <span className="text-lg font-bold text-primary-700">{formatCurrency(step.value)}</span>
+                  <span className="text-[9px] text-green-600 font-bold mt-1">
+                    +{formatCurrency(step.value * totals.weightedMonthlyRate / (1 + totals.weightedMonthlyRate))} ganancia
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-4 italic">
+              * Estos valores representan el capital total (Inversión + Ganancia) que recibirás al finalizar cada {frequency === 1 ? 'mes' : 'quincena'}, listo para ser reinvertido.
+            </p>
+          </div>
+
+          {/* Detalle por Nota */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-900">Desglose por Nota de Salida</h3>
+              <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full uppercase">
+                {notes.length} Notas Seleccionadas
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nota / Fecha</th>
+                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Vendedor</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Envío</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Inversión</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Venta</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ganancia Inicial</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">% Retorno</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Valor Compuesto</th>
+                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ganancia</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {calculations.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                        <div className="flex flex-col items-center">
+                          <Package className="h-12 w-12 text-gray-200 mb-3" />
+                          <p className="font-medium">No hay notas seleccionadas para interés compuesto.</p>
+                          <p className="text-sm">Ve a Notas de Salida y selecciona las notas que deseas incluir.</p>
+                        </div>
                       </td>
                     </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-        {error && (
-          <div className="border-t border-gray-200 bg-red-50 px-6 py-4 text-sm text-red-600">
-            {error}
+                  ) : (
+                    calculations.map((item) => (
+                      <tr key={item.note.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-bold text-gray-900">{item.note.number}</div>
+                          <div className="text-xs text-gray-500">{formatDate(item.note.date)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-600">{item.note.seller}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 font-medium">
+                          {formatCurrency(26)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 font-medium">
+                          {formatCurrency(item.investment)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900 font-medium">
+                          {formatCurrency(item.saleValue)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-green-600 font-semibold">
+                          {formatCurrency(item.immediateProfit)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                            {(item.monthlyRate * 100).toFixed(2)}%
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-primary-600 font-bold">
+                          {formatCurrency(item.compoundedValue)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-green-600 font-bold">
+                          {formatCurrency(item.compoundedProfit)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        )}
-      </div>
-
-      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Productos con mayor porcentaje de ganancia
-            </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Compara el margen de ganancia de cada producto usando su costo + envío vs precio de venta 1.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <div className="relative">
+        </>
+      ) : (
+        <div className="space-y-6">
+          {/* Simulator Controls */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-wrap items-end gap-6">
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-sm font-bold text-gray-700 mb-2">Inv. Semanal ($)</label>
               <input
-                type="search"
-                placeholder="Filtrar por nombre o SKU"
-                value={productSearch}
-                onChange={(event) => setProductSearch(event.target.value)}
-                className="w-60 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                type="number"
+                value={weeklyInvestment}
+                onChange={(e) => setWeeklyInvestment(Number(e.target.value))}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
               />
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
-              }
-              className="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Ordenar por % {sortDirection === 'desc' ? '↓' : '↑'}
-            </button>
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-sm font-bold text-gray-700 mb-2">Extra Semanal ($)</label>
+              <input
+                type="number"
+                value={extraWeeklyInvestment}
+                onChange={(e) => setExtraWeeklyInvestment(Number(e.target.value))}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div className="w-24">
+              <label className="block text-sm font-bold text-gray-700 mb-2">Margen (%)</label>
+              <input
+                type="number"
+                value={profitMargin}
+                onChange={(e) => setProfitMargin(Number(e.target.value))}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <div className="w-24">
+              <label className="block text-sm font-bold text-gray-700 mb-2">Semanas</label>
+              <input
+                type="number"
+                min="1"
+                max="104"
+                value={simulationWeeks}
+                onChange={(e) => setSimulationWeeks(Number(e.target.value))}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-start">
+            <AlertCircle className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
+            <div>
+              <p className="text-sm text-blue-900 font-bold">Logística de Flujo Constante:</p>
+              <p className="text-sm text-blue-800">
+                Esta simulación asume un tiempo de tránsito de <strong>2 semanas</strong>. 
+                Las semanas 1 y 2 son de inversión pura. A partir de la <strong>Semana 3</strong>, empiezas a recibir el retorno de la Semana 1, 
+                el cual se reinvierte automáticamente para mantener el ciclo sin necesidad de capital externo adicional.
+              </p>
+            </div>
+          </div>
+
+          {/* Weekly Results Grid */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Flujo de Caja Semanal Proyectado</h3>
+            </div>
+            <div className="p-6 overflow-x-auto">
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {weeklySimulatorProjection.map((w) => (
+                  <div key={w.week} className={`min-w-[200px] p-4 rounded-xl border ${w.week <= 2 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-black text-gray-500 uppercase">Semana {w.week}</span>
+                      {w.week > 2 && <CheckCircle className="h-4 w-4 text-green-600" />}
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase font-bold">Inversión Total</p>
+                        <p className="text-sm font-bold text-gray-900">{formatCurrency(w.totalInvestment)}</p>
+                      </div>
+                      {extraWeeklyInvestment > 0 && (
+                        <div className="text-[9px] text-blue-600 font-bold">
+                          incluye {formatCurrency(extraWeeklyInvestment)} extra
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-[10px] text-gray-500 uppercase font-bold">Ingreso (Venta)</p>
+                        <p className={`text-lg font-black ${w.week > 2 ? 'text-green-700' : 'text-gray-400'}`}>
+                          {w.week > 2 ? formatCurrency(w.revenue) : '$0.00'}
+                        </p>
+                      </div>
+                      {w.week > 2 && (
+                        <div className="pt-2 border-t border-green-200">
+                          <p className="text-[10px] text-green-700 uppercase font-bold">Ganancia Neta</p>
+                          <p className="text-sm font-bold text-green-800">+{formatCurrency(w.revenue - w.reinvestment)}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Simulator Totals */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <p className="text-sm font-medium text-gray-500">Capital Externo Acumulado</p>
+              <p className="text-3xl font-bold text-gray-900 mt-1">
+                {formatCurrency(weeklySimulatorProjection.reduce((acc, curr) => acc + curr.outflow, 0))}
+              </p>
+              <p className="text-xs text-gray-400 mt-2">Suma de la inversión inicial más todas las inyecciones extra.</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <p className="text-3xl font-bold text-primary-600 mt-1">
+                {weeklySimulatorProjection.length > 0 
+                  ? formatCurrency(weeklySimulatorProjection[weeklySimulatorProjection.length - 1].revenue) 
+                  : formatCurrency(0)}
+              </p>
+              <p className="text-xs text-green-600 mt-2 font-medium">Flujo constante de dinero cada semana.</p>
+            </div>
           </div>
         </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Producto
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  SKU
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Costo + Envío
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Precio Venta 1
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  % Ganancia
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredProductMetrics.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-6 py-10 text-center text-sm text-gray-500"
-                  >
-                    {productMetrics.length === 0
-                      ? 'No hay productos con costo y precio de venta 1 registrados.'
-                      : 'No se encontraron productos que coincidan con el filtro.'}
-                  </td>
-                </tr>
-              ) : (
-                filteredProductMetrics.map((metric) => (
-                  <tr key={metric.productId}>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {metric.name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {metric.sku || 'Sin SKU'}
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm text-gray-900">
-                      {formatCurrency(metric.totalCost)}
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm text-gray-900">
-                      {formatCurrency(metric.salePrice1 ?? 0)}
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm text-primary-600 font-semibold">
-                      {(metric.margin * 100).toFixed(2)}%
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
 
 export default CompoundInterest;
-

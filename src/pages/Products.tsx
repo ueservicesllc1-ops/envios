@@ -17,31 +17,27 @@ import toast from 'react-hot-toast';
 import { calculateCostPlusShipping, calculateShippingCost } from '../utils/shippingCost';
 import { formatCurrency } from '../utils/formatters';
 
-const Products: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+// Componente separado para el formulario para evitar re-renders lentos en la página principal
+const ProductFormModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  editingProduct,
+  storage
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (productData: any) => Promise<void>;
+  editingProduct: Product | null;
+  storage: any;
+}) => {
+  const [weightUnit, setWeightUnit] = useState<'grams' | 'kilos' | 'pounds'>('pounds');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+  const [skuSearching, setSkuSearching] = useState(false);
   const [showExistingProductModal, setShowExistingProductModal] = useState(false);
   const [existingProduct, setExistingProduct] = useState<Product | null>(null);
-  const [skuSearching, setSkuSearching] = useState(false);
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string>('');
-  const [showConsolidateSection, setShowConsolidateSection] = useState(false);
-  const [selectedProductsForConsolidation, setSelectedProductsForConsolidation] = useState<Set<string>>(new Set());
-  const [showConsolidateModal, setShowConsolidateModal] = useState(false);
-  const [weightUnit, setWeightUnit] = useState<'grams' | 'kilos' | 'pounds'>('pounds');
 
-  // Estados para filtros
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000 });
-  const [sortBy, setSortBy] = useState<'name' | 'price' | 'category'>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -56,12 +52,274 @@ const Products: React.FC = () => {
     salePrice2: 0,
     originalPrice: 0,
     imageUrl: '',
-    // Campos específicos para perfumes
     brand: '',
     perfumeName: '',
     images: [] as string[],
     origin: 'local' as 'local' | 'fivebelow' | 'walgreens'
   });
+
+  useEffect(() => {
+    if (editingProduct) {
+      setWeightUnit('grams');
+      setFormData({
+        name: editingProduct.name,
+        description: editingProduct.description || '',
+        category: editingProduct.category,
+        size: editingProduct.size || '',
+        color: editingProduct.color || '',
+        color2: editingProduct.color2 || '',
+        weight: editingProduct.weight || 0,
+        sku: editingProduct.sku,
+        cost: editingProduct.cost,
+        salePrice1: editingProduct.salePrice1,
+        salePrice2: editingProduct.salePrice2,
+        originalPrice: editingProduct.originalPrice || 0,
+        imageUrl: editingProduct.imageUrl || '',
+        brand: editingProduct.brand || '',
+        perfumeName: editingProduct.perfumeName || '',
+        images: editingProduct.images || [],
+        origin: editingProduct.origin || 'local'
+      });
+    } else {
+      setWeightUnit('pounds');
+      setFormData({
+        name: '',
+        description: '',
+        category: '',
+        size: '',
+        color: '',
+        color2: '',
+        weight: 0,
+        sku: '',
+        cost: 0,
+        salePrice1: 0,
+        salePrice2: 0,
+        originalPrice: 0,
+        imageUrl: '',
+        brand: '',
+        perfumeName: '',
+        images: [],
+        origin: 'local'
+      });
+    }
+  }, [editingProduct, isOpen]);
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    try {
+      setUploadingImage(true);
+      const loadingToast = toast.loading('Subiendo imagen...');
+      const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(imageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      setFormData(prev => ({ ...prev, imageUrl: downloadURL }));
+      toast.dismiss(loadingToast);
+      toast.success('Imagen subida correctamente');
+    } catch (error) {
+      toast.error('Error al subir la imagen');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleAdditionalImageUpload = async (file: File) => {
+    if (!file) return;
+    try {
+      setUploadingImage(true);
+      const loadingToast = toast.loading('Subiendo imagen adicional...');
+      const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(imageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      setFormData(prev => ({ ...prev, images: [...(prev.images || []), downloadURL] }));
+      toast.dismiss(loadingToast);
+      toast.success('Imagen adicional subida');
+    } catch (error) {
+      toast.error('Error al subir la imagen');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleBarcodeScan = async (barcode: string) => {
+    try {
+      const existing = await productService.getBySku(barcode);
+      if (existing) {
+        setExistingProduct(existing);
+        setShowExistingProductModal(true);
+        return;
+      }
+      setFormData(prev => ({ ...prev, sku: barcode }));
+      toast.success(`SKU escaneado: ${barcode}`);
+      setShowScanner(false);
+    } catch (error) {
+      toast.error('Error al verificar el código escaneado');
+    }
+  };
+
+  const handleSkuSearch = async (sku: string) => {
+    if (!sku.trim()) return;
+    setSkuSearching(true);
+    try {
+      const existing = await productService.getBySku(sku);
+      if (existing) {
+        setExistingProduct(existing);
+        setShowExistingProductModal(true);
+      } else {
+        toast.success('SKU disponible');
+      }
+    } catch (error) {
+      toast.error('Error al verificar el SKU');
+    } finally {
+      setSkuSearching(false);
+    }
+  };
+
+  const convertToGrams = (weight: number, unit: 'grams' | 'kilos' | 'pounds'): number => {
+    if (!weight || weight <= 0) return 0;
+    switch (unit) {
+      case 'pounds': return weight * 453.592;
+      case 'kilos': return weight * 1000;
+      default: return weight;
+    }
+  };
+
+  const convertFromGrams = (weightInGrams: number, unit: 'grams' | 'kilos' | 'pounds'): number => {
+    if (!weightInGrams || weightInGrams <= 0) return 0;
+    switch (unit) {
+      case 'pounds': return weightInGrams / 453.592;
+      case 'kilos': return weightInGrams / 1000;
+      default: return weightInGrams;
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}</h3>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><X className="h-6 w-6" /></button>
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); onSave({ ...formData, weight: convertToGrams(formData.weight, weightUnit) }); }} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del Producto *</label>
+              <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input-field" placeholder="Ej: Smartphone Samsung" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">SKU (Código de Barras) *</label>
+              <div className="flex space-x-2">
+                <input type="text" required value={formData.sku} onChange={(e) => setFormData({ ...formData, sku: e.target.value })} onBlur={(e) => handleSkuSearch(e.target.value)} className="input-field flex-1" />
+                <button type="button" onClick={() => setShowScanner(true)} className="btn-secondary px-3"><Scan className="h-4 w-4" /></button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Categoría *</label>
+              <select required value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="input-field">
+                <option value="">Seleccionar categoría</option>
+                <option value="Electrónicos">Electrónicos</option><option value="Ropa">Ropa</option><option value="Hogar">Hogar</option>
+                <option value="Deportes">Deportes</option><option value="Libros">Libros</option><option value="Perfumes">Perfumes</option>
+                <option value="ZAPATOS">ZAPATOS</option><option value="VITAMINAS">VITAMINAS</option><option value="Soy Burro">Soy Burro</option>
+                <option value="Otros">Otros</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Peso</label>
+              <div className="flex space-x-2">
+                <input type="number" step="0.01" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })} className="input-field flex-1" />
+                <select value={weightUnit} onChange={(e) => {
+                  const newUnit = e.target.value as any;
+                  if (formData.weight > 0) {
+                    const g = weightUnit === 'grams' ? formData.weight : convertToGrams(formData.weight, weightUnit);
+                    setFormData({ ...formData, weight: convertFromGrams(g, newUnit) });
+                  }
+                  setWeightUnit(newUnit);
+                }} className="input-field w-32">
+                  <option value="grams">Gramos</option><option value="kilos">Kilos</option><option value="pounds">Libras</option>
+                </select>
+              </div>
+            </div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-2">Costo *</label><input type="number" required step="0.01" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })} className="input-field" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-2">Precio Venta 1 *</label><input type="number" required step="0.01" value={formData.salePrice1} onChange={(e) => setFormData({ ...formData, salePrice1: parseFloat(e.target.value) || 0 })} className="input-field" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-2">Precio Tienda *</label><input type="number" required step="0.01" value={formData.salePrice2} onChange={(e) => setFormData({ ...formData, salePrice2: parseFloat(e.target.value) || 0 })} className="input-field" /></div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+              <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="input-field" rows={3} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Imagen Principal</label>
+              <div className="flex items-center space-x-4">
+                {formData.imageUrl && <img src={formData.imageUrl} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />}
+                <label className="btn-secondary cursor-pointer">
+                  <Upload className="h-4 w-4 mr-2" /> Subir Imagen
+                  <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files && handleImageUpload(e.target.files[0])} />
+                </label>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-3 pt-6 border-t">
+            <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
+            <button type="submit" disabled={uploadingImage} className="btn-primary">{editingProduct ? 'Actualizar' : 'Crear'}</button>
+          </div>
+        </form>
+        {showScanner && (
+          <SimpleBarcodeScanner
+            isOpen={showScanner}
+            onClose={() => setShowScanner(false)}
+            onScan={handleBarcodeScan}
+            title="Escanear SKU"
+          />
+        )}
+        
+        {showExistingProductModal && existingProduct && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-2 sm:p-4">
+            <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Producto Existente</h3>
+                <button onClick={() => { setShowExistingProductModal(false); setExistingProduct(null); }} className="p-1 text-gray-400 hover:text-gray-600"><X className="h-6 w-6" /></button>
+              </div>
+              <div className="space-y-4">
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm font-medium text-yellow-800">Ya existe un producto con este SKU: {existingProduct.sku}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg text-sm">
+                  <p><strong>Nombre:</strong> {existingProduct.name}</p>
+                  <p><strong>Categoría:</strong> {existingProduct.category}</p>
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button onClick={() => { setShowExistingProductModal(false); setExistingProduct(null); setFormData(prev => ({ ...prev, sku: '' })); }} className="btn-secondary">Cambiar SKU</button>
+                  <button onClick={() => { setShowExistingProductModal(false); setExistingProduct(null); onSave({ ...existingProduct }); }} className="btn-primary">Usar Existente</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Products: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [showConsolidateSection, setShowConsolidateSection] = useState(false);
+  const [selectedProductsForConsolidation, setSelectedProductsForConsolidation] = useState<Set<string>>(new Set());
+  const [showConsolidateModal, setShowConsolidateModal] = useState(false);
+
+  // Estados para filtros
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000 });
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'category'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
 
   useEffect(() => {
     loadProducts();
@@ -298,166 +556,12 @@ const Products: React.FC = () => {
     }
   };
 
-  const handleImageUpload = async (file: File) => {
-    if (!file) return;
-
-    // Validar tipo de archivo
-    if (!file.type.startsWith('image/')) {
-      toast.error('Por favor selecciona un archivo de imagen');
-      return;
-    }
-
-    // Validar tamaño (máximo 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('La imagen debe ser menor a 5MB');
-      return;
-    }
-
+  const handleSaveProduct = async (productData: any) => {
     try {
-      setUploadingImage(true);
-      toast.loading('Subiendo imagen...');
-
-      // Crear referencia en Firebase Storage
-      const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-
-      // Subir archivo
-      const snapshot = await uploadBytes(imageRef, file);
-
-      // Obtener URL de descarga
-      const downloadURL = await getDownloadURL(snapshot.ref);
-
-      // Actualizar formData con la nueva URL
-      setFormData({ ...formData, imageUrl: downloadURL });
-
-      toast.success('Imagen subida correctamente');
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Error al subir la imagen');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const handleAdditionalImageUpload = async (file: File) => {
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Por favor selecciona un archivo de imagen');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('La imagen debe ser menor a 5MB');
-      return;
-    }
-
-    try {
-      setUploadingImage(true);
-      toast.loading('Subiendo imagen adicional...');
-
-      const imageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(imageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-
-      setFormData(prev => ({
-        ...prev,
-        images: [...(prev.images || []), downloadURL]
-      }));
-
-      toast.success('Imagen adicional subida');
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Error al subir la imagen');
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const handleRemoveImage = (indexToRemove: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: (prev.images || []).filter((_, index) => index !== indexToRemove)
-    }));
-  };
-
-
-  const handleBarcodeScan = async (barcode: string) => {
-    try {
-      // Verificar si el SKU ya existe en la base de datos
-      const existingProduct = await productService.getBySku(barcode);
-      if (existingProduct) {
-        setExistingProduct(existingProduct);
-        setShowExistingProductModal(true);
-        return;
-      }
-
-      // Auto-rellenar el campo SKU
-      setFormData(prev => ({
-        ...prev,
-        sku: barcode
-      }));
-
-      toast.success(`SKU escaneado: ${barcode}`);
-      setShowScanner(false);
-    } catch (error) {
-      console.error('Error verifying scanned SKU:', error);
-      toast.error('Error al verificar el código escaneado');
-    }
-  };
-
-  const handleSkuSearch = async (sku: string) => {
-    if (!sku.trim()) return;
-
-    setSkuSearching(true);
-
-    try {
-      // Buscar producto existente directamente en la base de datos
-      const existingProduct = await productService.getBySku(sku);
-
-      if (existingProduct) {
-        setExistingProduct(existingProduct);
-        setShowExistingProductModal(true);
-      } else {
-        toast.success('SKU disponible - puedes continuar agregando el producto');
-      }
-    } catch (error) {
-      console.error('Error searching SKU:', error);
-      toast.error('Error al verificar el SKU');
-    } finally {
-      setSkuSearching(false);
-    }
-  };
-
-  // Función para convertir peso a gramos según la unidad seleccionada
-  const convertToGrams = (weight: number, unit: 'grams' | 'kilos' | 'pounds'): number => {
-    if (!weight || weight <= 0) return 0;
-
-    switch (unit) {
-      case 'pounds':
-        // 1 libra = 453.592 gramos
-        return weight * 453.592;
-      case 'kilos':
-        // 1 kilo = 1000 gramos
-        return weight * 1000;
-      case 'grams':
-      default:
-        return weight;
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      // Convertir el peso a gramos antes de guardar
-      const weightInGrams = convertToGrams(formData.weight, weightUnit);
-      const productData = {
-        ...formData,
-        weight: weightInGrams
-      };
-
       if (editingProduct) {
         await productService.update(editingProduct.id, productData);
         setProducts(products.map(p => p.id === editingProduct.id ? { ...p, ...productData } : p));
+        toast.success('Producto actualizado correctamente');
       } else {
         const id = await productService.create(productData);
         const newProduct: Product = {
@@ -467,76 +571,18 @@ const Products: React.FC = () => {
           updatedAt: new Date()
         };
         setProducts([newProduct, ...products]);
+        toast.success('Producto creado correctamente');
       }
-
       setShowModal(false);
       setEditingProduct(null);
-      setWeightUnit('pounds');
-      setFormData({
-        name: '',
-        description: '',
-        category: '',
-        size: '',
-        color: '',
-        color2: '',
-        weight: 0,
-        sku: '',
-        cost: 0,
-        salePrice1: 0,
-        salePrice2: 0,
-        originalPrice: 0,
-        imageUrl: '',
-        brand: '',
-        perfumeName: '',
-        images: [],
-        origin: 'local'
-      });
     } catch (error) {
       console.error('Error saving product:', error);
-    }
-  };
-
-  // Función para convertir de gramos a otra unidad
-  const convertFromGrams = (weightInGrams: number, unit: 'grams' | 'kilos' | 'pounds'): number => {
-    if (!weightInGrams || weightInGrams <= 0) return 0;
-
-    switch (unit) {
-      case 'pounds':
-        // 1 libra = 453.592 gramos
-        return weightInGrams / 453.592;
-      case 'kilos':
-        // 1 kilo = 1000 gramos
-        return weightInGrams / 1000;
-      case 'grams':
-      default:
-        return weightInGrams;
+      toast.error('Error al guardar el producto');
     }
   };
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
-    // El peso se guarda en gramos, así que mostramos en gramos por defecto
-    setWeightUnit('grams');
-    const weightInGrams = product.weight || 0;
-    setFormData({
-      name: product.name,
-      description: product.description,
-      category: product.category,
-      size: product.size || '',
-      color: product.color || '',
-      color2: product.color2 || '',
-      weight: weightInGrams, // Mostrar en gramos por defecto
-      sku: product.sku,
-      cost: product.cost,
-      salePrice1: product.salePrice1,
-      salePrice2: product.salePrice2,
-      originalPrice: product.originalPrice || 0,
-      imageUrl: product.imageUrl || '',
-      brand: product.brand || '',
-      perfumeName: product.perfumeName || '',
-      images: product.images || [],
-      origin: product.origin || 'local'
-    });
     setShowModal(true);
   };
 
@@ -1204,586 +1250,22 @@ const Products: React.FC = () => {
         </div>
       )}
 
-      {/* Modal para crear/editar producto */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingProduct(null);
-                  setWeightUnit('grams');
-                  setFormData({
-                    name: '',
-                    description: '',
-                    category: '',
-                    size: '',
-                    color: '',
-                    color2: '',
-                    weight: 0,
-                    sku: '',
-                    cost: 0,
-                    salePrice1: 0,
-                    salePrice2: 0,
-                    originalPrice: 0,
-                    imageUrl: '',
-                    brand: '',
-                    perfumeName: '',
-                    images: [],
-                    origin: 'local'
-                  });
-                }}
-                className="p-1 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nombre del Producto *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="input-field"
-                    placeholder="Ej: Smartphone Samsung"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    SKU (Código de Barras) *
-                  </label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      required
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      onBlur={(e) => handleSkuSearch(e.target.value)}
-                      className="input-field flex-1"
-                      placeholder="Ej: 1234567890123"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowScanner(true)}
-                      className="btn-secondary flex items-center px-3"
-                      title="Escanear código de barras"
-                    >
-                      <Scan className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSkuSearch(formData.sku)}
-                      disabled={skuSearching || !formData.sku.trim()}
-                      className="btn-secondary flex items-center px-3"
-                      title="Verificar si el SKU existe"
-                    >
-                      {skuSearching ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                      ) : (
-                        <Search className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Origen del Producto
-                  </label>
-                  <select
-                    value={formData.origin || 'local'}
-                    onChange={(e) => setFormData({ ...formData, origin: e.target.value as 'local' | 'fivebelow' })}
-                    className="input-field"
-                  >
-                    <option value="local">Inventario Local</option>
-                    <option value="fivebelow">Five Below (Bajo Pedido)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Categoría * (Actualizado)
-                  </label>
-                  <select
-                    required
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="">Seleccionar categoría</option>
-                    <option value="Electrónicos">Electrónicos</option>
-                    <option value="Ropa">Ropa</option>
-                    <option value="Hogar">Hogar</option>
-                    <option value="Deportes">Deportes</option>
-                    <option value="Libros">Libros</option>
-                    <option value="Perfumes">Perfumes</option>
-                    <option value="ZAPATOS">ZAPATOS</option>
-                    <option value="VITAMINAS">VITAMINAS</option>
-                    <option value="Soy Burro">Soy Burro</option>
-                    <option value="Otros">Otros</option>
-                  </select>
-                </div>
-
-                {/* Campos dinámicos según la categoría */}
-                {formData.category === 'Perfumes' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Marca *
-                      </label>
-                      <select
-                        required
-                        value={formData.brand}
-                        onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                        className="input-field"
-                      >
-                        <option value="">Seleccionar marca</option>
-                        <option value="Lattafa">Lattafa</option>
-                        <option value="Chanel">Chanel</option>
-                        <option value="Dior">Dior</option>
-                        <option value="Versace">Versace</option>
-                        <option value="Armani">Armani</option>
-                        <option value="Gucci">Gucci</option>
-                        <option value="Prada">Prada</option>
-                        <option value="Hugo Boss">Hugo Boss</option>
-                        <option value="Calvin Klein">Calvin Klein</option>
-                        <option value="Tommy Hilfiger">Tommy Hilfiger</option>
-                        <option value="Lacoste">Lacoste</option>
-                        <option value="Polo Ralph Lauren">Polo Ralph Lauren</option>
-                        <option value="Burberry">Burberry</option>
-                        <option value="Yves Saint Laurent">Yves Saint Laurent</option>
-                        <option value="Dolce & Gabbana">Dolce & Gabbana</option>
-                        <option value="Otra">Otra</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre del Perfume *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.perfumeName}
-                        onChange={(e) => setFormData({ ...formData, perfumeName: e.target.value })}
-                        className="input-field"
-                        placeholder="Ej: Eau de Toilette"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Talla
-                      </label>
-                      <select
-                        value={formData.size}
-                        onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                        className="input-field"
-                      >
-                        <option value="">Seleccionar talla</option>
-                        <option value="XXS">XXS</option>
-                        <option value="XS">XS</option>
-                        <option value="S">S</option>
-                        <option value="M">M</option>
-                        <option value="L">L</option>
-                        <option value="XL">XL</option>
-                        <option value="XXL">XXL</option>
-                        <option value="3XL">3XL</option>
-                        <option value="36">36</option>
-                        <option value="37">37</option>
-                        <option value="38">38</option>
-                        <option value="39">39</option>
-                        <option value="40">40</option>
-                        <option value="41">41</option>
-                        <option value="42">42</option>
-                        <option value="43">43</option>
-                        <option value="44">44</option>
-                        <option value="45">45</option>
-                        <option value="4">4</option>
-                        <option value="4.5">4.5</option>
-                        <option value="5">5</option>
-                        <option value="5.5">5.5</option>
-                        <option value="6">6</option>
-                        <option value="6.5">6.5</option>
-                        <option value="7">7</option>
-                        <option value="7.5">7.5</option>
-                        <option value="8">8</option>
-                        <option value="8.5">8.5</option>
-                        <option value="9">9</option>
-                        <option value="9.5">9.5</option>
-                        <option value="10">10</option>
-                        <option value="10.5">10.5</option>
-                        <option value="11">11</option>
-                        <option value="11.5">11.5</option>
-                        <option value="12">12</option>
-                        <option value="Sin talla">Sin talla</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Color 1
-                      </label>
-                      <select
-                        value={formData.color}
-                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                        className="input-field"
-                      >
-                        <option value="">Seleccionar color</option>
-                        <option value="Azul">Azul</option>
-                        <option value="Rojo">Rojo</option>
-                        <option value="Verde">Verde</option>
-                        <option value="Negro">Negro</option>
-                        <option value="Blanco">Blanco</option>
-                        <option value="Gris">Gris</option>
-                        <option value="Amarillo">Amarillo</option>
-                        <option value="Rosa">Rosa</option>
-                        <option value="Morado">Morado</option>
-                        <option value="Naranja">Naranja</option>
-                        <option value="Vino">Vino</option>
-                        <option value="Turqueza">Turqueza</option>
-                        <option value="Celeste">Celeste</option>
-                        <option value="Verde Fluorescente">Verde Fluorescente</option>
-                        <option value="Beige">Beige</option>
-                        <option value="Café">Café</option>
-                        <option value="Durazno">Durazno</option>
-                        <option value="Camuflaje">Camuflaje</option>
-                        <option value="Sin color">Sin color</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Color 2
-                      </label>
-                      <select
-                        value={formData.color2}
-                        onChange={(e) => setFormData({ ...formData, color2: e.target.value })}
-                        className="input-field"
-                      >
-                        <option value="">Seleccionar color</option>
-                        <option value="Azul">Azul</option>
-                        <option value="Rojo">Rojo</option>
-                        <option value="Verde">Verde</option>
-                        <option value="Negro">Negro</option>
-                        <option value="Blanco">Blanco</option>
-                        <option value="Gris">Gris</option>
-                        <option value="Amarillo">Amarillo</option>
-                        <option value="Rosa">Rosa</option>
-                        <option value="Morado">Morado</option>
-                        <option value="Naranja">Naranja</option>
-                        <option value="Vino">Vino</option>
-                        <option value="Turqueza">Turqueza</option>
-                        <option value="Celeste">Celeste</option>
-                        <option value="Verde Fluorescente">Verde Fluorescente</option>
-                        <option value="Beige">Beige</option>
-                        <option value="Café">Café</option>
-                        <option value="Durazno">Durazno</option>
-                        <option value="Camuflaje">Camuflaje</option>
-                        <option value="Sin color">Sin color</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Peso
-                  </label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="number"
-                      min="0"
-                      step={weightUnit === 'grams' ? '1' : '0.01'}
-                      value={formData.weight}
-                      onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })}
-                      className="input-field flex-1"
-                      placeholder="0"
-                    />
-                    <select
-                      value={weightUnit}
-                      onChange={(e) => {
-                        const newUnit = e.target.value as 'grams' | 'kilos' | 'pounds';
-                        // Si estamos editando, el peso está en gramos en la BD
-                        // Si es nuevo producto, el peso está en la unidad anterior
-                        if (editingProduct && formData.weight > 0) {
-                          // Estamos editando: el peso en formData está en gramos
-                          const weightInGrams = formData.weight;
-                          const newWeight = convertFromGrams(weightInGrams, newUnit);
-                          setFormData({ ...formData, weight: newWeight });
-                        } else if (!editingProduct && formData.weight > 0) {
-                          // Es nuevo producto: convertir de la unidad anterior a la nueva
-                          const currentGrams = convertToGrams(formData.weight, weightUnit);
-                          const newWeight = convertFromGrams(currentGrams, newUnit);
-                          setFormData({ ...formData, weight: newWeight });
-                        }
-                        setWeightUnit(newUnit);
-                      }}
-                      className="input-field w-32"
-                    >
-                      <option value="grams">Gramos</option>
-                      <option value="kilos">Kilos</option>
-                      <option value="pounds">Libras</option>
-                    </select>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    El sistema convertirá automáticamente a gramos al guardar
-                  </p>
-                </div>
+      <ProductFormModal
+        isOpen={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setEditingProduct(null);
+        }}
+        onSave={handleSaveProduct}
+        editingProduct={editingProduct}
+        storage={storage}
+      />
 
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Costo *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={formData.cost}
-                    onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) || 0 })}
-                    className="input-field"
-                    placeholder="0.00"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Venta 1 *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={formData.salePrice1}
-                    onChange={(e) => setFormData({ ...formData, salePrice1: parseFloat(e.target.value) || 0 })}
-                    className="input-field"
-                    placeholder="0.00"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Tienda *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={formData.salePrice2}
-                    onChange={(e) => setFormData({ ...formData, salePrice2: parseFloat(e.target.value) || 0 })}
-                    className="input-field"
-                    placeholder="0.00"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Este precio aparecerá en la tienda en línea</p>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Precio Original (Opcional)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.originalPrice || 0}
-                    onChange={(e) => setFormData({ ...formData, originalPrice: parseFloat(e.target.value) || 0 })}
-                    className="input-field"
-                    placeholder="0.00"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Precio de venta en tiendas físicas (se mostrará tachado en la tienda en línea)</p>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Imagen del Producto
-                  </label>
-
-                  {/* Vista previa de la imagen */}
-                  {formData.imageUrl && (
-                    <div className="mb-3">
-                      <img
-                        src={formData.imageUrl}
-                        alt="Vista previa"
-                        className="w-24 h-24 object-cover rounded-lg border border-gray-200"
-                      />
-                    </div>
-                  )}
-
-                  {/* Campo para subir archivo */}
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleImageUpload(file);
-                        }
-                      }}
-                      className="hidden"
-                      id="image-upload"
-                      disabled={uploadingImage}
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className={`flex items-center justify-center w-full py-2 px-4 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingImage
-                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                        : 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
-                        }`}
-                    >
-                      {uploadingImage ? (
-                        <div className="flex items-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600 mr-2"></div>
-                          <span className="text-sm text-gray-600">Subiendo...</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center">
-                          <Upload className="h-4 w-4 mr-2 text-gray-400" />
-                          <span className="text-sm text-gray-600">
-                            {formData.imageUrl ? 'Cambiar imagen' : 'Subir imagen'}
-                          </span>
-                        </div>
-                      )}
-                    </label>
-                  </div>
-
-                  {/* URL manual como alternativa */}
-                  <div className="mt-2">
-                    <input
-                      type="url"
-                      value={formData.imageUrl}
-                      onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                      className="input-field text-sm"
-                      placeholder="O pega una URL de imagen"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Imágenes Adicionales */}
-              <div className="col-span-full">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Imágenes Adicionales ({formData?.images?.length || 0})
-                </label>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
-                  {formData.images?.map((img, index) => (
-                    <div key={index} className="relative group aspect-square">
-                      <img
-                        src={img}
-                        alt={`Adicional ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg border border-gray-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Eliminar imagen"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Botón para subir más */}
-                  <div className="relative aspect-square">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleAdditionalImageUpload(file);
-                      }}
-                      className="hidden"
-                      id="additional-image-upload"
-                      disabled={uploadingImage}
-                    />
-                    <label
-                      htmlFor="additional-image-upload"
-                      className={`flex flex-col items-center justify-center w-full h-full border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingImage
-                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                        : 'border-gray-300 hover:border-primary-500 hover:bg-primary-50'
-                        }`}
-                    >
-                      <Plus className="h-8 w-8 text-gray-400 mb-2" />
-                      <span className="text-xs text-gray-500 text-center px-2">Agregar foto</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Descripción
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="input-field"
-                  rows={3}
-                  placeholder="Descripción detallada del producto..."
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setEditingProduct(null);
-                    setWeightUnit('pounds');
-                    setFormData({
-                      name: '',
-                      description: '',
-                      category: '',
-                      size: '',
-                      color: '',
-                      color2: '',
-                      weight: 0,
-                      sku: '',
-                      cost: 0,
-                      salePrice1: 0,
-                      salePrice2: 0,
-                      originalPrice: 0,
-                      imageUrl: '',
-                      brand: '',
-                      perfumeName: '',
-                      images: [],
-                      origin: 'local'
-                    });
-                  }}
-                  className="btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                >
-                  {editingProduct ? 'Actualizar' : 'Crear'} Producto
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Modal para ver detalles del producto */}
       {viewingProduct && (
@@ -2027,99 +1509,9 @@ const Products: React.FC = () => {
         </div>
       )}
 
-      {/* Modal para producto existente */}
-      {showExistingProductModal && existingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Producto Existente
-              </h3>
-              <button
-                onClick={() => {
-                  setShowExistingProductModal(false);
-                  setExistingProduct(null);
-                }}
-                className="p-1 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <span className="text-yellow-600 text-sm font-semibold">!</span>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-yellow-800">
-                    Ya existe un producto con este SKU
-                  </p>
-                  <p className="text-xs text-yellow-600">
-                    SKU: {existingProduct.sku}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">Detalles del Producto Existente:</h4>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <p><strong>Nombre:</strong> {existingProduct.name}</p>
-                  <p><strong>Categoría:</strong> {existingProduct.category}</p>
-                  <p><strong>Precio:</strong> {formatCurrency(typeof existingProduct.salePrice1 === 'number' ? existingProduct.salePrice1 : 0)}</p>
-                  {existingProduct.size && (
-                    <p><strong>Talla:</strong> {existingProduct.size}</p>
-                  )}
-                  {existingProduct.brand && (
-                    <p><strong>Marca:</strong> {existingProduct.brand}</p>
-                  )}
-                  {existingProduct.perfumeName && (
-                    <p><strong>Perfume:</strong> {existingProduct.perfumeName}</p>
-                  )}
-                  {existingProduct.color && (
-                    <p><strong>Color:</strong> {existingProduct.color}</p>
-                  )}
-                  {existingProduct.color2 && (
-                    <p><strong>Color 2:</strong> {existingProduct.color2}</p>
-                  )}
-                  {existingProduct.description && (
-                    <p><strong>Descripción:</strong> {existingProduct.description}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowExistingProductModal(false);
-                    setExistingProduct(null);
-                    setFormData(prev => ({ ...prev, sku: '' }));
-                  }}
-                  className="btn-secondary"
-                >
-                  Cambiar SKU
-                </button>
-                <button
-                  onClick={() => {
-                    setShowExistingProductModal(false);
-                    setExistingProduct(null);
-                    handleEdit(existingProduct);
-                  }}
-                  className="btn-primary"
-                >
-                  Editar Producto
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal para ver imagen grande */}
       {showImageModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-2 sm:p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-2 sm:p-4">
           <div className="relative max-w-4xl max-h-[90vh] w-full">
             <button
               onClick={() => {
@@ -2138,14 +1530,6 @@ const Products: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Lector de códigos de barras */}
-      <SimpleBarcodeScanner
-        isOpen={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScan={handleBarcodeScan}
-        title="Escanear Código de Barras del Producto"
-      />
 
       {/* Modal de Consolidación */}
       {showConsolidateModal && (

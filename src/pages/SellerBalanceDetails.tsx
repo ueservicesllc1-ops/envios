@@ -93,7 +93,7 @@ const SellerBalanceDetails: React.FC = () => {
 
     const runShippingFixScript = async () => {
         if (!seller || !id) return;
-        if (!window.confirm(`¿Estás seguro de agregar $28 de envío a las notas de ${seller.name} que no lo tengan?`)) return;
+        if (!window.confirm(`¿Estás seguro de agregar $26 de envío a las notas de ${seller.name} que no lo tengan?`)) return;
 
         try {
             setLoading(true);
@@ -110,7 +110,7 @@ const SellerBalanceDetails: React.FC = () => {
 
                 const currentItems = note.items || [];
                 const hasShipping = currentItems.some((item) =>
-                    item.productId === 'shipping-fee-28' ||
+                    item.productId === 'shipping-fee-26' ||
                     (item.product && item.product.name === 'Costo de Envío')
                 );
 
@@ -121,27 +121,27 @@ const SellerBalanceDetails: React.FC = () => {
                 // Add shipping item
                 const shippingItem = {
                     id: `shipping-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    productId: 'shipping-fee-28',
+                    productId: 'shipping-fee-26',
                     product: {
-                        id: 'shipping-fee-28',
+                        id: 'shipping-fee-26',
                         name: 'Costo de Envío',
                         sku: 'SHIPPING',
                         category: 'Servicio',
                         description: 'Costo de envío fijo',
                         cost: 0,
-                        salePrice1: 28,
-                        salePrice2: 28,
+                        salePrice1: 26,
+                        salePrice2: 26,
                         createdAt: new Date(),
                         updatedAt: new Date()
                     },
                     quantity: 1,
-                    unitPrice: 28,
-                    totalPrice: 28,
+                    unitPrice: 26,
+                    totalPrice: 26,
                     weight: 0,
                 };
 
                 const newItems = [...currentItems, shippingItem] as any[];
-                const newTotalPrice = (note.totalPrice || 0) + 28;
+                const newTotalPrice = (note.totalPrice || 0) + 26;
 
                 await exitNoteService.update(note.id, {
                     items: newItems,
@@ -186,10 +186,10 @@ const SellerBalanceDetails: React.FC = () => {
                 <button
                     onClick={runShippingFixScript}
                     className="btn-secondary flex items-center bg-gray-200 text-gray-800 hover:bg-gray-300 ml-2"
-                    title="Agregar $28 de envío a notas sin costo"
+                    title="Agregar $26 de envío a notas sin costo"
                 >
                     <DollarSign className="h-4 w-4 mr-2" />
-                    +Envío ($28)
+                    +Envío ($26)
                 </button>
             </div>
 

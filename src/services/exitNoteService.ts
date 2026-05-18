@@ -523,5 +523,59 @@ export const exitNoteService = {
       toast.error('Error al procesar la transferencia desde Bodega Ecuador');
       throw error;
     }
+  },
+
+  // Guardar notas seleccionadas para interés compuesto
+  async saveToCompoundInterest(noteIds: string[]): Promise<void> {
+    try {
+      // 1. Obtener todas las notas que actualmente tienen isCompoundInterest = true
+      const q = query(
+        collection(db, 'exitNotes'),
+        where('isCompoundInterest', '==', true)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      // 2. Limpiar el estado anterior
+      const clearPromises = querySnapshot.docs.map(docSnap => 
+        updateDoc(doc(db, 'exitNotes', docSnap.id), { isCompoundInterest: false })
+      );
+      await Promise.all(clearPromises);
+      
+      // 3. Marcar las nuevas notas
+      if (noteIds.length > 0) {
+        const updatePromises = noteIds.map(id => 
+          updateDoc(doc(db, 'exitNotes', id), { isCompoundInterest: true })
+        );
+        await Promise.all(updatePromises);
+      }
+      
+      toast.success('Interés compuesto actualizado exitosamente');
+    } catch (error) {
+      console.error('Error saving to compound interest:', error);
+      toast.error('Error al guardar para interés compuesto');
+      throw error;
+    }
+  },
+
+  // Obtener notas para interés compuesto
+  async getCompoundInterestNotes(): Promise<ExitNote[]> {
+    try {
+      const q = query(
+        collection(db, 'exitNotes'),
+        where('isCompoundInterest', '==', true)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+        date: convertTimestamp(docSnap.data().date),
+        receivedAt: docSnap.data().receivedAt ? convertTimestamp(docSnap.data().receivedAt) : undefined,
+        createdAt: convertTimestamp(docSnap.data().createdAt)
+      })) as ExitNote[];
+    } catch (error) {
+      console.error('Error getting compound interest notes:', error);
+      return [];
+    }
   }
 };

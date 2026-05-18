@@ -553,7 +553,7 @@ const Shipping: React.FC = () => {
         dimensions: 'Auto-generado',
         status: 'pending' as const,
         shippingDate: new Date(),
-        cost: 28, // Costo fijo de $28 para paquetes automáticos
+        cost: 26, // Costo fijo de $26 para paquetes automáticos
         notes: `Paquete automático generado - Peso: ${autoPackageWeight.toFixed(2)}g`,
         sellerId: selectedSeller.id
       };

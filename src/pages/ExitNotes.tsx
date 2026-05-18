@@ -852,7 +852,7 @@ const ExitNotes: React.FC = () => {
           dimensions: 'Funda',
           status: 'pending' as const,
           shippingDate: new Date(),
-          cost: 28,
+          cost: 26,
           notes: `Nota de salida: ${exitNoteData.number} - ${formData.notes || 'Sin notas adicionales'}`,
           sellerId: selectedSeller.id
         };
@@ -1248,7 +1248,7 @@ const ExitNotes: React.FC = () => {
     }
   };
 
-  const handleStatusChange = async (noteId: string, newStatus: 'delivered' | 'received' | 'cancelled') => {
+  const handleStatusChange = async (noteId: string, newStatus: 'pending' | 'delivered' | 'received' | 'cancelled') => {
     try {
       await exitNoteService.update(noteId, { status: newStatus });
       toast.success(`Estado actualizado a: ${getStatusText(newStatus)}`);
@@ -1723,6 +1723,20 @@ const ExitNotes: React.FC = () => {
     }
   };
 
+  const handleSaveCompoundInterest = async () => {
+    if (selectedNotes.size === 0) return;
+    
+    if (window.confirm(`¿Estás seguro de que quieres guardar estas ${selectedNotes.size} notas para el cálculo de interés compuesto? Las notas anteriores se desmarcarán.`)) {
+      try {
+        await exitNoteService.saveToCompoundInterest(Array.from(selectedNotes));
+        setSelectedNotes(new Set());
+        await loadNotes();
+      } catch (error) {
+        console.error('Error saving compound interest:', error);
+      }
+    }
+  };
+
   const toggleSelectNote = (noteId: string) => {
     const newSelected = new Set(selectedNotes);
     if (newSelected.has(noteId)) {
@@ -1998,13 +2012,22 @@ const ExitNotes: React.FC = () => {
               </button>
             )}
             {isAdmin && selectedNotes.size > 0 && (
-              <button
-                onClick={handleBulkMoveToInternal}
-                className="bg-indigo-600 text-white px-4 py-1.5 rounded-md hover:bg-indigo-700 transition-colors flex items-center text-sm shadow-md"
-              >
-                <Package className="h-4 w-4 mr-2" />
-                Mover Seleccionadas ({selectedNotes.size})
-              </button>
+              <>
+                <button
+                  onClick={handleBulkMoveToInternal}
+                  className="bg-indigo-600 text-white px-4 py-1.5 rounded-md hover:bg-indigo-700 transition-colors flex items-center text-sm shadow-md"
+                >
+                  <Package className="h-4 w-4 mr-2" />
+                  Mover Seleccionadas ({selectedNotes.size})
+                </button>
+                <button
+                  onClick={handleSaveCompoundInterest}
+                  className="bg-primary-600 text-white px-4 py-1.5 rounded-md hover:bg-primary-700 transition-colors flex items-center text-sm shadow-md"
+                >
+                  <Flag className="h-4 w-4 mr-2" />
+                  Enviar a Interés Compuesto ({selectedNotes.size})
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -2095,14 +2118,14 @@ const ExitNotes: React.FC = () => {
                   </td>
                   <td className="table-cell">
                     <span className="text-sm font-medium text-gray-900">
-                      $28
+                      $26
                     </span>
                   </td>
                   <td className="table-cell">
                     <span className="text-sm font-medium text-gray-900">
                       {(() => {
                         const costoTotal = note.items.reduce((sum, item) => sum + (item.product.cost * item.quantity), 0);
-                        const costoEnvio = 28;
+                        const costoEnvio = 26;
                         const costoTotalCompleto = costoTotal + costoEnvio;
                         const ganancia = note.totalPrice - costoTotalCompleto;
                         const porcentajeGanancia = costoTotalCompleto > 0 ? (ganancia / costoTotalCompleto) * 100 : 0;
@@ -2158,13 +2181,30 @@ const ExitNotes: React.FC = () => {
                           <CheckCircle className="h-4 w-4" />
                         </button>
                       )}
-                      {note.status !== 'cancelled' && (
+                      {(note.status === 'delivered' || note.status === 'in-transit') && (
+                        <button
+                          onClick={() => handleStatusChange(note.id, 'pending')}
+                          className="p-1 text-gray-400 hover:text-yellow-600"
+                          title="Volver a Pendiente"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </button>
+                      )}
+                      {note.status !== 'cancelled' ? (
                         <button
                           onClick={() => handleStatusChange(note.id, 'cancelled')}
                           className="p-1 text-gray-400 hover:text-red-600"
                           title="Cancelar"
                         >
                           <XCircle className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleStatusChange(note.id, 'pending')}
+                          className="p-1 text-gray-400 hover:text-green-600"
+                          title="Reactivar (Volver a Pendiente)"
+                        >
+                          <RotateCcw className="h-4 w-4" />
                         </button>
                       )}
                       {isAdmin && (note.number.includes('ECU') || note.seller === 'Bodega Ecuador' || note.number.startsWith('NS-ECU')) && (

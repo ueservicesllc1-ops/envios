@@ -348,7 +348,7 @@ const Returns: React.FC = () => {
         setSelectedExitNoteId('');
       }
     }
-  }, [selectedSellerId]);
+  }, [selectedSellerId, returnItems.length]);
 
   // Resetear cantidades del picker cuando se abre el modal
   useEffect(() => {
