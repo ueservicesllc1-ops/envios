@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#1c1b1b",
+                    "error": "#ba1a1a",
+                    "primary-fixed-dim": "#ffb693",
+                    "inverse-on-surface": "#f3f0ef",
+                    "on-primary-fixed": "#351000",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "surface-variant": "#e5e2e1",
+                    "on-tertiary": "#ffffff",
+                    "on-surface": "#1c1b1b",
+                    "tertiary-container": "#00b050",
+                    "on-secondary-container": "#fffbff",
+                    "tertiary": "#006e2f",
+                    "surface-bright": "#fcf9f8",
+                    "on-tertiary-fixed": "#002109",
+                    "secondary-container": "#e32322",
+                    "primary": "#a04100",
+                    "outline": "#8e7164",
+                    "surface": "#fcf9f8",
+                    "surface-dim": "#dcd9d9",
+                    "surface-container": "#f0eded",
+                    "on-primary-container": "#572000",
+                    "inverse-surface": "#313030",
+                    "on-tertiary-container": "#003a15",
+                    "surface-container-low": "#f6f3f2",
+                    "secondary-fixed": "#ffdad5",
+                    "secondary": "#bb000f",
+                    "on-primary": "#ffffff",
+                    "outline-variant": "#e2bfb0",
+                    "surface-tint": "#a04100",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#ffb693",
+                    "on-error-container": "#93000a",
+                    "primary-container": "#ff6b00",
+                    "on-secondary-fixed": "#410002",
+                    "surface-container-highest": "#e5e2e1",
+                    "on-secondary-fixed-variant": "#930009",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#eae7e7",
+                    "on-surface-variant": "#5a4136",
+                    "background": "#fcf9f8",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "primary-fixed": "#ffdbcc",
+                    "tertiary-fixed": "#6bff8f",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-secondary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "gutter": "12px",
+                    "xl": "40px",
+                    "margin-desktop": "24px",
+                    "margin-mobile": "12px",
+                    "base": "4px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "price-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "title-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        @media (min-width: 768px) {
+            .bento-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- TopAppBar Shell -->
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline w-full top-0 sticky z-50 flex items-center justify-between px-margin-mobile h-16">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary">menu</span>
+</button>
+<h1 class="font-display-lg text-display-lg font-black text-primary dark:text-primary-container tracking-tighter">ShopVibe</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary">notifications</span>
+</button>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-margin-mobile pt-md">
+<!-- Points Explainer Hero -->
+<section class="mb-lg bg-primary-container rounded-xl p-6 text-on-primary-container relative overflow-hidden shadow-md">
+<div class="relative z-10 flex flex-col md:flex-row items-center gap-lg">
+<div class="flex-1">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-sm">¿Cómo funcionan los Vibe Points?</h2>
+<p class="font-body-lg text-body-lg opacity-90 mb-md max-w-xl">
+                        Interactúa con la comunidad, asiste a Live Shows y completa misiones diarias para acumular puntos. ¡Canjea tus puntos por descuentos directos en tus compras y desbloquea insignias exclusivas!
+                    </p>
+<div class="flex flex-wrap gap-sm">
+<div class="bg-surface/20 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold text-label-bold">10 pts por comentario</span>
+</div>
+<div class="bg-surface/20 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">live_tv</span>
+<span class="font-label-bold text-label-bold">50 pts por Live Show</span>
+</div>
+</div>
+</div>
+<div class="hidden md:block w-48 h-48 bg-on-primary-container/10 rounded-full flex items-center justify-center animate-pulse">
+<span class="material-symbols-outlined text-7xl text-on-primary-container" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+</div>
+<!-- Decorative circle -->
+<div class="absolute -right-10 -bottom-10 w-40 h-40 bg-on-primary-container/5 rounded-full"></div>
+</section>
+<!-- Special Events Section -->
+<section class="mb-lg">
+<div class="flex items-center justify-between mb-sm">
+<h3 class="font-title-md text-title-md flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">campaign</span>
+                    Eventos Especiales
+                </h3>
+<span class="text-secondary font-label-bold px-2 py-1 bg-secondary-fixed rounded-full">EN VIVO</span>
+</div>
+<div class="relative rounded-xl overflow-hidden aspect-[16/9] md:aspect-[3/1] flex items-end">
+<img alt="E-commerce live stream" class="absolute inset-0 w-full h-full object-cover" data-alt="A cinematic, high-energy live commerce production set in a neon-lit modern studio with a professional presenter demonstrating colorful tech products. The lighting is dramatic and vibrant with soft orange and red glow reflecting the ShopVibe brand colors. Multiple high-definition screens show chat interactions and floating heart icons. The overall mood is fast-paced, digital, and exciting for a retail community experience." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEhmvwj-g0GUqV1F9PrJ8TvvJNKdy2klBWMBnu8w8E0UIqsGCK_mbRY0fU2UVwUpyDz25zQnnxNDSAUl70uw9Qi_lpGB7yHbx9io3IspkgrNuSbIPvhflDkaC5GNhHvKBpmW6j2NBJMgm9fVVUYj9NLRGu8hhAmryXo4VphtDVJ0TGadrv0m0Ns_RXz_30VsJtTi0WEqzQm0N-_K-AqqWogbEwbx1-ReBgEkHq8ZlJoqa11rGlPFr2ubhqiqdelffbM4yNubA604tw"/>
+<div class="absolute inset-0 bg-gradient-to-t from-on-background/80 to-transparent"></div>
+<div class="relative p-6 w-full flex flex-col md:flex-row md:items-center justify-between gap-md">
+<div>
+<h4 class="text-white font-headline-lg-mobile text-headline-lg-mobile leading-tight">Doble de Puntos en Vivos</h4>
+<p class="text-white/80 font-body-sm text-body-sm">Válido este fin de semana en todas las transmisiones de moda.</p>
+</div>
+<div class="bg-white rounded-lg p-3 text-center flex items-center gap-4">
+<div>
+<span class="block font-price-lg text-price-lg text-secondary tabular-nums" id="countdown">23:59:59</span>
+<span class="text-[10px] uppercase font-bold text-on-surface-variant">Tiempo Restante</span>
+</div>
+<button class="bg-secondary text-on-secondary px-6 py-2 rounded-full font-label-bold hover:scale-105 transition-transform active:scale-95">
+                            Ir al Live
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Content: Leaderboard and Community Tasks -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg items-start">
+<!-- Tasks Column -->
+<div class="lg:col-span-2 space-y-md">
+<h3 class="font-title-md text-title-md">Misiones de Comunidad</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-md">
+<!-- Task Card -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-md hover:border-primary transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-md">
+<div class="p-3 bg-primary-container/20 rounded-lg group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-on-primary-container" style="font-variation-settings: 'FILL' 1;">group_add</span>
+</div>
+<span class="font-label-bold text-label-bold text-tertiary">+200 pts</span>
+</div>
+<h5 class="font-title-md text-title-md mb-xs">Invita a 3 Amigos</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Haz crecer la comunidad y gana recompensas por cada registro.</p>
+<div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-2/3"></div>
+</div>
+<p class="mt-2 text-[10px] font-bold text-on-surface-variant">PROGRESO: 2/3</p>
+</div>
+<!-- Task Card -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-md hover:border-primary transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-md">
+<div class="p-3 bg-primary-container/20 rounded-lg group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-on-primary-container" style="font-variation-settings: 'FILL' 1;">forum</span>
+</div>
+<span class="font-label-bold text-label-bold text-tertiary">+50 pts</span>
+</div>
+<h5 class="font-title-md text-title-md mb-xs">Crea un Vibe Check</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Publica tu última compra y cuéntanos qué tal te pareció.</p>
+<button class="w-full border border-primary text-primary font-label-bold py-2 rounded-full hover:bg-primary hover:text-white transition-colors">
+                            Publicar Ahora
+                        </button>
+</div>
+<!-- Task Card -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-md hover:border-primary transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-md">
+<div class="p-3 bg-primary-container/20 rounded-lg group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-on-primary-container" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<span class="font-label-bold text-label-bold text-tertiary">+100 pts</span>
+</div>
+<h5 class="font-title-md text-title-md mb-xs">Racha Semanal</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Entra a la app 5 días seguidos para un bono de energía.</p>
+<div class="flex gap-2">
+<div class="w-8 h-8 rounded-full bg-tertiary flex items-center justify-center text-white"><span class="material-symbols-outlined text-sm">check</span></div>
+<div class="w-8 h-8 rounded-full bg-tertiary flex items-center justify-center text-white"><span class="material-symbols-outlined text-sm">check</span></div>
+<div class="w-8 h-8 rounded-full bg-tertiary flex items-center justify-center text-white"><span class="material-symbols-outlined text-sm">check</span></div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center"></div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center"></div>
+</div>
+</div>
+<!-- Task Card -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-md hover:border-primary transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-md">
+<div class="p-3 bg-primary-container/20 rounded-lg group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-on-primary-container" style="font-variation-settings: 'FILL' 1;">shopping_bag</span>
+</div>
+<span class="font-label-bold text-label-bold text-tertiary">+150 pts</span>
+</div>
+<h5 class="font-title-md text-title-md mb-xs">Reseña con Video</h5>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-md">Sube un video usando tu producto y gana puntos extra.</p>
+<div class="bg-tertiary-container/10 p-2 rounded text-center">
+<span class="text-tertiary font-label-bold">Bono: x2 puntos</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Leaderboard Column -->
+<div class="space-y-md">
+<div class="flex items-center justify-between">
+<h3 class="font-title-md text-title-md">Top Earners</h3>
+<button class="text-primary font-label-bold">Ver Todo</button>
+</div>
+<div class="bg-white border border-outline-variant rounded-2xl overflow-hidden shadow-sm">
+<div class="bg-surface-container-high p-4 flex justify-around text-center border-b border-outline-variant">
+<div>
+<div class="relative inline-block mb-1">
+<img alt="User" class="w-12 h-12 rounded-full border-2 border-surface" data-alt="A portrait of a cheerful young man in his late 20s with a trendy haircut, smiling brightly in a high-key lighting environment. He represents a successful community member of a modern fashion brand. The lighting is soft and professional, and the background is a clean, neutral gray to match the retail design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUaT0nhLgUZRxNbcj7ShvnCDi45g2niZkjH0jhuZ45sQLDiEEgHEPLFjg2vW-OwqKvZ_-8Nrppw2bdBqEr8ah8hiLHmD2lbb06THz58ymGvbhrqA-VimGzdCwoQs2iucFjputXsskoeXwhOcKKVt3C5K9WX5ecGTq74ZljYvhJITblmRui3wyUynapifMbHj63SWvL12eZui76LbUaIoa90IwnrlunTfqtDs54Itjh1cjBaOi15FIbyGnsvKeKJnOLg489ZMNad4XS"/>
+<div class="absolute -top-1 -right-1 bg-yellow-400 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-bold">2</div>
+</div>
+<span class="block text-[10px] font-bold">Carlos R.</span>
+</div>
+<div class="-mt-4">
+<div class="relative inline-block mb-1">
+<img alt="User" class="w-16 h-16 rounded-full border-4 border-yellow-500" data-alt="A close-up portrait of a stylish woman with a confident smile, wearing trendy accessories and casual modern clothing. The scene is brightly lit with high-contrast, commercial-style lighting that emphasizes the vibrant energy of the ShopVibe community. She is positioned against a soft-focus urban interior." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5-5ZKbOHqpQQ0wd8RULmlUoWIF5hDpVv7EdonZU3D7dxvnEOVrzbhzaLqCx9hmAo0EY2KnDnWA-gwS9uRQ5N6f19necF_vJ6-69-dOuzp_CqiVGbH3KUdL523mG9gnSL6EsHAWmGDwTSw2xmQaaIswVsjM4Q1VWz1Td5_-oaAZ533jn5sIei-DTQFkwrxnjqQcfsool0ESPXnour6goQ33yLddYOP-4cxejv6tqwNwmw7gEUr_w1n9ipRJZOMj4MkOi1gSThk3R4O"/>
+<div class="absolute -top-1 -right-1 bg-yellow-500 text-white w-6 h-6 rounded-full text-[12px] flex items-center justify-center font-bold">1</div>
+</div>
+<span class="block text-xs font-bold text-primary">Maria G.</span>
+</div>
+<div>
+<div class="relative inline-block mb-1">
+<img alt="User" class="w-12 h-12 rounded-full border-2 border-surface" data-alt="A portrait of a young male professional with glasses, looking approachable and friendly. He has a clean-cut look and is illuminated by warm, natural light coming from a side window in a modern loft setting. The color palette is clean, emphasizing the accessible and social nature of the ShopVibe community." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlsLvlUOXmuarpXH7YxbZv7oaIlo9jXfvE5vZxFu0mruCfZSRPuiPIw9p04Jh_OgI9MhkaaZ1u3eGsNgwH0B1ZDX5iAxQH7fyf7bVn9iW4sNz0bRLnFK-zoAXLTrvYPJ0PrQZhJqImxS63hgwjz93rPjKwP8OJ6nSsVpZboDGfNlbHRd8WEm76Myu8i5AHvGLqKf6j8PQZZ9Y5PidSKwCfVIy7brYJF70ESUF31K3TZRjvyRWbU9XmzOH6n7EtnBkzcPAZV8VxNcQE"/>
+<div class="absolute -top-1 -right-1 bg-orange-400 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-bold">3</div>
+</div>
+<span class="block text-[10px] font-bold">Lucas M.</span>
+</div>
+</div>
+<!-- Leaderboard List -->
+<div class="divide-y divide-outline-variant">
+<div class="flex items-center justify-between p-4 hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-3">
+<span class="text-on-surface-variant font-label-bold w-4 text-center">4</span>
+<img alt="user" class="w-8 h-8 rounded-full" data-alt="A headshot of a young professional woman with a warm smile, looking directly at the camera. The background is slightly blurred with soft, ambient indoor lighting, conveying a sense of genuine community participation." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWud0MWVMM3ODa91Z2SRzUd4K4z8df5CW0pRvSxrisOeLnExEjLpH6JmWrnf2p14B0ojQSV4rNaJB61T96t54MABlAX9jbCIEqQrD44XOnOgKmYVh2p28B3rH6UpNo7uZhYX29S1jAxrV9UBkhf-tDHX38v2clJH_fr8JkuemAyy0MQVhClY3Zu_n4NklzfIsztHVxg8I9rodU4c7t3yH42qrpczQm9YBI5PWlMh-ytKMYdvnCSN6B9GCK3DSNc_s-HyDT9ixQxnda"/>
+<span class="font-body-sm font-bold">Ana Sofía</span>
+</div>
+<div class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold">4.2k</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 hover:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-3">
+<span class="text-on-surface-variant font-label-bold w-4 text-center">5</span>
+<img alt="user" class="w-8 h-8 rounded-full" data-alt="A cheerful man with a beard and casual clothing, posing for a community profile picture. The lighting is bright and modern, creating a welcoming and active social atmosphere consistent with a leading digital marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUk7-qWtAPVr89VLE5iLbDaI20Eexq_ETEgsv76R-5NOLJXf2by5WlJ4EQkKzqpU3K2j3_t17u5lwIflIvLo6qetwk4DLg8Mn-pREqW7-2Rt-Dy_OaIlgY13RbD0jp_73uj4q6bo84vfiLd5HKTfOXc3hhRfAW7-IZadm1CbHekDpV66IPBAN7lD3jdlhfVR7sk05epVOAfjb4oI57KMYJU8D5vgZ4IBvXBQlOi_ftr5Ntim3v8g2WFTp1beJ20x28cv3KceROOUNG"/>
+<span class="font-body-sm font-bold">Jorge P.</span>
+</div>
+<div class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold">3.9k</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-4 bg-primary-container/10 border-l-4 border-primary">
+<div class="flex items-center gap-3">
+<span class="text-on-surface-variant font-label-bold w-4 text-center">14</span>
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs">YO</div>
+<span class="font-body-sm font-bold">Tú</span>
+</div>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold">1.2k</span>
+</div>
+</div>
+</div>
+<div class="p-4 bg-surface-container-lowest">
+<button class="w-full bg-surface-container-high py-3 rounded-xl font-label-bold flex items-center justify-center gap-2 hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm">share</span>
+                            Compartir Rango
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-2 px-1 bg-surface dark:bg-surface-container-lowest border-t border-outline-variant z-50 rounded-t-xl shadow-md">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors p-2 rounded-lg active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors p-2 rounded-lg active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-label-bold text-label-bold">Vibe</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors p-2 rounded-lg active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors p-2 rounded-lg active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple countdown logic for the Flash Sale banner
+        function updateCountdown() {
+            const timerElement = document.getElementById('countdown');
+            let timeParts = timerElement.innerText.split(':');
+            let h = parseInt(timeParts[0]);
+            let m = parseInt(timeParts[1]);
+            let s = parseInt(timeParts[2]);
+
+            if (s > 0) {
+                s--;
+            } else {
+                if (m > 0) {
+                    m--;
+                    s = 59;
+                } else {
+                    if (h > 0) {
+                        h--;
+                        m = 59;
+                        s = 59;
+                    }
+                }
+            }
+
+            timerElement.innerText = 
+                String(h).padStart(2, '0') + ':' + 
+                String(m).padStart(2, '0') + ':' + 
+                String(s).padStart(2, '0');
+        }
+
+        setInterval(updateCountdown, 1000);
+    </script>
+</body></html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#fffbff",
+                    "inverse-on-surface": "#f3f0ef",
+                    "on-error-container": "#93000a",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-high": "#eae7e7",
+                    "on-error": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "surface": "#fcf9f8",
+                    "secondary": "#bb000f",
+                    "on-secondary": "#ffffff",
+                    "secondary-container": "#e32322",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "inverse-surface": "#313030",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "surface-container-highest": "#e5e2e1",
+                    "on-secondary-fixed": "#410002",
+                    "on-background": "#1c1b1b",
+                    "on-primary-container": "#572000",
+                    "on-surface": "#1c1b1b",
+                    "outline": "#8e7164",
+                    "surface-bright": "#fcf9f8",
+                    "secondary-fixed": "#ffdad5",
+                    "tertiary-fixed": "#6bff8f",
+                    "on-surface-variant": "#5a4136",
+                    "surface-dim": "#dcd9d9",
+                    "primary": "#a04100",
+                    "outline-variant": "#e2bfb0",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "primary-fixed": "#ffdbcc",
+                    "on-tertiary-fixed": "#002109",
+                    "surface-tint": "#a04100",
+                    "surface-container": "#f0eded",
+                    "on-primary-fixed": "#351000",
+                    "error": "#ba1a1a",
+                    "background": "#fcf9f8",
+                    "surface-container-low": "#f6f3f2",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#003a15",
+                    "on-secondary-fixed-variant": "#930009",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "tertiary-container": "#00b050",
+                    "surface-variant": "#e5e2e1",
+                    "primary-container": "#ff6b00",
+                    "tertiary": "#006e2f",
+                    "error-container": "#ffdad6",
+                    "inverse-primary": "#ffb693"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "4px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "xl": "40px",
+                    "md": "16px",
+                    "base": "4px",
+                    "margin-mobile": "12px",
+                    "gutter": "12px",
+                    "margin-desktop": "24px"
+            },
+            "fontFamily": {
+                    "price-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "title-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface border-b border-surface-container-highest flex justify-between items-center px-margin-mobile h-14 w-full">
+<div class="flex items-center gap-md">
+<button class="active:scale-95 transition-transform text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary-container">ShopVibe</h1>
+</div>
+<div class="flex items-center gap-md">
+<button class="active:scale-95 transition-transform text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<main class="pt-20 px-margin-mobile max-w-2xl mx-auto space-y-lg">
+<!-- Flash Sale Context (Small Engagement Anchor) -->
+<div class="bg-secondary text-on-secondary p-md rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+<span class="font-label-bold text-label-bold">¡OFERTA FLASH TERMINA PRONTO!</span>
+</div>
+<div class="font-mono font-bold">12:45</div>
+</div>
+<!-- Section: Product Summary (Bento-style card) -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
+<div class="p-md bg-surface-container-low border-b border-outline-variant">
+<h2 class="font-title-md text-title-md flex items-center gap-sm">
+<span class="material-symbols-outlined" data-icon="shopping_bag">shopping_bag</span>
+                    Resumen del pedido
+                </h2>
+</div>
+<div class="p-md flex gap-md">
+<div class="w-24 h-24 bg-surface-variant rounded-lg overflow-hidden flex-shrink-0">
+<img alt="Product Image" class="w-full h-full object-cover" data-alt="A professional studio product shot of a high-performance, vibrant orange running shoe set against a clean, minimalist white background. The lighting is crisp and commercial-grade, emphasizing the sleek textures and athletic design of the footwear. This high-density e-commerce aesthetic uses a punchy color palette of orange and white to evoke energy and retail excitement." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2AtOv1kG3lrkEOYgAEjSTENUB0QvB3G2AqhCMmdAD2B83rdfO3w8nWa5k5j945fnvgg5LA5AoHNEpoR1XnTyZJcNIdDN3fFnUb_2ukE3HLh4BJziB6UU4IaiAna5sdSr3-mmeJJQaHKMK1OZu9euYyocPYP3Zd9qBZJTWjMHcOQxVIQvzbfUFxJtm_m4_syTmxpoXs8JdMw8QN2borMOl0vcHnaZdfS3dPw9nTpMu2Nu7xNKDuTzrSB-Gy--5cU1B30GP67dgdWf6"/>
+</div>
+<div class="flex flex-col justify-between flex-grow">
+<div>
+<h3 class="font-body-lg text-body-lg font-bold line-clamp-1">VibeRunner Pro X - Orange Flash</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Talla: 42 | Color: Neon Orange</p>
+</div>
+<div class="flex justify-between items-end">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Cantidad: 1</span>
+<span class="font-price-lg text-price-lg text-secondary">$89.99</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Shipping Address -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-md">
+<div class="flex justify-between items-start mb-sm">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="local_shipping">local_shipping</span>
+<h2 class="font-title-md text-title-md">Dirección de Envío</h2>
+</div>
+<button class="text-primary font-label-bold text-label-bold hover:opacity-80 transition-opacity">EDITAR</button>
+</div>
+<div class="bg-surface-container-low p-md rounded-lg border border-surface-container-highest">
+<p class="font-body-lg text-body-lg font-bold">Carlos Rodríguez</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Calle Gran Vía 12, 4B</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">28013 Madrid, España</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">+34 600 000 000</p>
+</div>
+</section>
+<!-- Section: Payment Method -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-md">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary" data-icon="payments">payments</span>
+<h2 class="font-title-md text-title-md">Método de Pago</h2>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-sm">
+<!-- Selected Option -->
+<button class="flex flex-col items-center justify-center p-md rounded-lg border-2 border-primary-container bg-primary-fixed/20 transition-all">
+<span class="material-symbols-outlined text-primary-container" data-icon="credit_card">credit_card</span>
+<span class="font-label-bold text-[10px] mt-xs">TARJETA</span>
+</button>
+<button class="flex flex-col items-center justify-center p-md rounded-lg border border-outline-variant hover:border-primary-container transition-all">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-bold text-[10px] mt-xs">PAYPAL</span>
+</button>
+<button class="flex flex-col items-center justify-center p-md rounded-lg border border-outline-variant hover:border-primary-container transition-all">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="google">google</span>
+<span class="font-label-bold text-[10px] mt-xs">G-PAY</span>
+</button>
+<button class="flex flex-col items-center justify-center p-md rounded-lg border border-outline-variant hover:border-primary-container transition-all">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="apple">ios</span>
+<span class="font-label-bold text-[10px] mt-xs">APPLE</span>
+</button>
+</div>
+<div class="mt-md p-sm border border-outline-variant rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="credit_card_heart">credit_card_heart</span>
+<span class="font-body-sm text-body-sm">Visa ending in **** 4242</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="expand_more">expand_more</span>
+</div>
+</section>
+<!-- Section: Coupon Application -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-md">
+<div class="flex items-center gap-sm mb-sm">
+<span class="material-symbols-outlined text-primary" data-icon="confirmation_number">confirmation_number</span>
+<h2 class="font-title-md text-title-md">Cupón de Descuento</h2>
+</div>
+<div class="flex gap-sm">
+<div class="relative flex-grow">
+<input class="w-full bg-white border border-primary-container rounded-lg px-md py-sm font-bold text-primary-container focus:outline-none focus:ring-2 focus:ring-primary-container/20" type="text" value="LIVE15"/>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+<span class="material-symbols-outlined text-tertiary text-sm" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<button class="bg-primary-container text-on-primary px-lg rounded-lg font-label-bold text-label-bold active:scale-95 transition-transform">APLICAR</button>
+</div>
+<p class="text-tertiary font-label-bold text-[10px] mt-xs uppercase">Código LIVE15 aplicado: 15% de descuento directo</p>
+</section>
+<!-- Section: Order Breakdown -->
+<section class="bg-surface-container-lowest rounded-xl border border-outline-variant p-md space-y-sm">
+<div class="flex justify-between font-body-sm text-body-sm text-on-surface-variant">
+<span>Subtotal</span>
+<span>$89.99</span>
+</div>
+<div class="flex justify-between font-body-sm text-body-sm text-on-surface-variant">
+<span>Envío</span>
+<span class="text-tertiary font-bold">GRATIS</span>
+</div>
+<div class="flex justify-between font-body-sm text-body-sm text-secondary">
+<span>Descuento (LIVE15)</span>
+<span>-$13.50</span>
+</div>
+<div class="pt-sm border-t border-outline-variant flex justify-between items-center">
+<span class="font-title-md text-title-md">Total</span>
+<span class="font-display-lg text-price-lg text-on-surface">$76.49</span>
+</div>
+</section>
+</main>
+<!-- Bottom Action Bar (Fixed) -->
+<div class="fixed bottom-0 w-full bg-surface-container-lowest shadow-[0_-4px_20px_rgba(0,0,0,0.08)] p-md z-50 rounded-t-xl">
+<div class="max-w-2xl mx-auto">
+<button class="w-full bg-primary-container text-on-primary py-md rounded-lg font-headline-lg-mobile text-headline-lg-mobile font-extrabold flex items-center justify-center gap-sm active:scale-95 transition-all shadow-lg">
+                Finalizar Compra
+                <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+<p class="text-center mt-sm text-on-surface-variant text-[10px] flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-[12px]" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+                Pago 100% seguro y encriptado
+            </p>
+</div>
+</div>
+<!-- Mini Navigation (Shared Component Integration) -->
+<nav class="md:hidden hidden">
+<!-- The BottomNavBar is suppressed here per Task instruction to prioritize checkout focus -->
+</nav>
+<script>
+        // Micro-interaction for the "Live" coupon effect
+        document.querySelector('input').addEventListener('focus', function() {
+            this.parentElement.classList.add('scale-105');
+            this.parentElement.style.transition = 'transform 0.2s ease';
+        });
+        document.querySelector('input').addEventListener('blur', function() {
+            this.parentElement.classList.remove('scale-105');
+        });
+    </script>
+</body></html>

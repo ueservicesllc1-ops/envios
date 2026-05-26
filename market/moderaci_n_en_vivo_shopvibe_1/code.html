@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e5e2e1;
+            border-radius: 10px;
+        }
+        .glass-effect {
+            backdrop-filter: blur(8px);
+            background: rgba(252, 249, 248, 0.8);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#a04100",
+                        "primary-fixed": "#ffdbcc",
+                        "on-surface-variant": "#5a4136",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-on-surface": "#f3f0ef",
+                        "primary-container": "#ff6b00",
+                        "surface": "#fcf9f8",
+                        "on-tertiary-fixed": "#002109",
+                        "inverse-surface": "#313030",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "error": "#ba1a1a",
+                        "outline-variant": "#e2bfb0",
+                        "on-secondary-fixed-variant": "#930009",
+                        "on-primary-container": "#572000",
+                        "on-primary": "#ffffff",
+                        "background": "#fcf9f8",
+                        "surface-bright": "#fcf9f8",
+                        "surface-variant": "#e5e2e1",
+                        "on-surface": "#1c1b1b",
+                        "on-secondary-fixed": "#410002",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "surface-container-high": "#eae7e7",
+                        "inverse-primary": "#ffb693",
+                        "tertiary": "#006e2f",
+                        "surface-container-highest": "#e5e2e1",
+                        "surface-container": "#f0eded",
+                        "primary": "#a04100",
+                        "on-primary-fixed": "#351000",
+                        "error-container": "#ffdad6",
+                        "secondary": "#bb000f",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "surface-container-low": "#f6f3f2",
+                        "tertiary-fixed": "#6bff8f",
+                        "secondary-fixed": "#ffdad5",
+                        "secondary-container": "#e32322",
+                        "tertiary-container": "#00b050",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "outline": "#8e7164",
+                        "on-tertiary-container": "#003a15",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#dcd9d9",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-background": "#1c1b1b",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-error": "#ffffff",
+                        "on-secondary-container": "#fffbff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "12px",
+                        "gutter": "12px",
+                        "md": "16px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "xl": "40px",
+                        "sm": "8px",
+                        "margin-desktop": "24px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "title-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "price-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-lg antialiased min-h-screen pb-24 md:pb-0">
+<!-- Top Navigation Anchor -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-container-highest flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-sm">
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-low transition-colors rounded-full" data-icon="arrow_back">arrow_back</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-black text-primary">Moderación en Vivo</h1>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden md:flex gap-md">
+<span class="font-label-bold text-label-bold text-on-surface-variant px-3 py-1 bg-surface-container rounded-full flex items-center gap-xs">
+<span class="w-2 h-2 bg-secondary rounded-full animate-pulse"></span>
+                    LIVE: 14.2k
+                </span>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low transition-colors rounded-full" data-icon="settings">settings</button>
+</div>
+</header>
+<main class="pt-16 px-margin-mobile md:px-margin-desktop max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-gutter py-lg">
+<!-- Left Column: Controls & Automated Alerts (4 cols) -->
+<aside class="md:col-span-4 space-y-lg">
+<!-- Global Moderation Controls -->
+<section class="bg-surface-container-low p-md rounded-xl space-y-md border border-outline-variant/30">
+<h3 class="font-title-md text-title-md text-on-surface flex items-center gap-xs">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+                    Configuración de Sala
+                </h3>
+<div class="space-y-sm">
+<div class="flex items-center justify-between p-sm bg-surface rounded-lg">
+<span class="font-body-sm text-body-sm">Silenciar Todo el Chat</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-sm bg-surface rounded-lg">
+<span class="font-body-sm text-body-sm">Modo Lento (10s)</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-sm">
+<button class="flex items-center justify-center gap-xs font-label-bold text-label-bold bg-error-container text-on-error-container py-2 rounded-lg hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]" data-icon="report">report</span>
+                        REPORT SPAM
+                    </button>
+<button class="flex items-center justify-center gap-xs font-label-bold text-label-bold bg-surface-variant text-on-surface-variant py-2 rounded-lg hover:bg-outline-variant transition-all">
+<span class="material-symbols-outlined text-[18px]" data-icon="block">block</span>
+                        BLOCK LIST
+                    </button>
+</div>
+</section>
+<!-- Automated Flagged Comments -->
+<section class="bg-surface-container-low p-md rounded-xl border border-outline-variant/30 flex flex-col h-[400px]">
+<div class="flex items-center justify-between mb-md">
+<h3 class="font-title-md text-title-md text-on-surface flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary" data-icon="warning">warning</span>
+                        Alertas (3)
+                    </h3>
+<span class="font-label-bold text-label-bold text-secondary bg-error-container px-2 py-0.5 rounded-full">AUTO-FLAG</span>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar space-y-sm">
+<!-- Flagged Item -->
+<div class="p-sm bg-error-container/30 border-l-4 border-secondary rounded-r-lg space-y-xs">
+<div class="flex justify-between items-start">
+<span class="font-label-bold text-label-bold text-on-surface">@user_392</span>
+<span class="text-[10px] text-on-surface-variant font-medium">Hace 2m</span>
+</div>
+<p class="font-body-sm text-body-sm italic">"Este producto es una estafa, no lo compren..."</p>
+<div class="flex gap-sm pt-1">
+<button class="text-secondary font-label-bold text-[11px] underline">ELIMINAR</button>
+<button class="text-on-surface-variant font-label-bold text-[11px] underline">IGNORAR</button>
+</div>
+</div>
+<div class="p-sm bg-error-container/30 border-l-4 border-secondary rounded-r-lg space-y-xs opacity-80">
+<div class="flex justify-between items-start">
+<span class="font-label-bold text-label-bold text-on-surface">@bot_hunter</span>
+<span class="text-[10px] text-on-surface-variant font-medium">Hace 5m</span>
+</div>
+<p class="font-body-sm text-body-sm italic">"GANA DINERO RÁPIDO AQUÍ -&gt; LINK..."</p>
+<div class="flex gap-sm pt-1">
+<button class="text-secondary font-label-bold text-[11px] underline">ELIMINAR</button>
+<button class="text-on-surface-variant font-label-bold text-[11px] underline">IGNORAR</button>
+</div>
+</div>
+<div class="p-sm bg-error-container/30 border-l-4 border-secondary rounded-r-lg space-y-xs">
+<div class="flex justify-between items-start">
+<span class="font-label-bold text-label-bold text-on-surface">@troll_face</span>
+<span class="text-[10px] text-on-surface-variant font-medium">Hace 8m</span>
+</div>
+<p class="font-body-sm text-body-sm italic">"¿Por qué es tan caro? En la otra tienda..."</p>
+<div class="flex gap-sm pt-1">
+<button class="text-secondary font-label-bold text-[11px] underline">ELIMINAR</button>
+<button class="text-on-surface-variant font-label-bold text-[11px] underline">IGNORAR</button>
+</div>
+</div>
+</div>
+</section>
+</aside>
+<!-- Right Column: Real-time Feed & Highlighting (8 cols) -->
+<section class="md:col-span-8 flex flex-col gap-lg h-[calc(100vh-140px)]">
+<!-- Highlighted Question Area -->
+<div class="bg-primary-container p-md rounded-xl text-on-primary-container shadow-lg relative overflow-hidden shrink-0">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-[80px]" data-icon="live_help">live_help</span>
+</div>
+<div class="flex items-center gap-xs mb-sm">
+<span class="material-symbols-outlined font-variation-settings: 'FILL' 1;" data-icon="stars" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold text-label-bold uppercase tracking-wider">Pregunta Destacada en Vivo</span>
+</div>
+<div class="flex items-start gap-md">
+<img alt="Viewer" class="w-12 h-12 rounded-full border-2 border-white/30" data-alt="A professional close-up studio portrait of a friendly young man with clear skin and a warm smile. He is wearing a clean white t-shirt against a neutral soft-focus background. The lighting is high-key and flattering, perfectly fitting a modern, clean digital user interface aesthetic with high-contrast retail focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCAeyiLvN11UYZlXU_2i5eNwnIO4ZWclyaclDbVMXgZwPn3EH9246zlq5pXVQEtiivwlZBsiH5NOM0lv4cBo6nz4FHf8_nRvSZOGpDHEACufMHubToYr471pUdcxDhHmpBaGXpTUXozS5RNsbz2wUio4mmnbNwRAUe9XVnGEsCgUEEhoNWZ9-hRnnbHILNpU54U4TGUzYPYmTqFTIFDOkPDUWQH1sidlasx_sBkUlvqlKDbBenJ42McLpSZw7NOZXeBKG0CmMyqy_Q"/>
+<div>
+<span class="font-label-bold text-label-bold block mb-xs">@lucas_vibe</span>
+<p class="font-headline-lg-mobile text-headline-lg-mobile leading-tight">"¿Tienen este mismo modelo en color azul marino o solo el que están mostrando?"</p>
+</div>
+</div>
+<div class="mt-md flex gap-sm">
+<button class="bg-on-primary-container text-white px-4 py-2 rounded-lg font-label-bold text-label-bold hover:opacity-90 active:scale-95 transition-all">QUITAR DE PANTALLA</button>
+<button class="bg-white/20 text-on-primary-container px-4 py-2 rounded-lg font-label-bold text-label-bold hover:bg-white/30 active:scale-95 transition-all">MARCAR COMO RESPONDIDA</button>
+</div>
+</div>
+<!-- Chat Feed -->
+<div class="flex-1 bg-surface-container-low border border-outline-variant/30 rounded-xl flex flex-col overflow-hidden">
+<div class="p-md border-b border-outline-variant/20 flex justify-between items-center bg-surface-container-lowest">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="chat_bubble">chat_bubble</span>
+<h2 class="font-title-md text-title-md">Feed en Tiempo Real</h2>
+</div>
+<div class="flex gap-xs">
+<button class="p-2 hover:bg-surface-container-low rounded-lg transition-colors"><span class="material-symbols-outlined text-on-surface-variant" data-icon="filter_list">filter_list</span></button>
+<button class="p-2 hover:bg-surface-container-low rounded-lg transition-colors"><span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span></button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-md space-y-md custom-scrollbar">
+<!-- Message Item -->
+<div class="group flex items-start gap-sm p-sm hover:bg-surface-container transition-all rounded-lg">
+<img alt="Avatar" class="w-10 h-10 rounded-full" data-alt="A professional headshot of a smiling young woman with vibrant energy. She has styled hair and is positioned against a clean, light studio background. The lighting is bright and modern, creating a welcoming and accessible e-commerce social persona. The visual quality is sharp, high-density, and consistent with a high-end corporate modern interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSQSIFzcD_DMWvrtr-ied-bGTS_yHN-T0JFMyyjhVV2Vwx46vOgwWPsw3nYR_-JHQTwsPoxySqZfaIacEDIFX9dKpvQHtGvrHcjard8tCXNzIVc6VRqrkG-NcSbXTR1bQkSeICWvUUipiGtUMF0HvUW6pmLLI9TaupA81rv7BSBBwO4xlS_3ZRSqBRCSa8GkYFTi5ewRiCtK49trgNhkbVkwIctque7sCtNjGzysQb2Lojo-kMc9DcrGm-uZVgOfBpOP4gE0CkK5jE"/>
+<div class="flex-1">
+<div class="flex items-center gap-xs">
+<span class="font-label-bold text-label-bold text-primary">@sofia_sales</span>
+<span class="text-[10px] text-on-surface-variant">14:02</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">¡Wow! Me encanta el acabado de la tela. ¿Hacen envíos a todo el país?</p>
+</div>
+<div class="hidden group-hover:flex items-center gap-1">
+<button class="p-1.5 hover:bg-primary-container hover:text-on-primary-container rounded transition-all" title="Pin"><span class="material-symbols-outlined text-[18px]" data-icon="push_pin">push_pin</span></button>
+<button class="p-1.5 hover:bg-surface-variant rounded transition-all" title="Hide"><span class="material-symbols-outlined text-[18px]" data-icon="visibility_off">visibility_off</span></button>
+<button class="p-1.5 hover:bg-surface-variant rounded transition-all" title="Silence"><span class="material-symbols-outlined text-[18px]" data-icon="volume_off">volume_off</span></button>
+<button class="p-1.5 bg-primary-container text-on-primary-container rounded transition-all" title="Highlight"><span class="material-symbols-outlined text-[18px]" data-icon="add_to_home_screen">add_to_home_screen</span></button>
+</div>
+</div>
+<div class="group flex items-start gap-sm p-sm hover:bg-surface-container transition-all rounded-lg">
+<div class="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container font-bold">M</div>
+<div class="flex-1">
+<div class="flex items-center gap-xs">
+<span class="font-label-bold text-label-bold text-on-surface">@marcos_ro</span>
+<span class="text-[10px] text-on-surface-variant">14:01</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">¿Cuánto tiempo dura la batería en uso continuo?</p>
+</div>
+<div class="hidden group-hover:flex items-center gap-1">
+<button class="p-1.5 hover:bg-primary-container hover:text-on-primary-container rounded transition-all" title="Pin"><span class="material-symbols-outlined text-[18px]" data-icon="push_pin">push_pin</span></button>
+<button class="p-1.5 hover:bg-primary-container hover:text-on-primary-container rounded transition-all" title="Highlight"><span class="material-symbols-outlined text-[18px]" data-icon="live_help">live_help</span></button>
+</div>
+</div>
+<div class="group flex items-start gap-sm p-sm hover:bg-surface-container transition-all rounded-lg">
+<img alt="Avatar" class="w-10 h-10 rounded-full" data-alt="A clean, professional portrait of a young adult with a friendly and neutral expression. The background is a soft, minimalist grey, and the lighting is even and bright. The overall style is modern and retail-focused, suitable for a high-traffic e-commerce platform's social interaction section." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBAU8pFUrDY3Xwd1kb0GfY0KOLbUf0-kQpo1CEFRiX1geEfrvwkgi3eksJFF_bNfu6dk4gL4xxq7QZ7hyJmKAMM_9t4_i8rtCtXxe0Pkk5lCrmj4xkGOkz_UJZpaIKXhahovgV1i-p7aO0BeGiSOGCUFnve9S1m-YpQUPweK18E20XQ9oDZ9SG5tJI_SK6-QMF27IdcwyrguhittqVkxjijckzbKZSB9slVVLSaFbGQ9DRpIvjczU03Z4Gmg_LPluxB8WZBMnRgLjZ"/>
+<div class="flex-1">
+<div class="flex items-center gap-xs">
+<span class="font-label-bold text-label-bold text-on-surface">@javi_tech</span>
+<span class="text-[10px] text-on-surface-variant">14:01</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">Acabo de comprarlo, ¡espero que llegue pronto!</p>
+</div>
+</div>
+<!-- Highlighted message inside feed -->
+<div class="group flex items-start gap-sm p-sm bg-primary-fixed/30 border border-primary/20 transition-all rounded-lg">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white"><span class="material-symbols-outlined" data-icon="push_pin">push_pin</span></div>
+<div class="flex-1">
+<div class="flex items-center gap-xs">
+<span class="font-label-bold text-label-bold text-primary">MENSAJE FIJADO</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface font-semibold">⚠️ Aprovechen el cupón VIBE20 para un 20% de descuento extra durante los próximos 10 minutos.</p>
+</div>
+<button class="p-1.5 hover:bg-white/50 rounded transition-all"><span class="material-symbols-outlined text-[18px]" data-icon="close">close</span></button>
+</div>
+<div class="group flex items-start gap-sm p-sm hover:bg-surface-container transition-all rounded-lg">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed font-bold">C</div>
+<div class="flex-1">
+<div class="flex items-center gap-xs">
+<span class="font-label-bold text-label-bold text-on-surface">@claudia_m</span>
+<span class="text-[10px] text-on-surface-variant">14:00</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">¿El envío a CDMX es gratis?</p>
+</div>
+</div>
+</div>
+<!-- Input / Quick Actions -->
+<div class="p-md bg-surface border-t border-outline-variant/20 flex gap-sm items-center">
+<div class="flex-1 relative">
+<input class="w-full bg-surface-container-low border-outline-variant rounded-full px-4 py-2 focus:ring-primary focus:border-primary text-body-sm font-body-sm" placeholder="Anuncio rápido de moderador..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-primary hover:bg-primary-fixed rounded-full transition-all">
+<span class="material-symbols-outlined" data-icon="send">send</span>
+</button>
+</div>
+<div class="flex gap-xs">
+<button class="p-2 bg-surface-container hover:bg-surface-container-high rounded-full transition-colors" title="Emojis"><span class="material-symbols-outlined" data-icon="mood">mood</span></button>
+<button class="p-2 bg-primary-container text-on-primary-container rounded-full transition-colors shadow-sm" title="Announcement"><span class="material-symbols-outlined" data-icon="campaign">campaign</span></button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Navigation Shell (Bottom Nav for Mobile) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-surface dark:bg-surface-container-lowest shadow-md flex justify-around items-center w-full h-20 pb-safe px-2">
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-xl px-3 py-1">
+<span class="material-symbols-outlined" data-icon="live_tv">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-bold text-label-bold">Discover</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1">
+<span class="material-symbols-outlined" data-icon="local_mall">local_mall</span>
+<span class="font-label-bold text-label-bold">Orders</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</div>
+</nav>
+<script>
+        // Simple interactivity for demonstration
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.add('scale-95');
+                setTimeout(() => this.classList.remove('scale-95'), 150);
+            });
+        });
+
+        // Chat feed auto-scroll simulation
+        const chatFeed = document.querySelector('.flex-1.overflow-y-auto');
+        if(chatFeed) {
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+        }
+    </script>
+</body></html>

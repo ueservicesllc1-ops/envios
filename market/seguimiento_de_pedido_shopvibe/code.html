@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-low": "#f6f3f2",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "error-container": "#ffdad6",
+                    "secondary-container": "#e32322",
+                    "on-tertiary-fixed": "#002109",
+                    "on-secondary-container": "#fffbff",
+                    "secondary": "#bb000f",
+                    "on-primary": "#ffffff",
+                    "on-error": "#ffffff",
+                    "on-background": "#1c1b1b",
+                    "surface-tint": "#a04100",
+                    "surface-container-highest": "#e5e2e1",
+                    "inverse-primary": "#ffb693",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-primary-fixed": "#351000",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "primary": "#a04100",
+                    "on-secondary-fixed-variant": "#930009",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#006e2f",
+                    "outline": "#8e7164",
+                    "surface-variant": "#e5e2e1",
+                    "surface-container-high": "#eae7e7",
+                    "surface": "#fcf9f8",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "on-tertiary-container": "#003a15",
+                    "on-primary-container": "#572000",
+                    "secondary-fixed": "#ffdad5",
+                    "primary-fixed": "#ffdbcc",
+                    "tertiary-fixed": "#6bff8f",
+                    "on-surface-variant": "#5a4136",
+                    "inverse-surface": "#313030",
+                    "inverse-on-surface": "#f3f0ef",
+                    "primary-fixed-dim": "#ffb693",
+                    "primary-container": "#ff6b00",
+                    "tertiary-container": "#00b050",
+                    "outline-variant": "#e2bfb0",
+                    "surface-dim": "#dcd9d9",
+                    "background": "#fcf9f8",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface": "#1c1b1b",
+                    "error": "#ba1a1a",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#f0eded",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#fcf9f8",
+                    "on-secondary-fixed": "#410002"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "lg": "24px",
+                    "margin-mobile": "12px",
+                    "base": "4px",
+                    "md": "16px",
+                    "margin-desktop": "24px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "xs": "4px",
+                    "gutter": "12px"
+            },
+            "fontFamily": {
+                    "price-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-bold": ["Inter"]
+            },
+            "fontSize": {
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .stepper-line {
+            width: 2px;
+            background: #e2bfb0;
+            position: absolute;
+            left: 11px;
+            top: 24px;
+            bottom: -8px;
+        }
+        .stepper-line.completed { background: #00b050; }
+        .stepper-line.active { background: linear-gradient(to bottom, #00b050 50%, #e2bfb0 50%); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim border-b border-surface-container-highest dark:border-outline-variant flex justify-between items-center px-margin-mobile h-14 w-full">
+<div class="flex items-center gap-2">
+<button class="active:scale-95 transition-transform text-on-surface-variant">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary-container">ShopVibe</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform text-on-surface-variant">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button class="active:scale-95 transition-transform text-on-surface-variant">
+<span class="material-symbols-outlined">shopping_bag</span>
+</button>
+</div>
+</header>
+<main class="mt-14 px-margin-mobile pt-md">
+<!-- Order Identification -->
+<div class="mb-md">
+<h2 class="font-title-md text-title-md text-on-surface">Seguimiento del Pedido</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Pedido #SV-12345678</p>
+</div>
+<!-- Status Summary Card -->
+<section class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-md mb-md shadow-sm">
+<div class="flex items-start justify-between mb-sm">
+<div>
+<span class="inline-block bg-tertiary-container text-on-tertiary-container font-label-bold text-label-bold px-sm py-xs rounded-full mb-xs">En tránsito</span>
+<h3 class="font-title-md text-title-md">Llegada estimada</h3>
+<p class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container">14 - 16 Oct</p>
+</div>
+<div class="bg-surface-container p-sm rounded-lg">
+<span class="material-symbols-outlined text-primary text-[32px]">local_shipping</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full w-[65%]"></div>
+</div>
+<p class="mt-sm font-body-sm text-body-sm text-on-surface-variant">Tu paquete está en camino a la oficina de distribución local.</p>
+</section>
+<!-- Map Preview -->
+<section class="mb-md rounded-xl overflow-hidden border border-surface-container-highest relative h-32">
+<img alt="Route Map" class="w-full h-full object-cover" data-alt="A clean, minimalist digital map interface showing a suburban delivery route with a bright orange path. The map style is high-contrast with soft gray roads and white backgrounds, featuring a small 3D orange delivery van icon moving along the path. The lighting is bright and clear, reflecting a modern corporate e-commerce aesthetic with vibrant orange accents." data-location="Madrid, Spain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyqDo6oxrSeOdpGoWXH-1Av7xQ-QbtBT_L4YiRb7p8gamhEFb2fux6vlDhy2uogzAiuLqGkSCcAQ9jQAtwNFjTosQhZgeDM2EPVxt-ZegmF68WG-loiMGmi-ge-oKQ0UIsY1ecYmp3dpIyYV6kh6H8kQf5Vmu7N8t2EdwE3zRExEE6f35pdeBhxGPCR7DRqt-b-y9Wo0CV4IM1fIzMe3kNRCr9pEMy3JJOO6kf-zT6zM6tgDxhDPfRV4Po4MpsYvJzbgP_3Qg6GLpW"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+<div class="absolute bottom-2 left-2 bg-surface-container-lowest/90 backdrop-blur-sm px-sm py-xs rounded shadow-sm flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-[18px]">location_on</span>
+<span class="font-label-bold text-label-bold">Centro Logístico Madrid-Sur</span>
+</div>
+</section>
+<!-- Vertical Stepper (Timeline) -->
+<section class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-md mb-md">
+<h4 class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider mb-lg">Historial de Envío</h4>
+<div class="space-y-lg">
+<!-- Step 1: Delivered (Pending) -->
+<div class="relative flex gap-md">
+<div class="flex flex-col items-center flex-shrink-0 w-6">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant bg-surface-container-lowest z-10"></div>
+</div>
+<div class="pb-1">
+<p class="font-label-bold text-label-bold text-on-surface-variant">Entregado</p>
+<p class="font-body-sm text-body-sm text-outline">Pendiente</p>
+</div>
+</div>
+<!-- Step 2: Out for delivery (Pending) -->
+<div class="relative flex gap-md">
+<div class="stepper-line"></div>
+<div class="flex flex-col items-center flex-shrink-0 w-6">
+<div class="w-6 h-6 rounded-full border-2 border-outline-variant bg-surface-container-lowest z-10"></div>
+</div>
+<div class="pb-1">
+<p class="font-label-bold text-label-bold text-on-surface-variant">En reparto</p>
+<p class="font-body-sm text-body-sm text-outline">Estimado para mañana</p>
+</div>
+</div>
+<!-- Step 3: Shipped (Active) -->
+<div class="relative flex gap-md">
+<div class="stepper-line active"></div>
+<div class="flex flex-col items-center flex-shrink-0 w-6">
+<div class="w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center z-10 shadow-[0_0_8px_rgba(255,107,0,0.4)]">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+</div>
+<div class="pb-1">
+<p class="font-label-bold text-label-bold text-primary-container">Enviado</p>
+<p class="font-body-sm text-body-sm text-on-surface">12 Oct, 09:45 AM - Centro de Clasificación</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">El paquete ha salido de las instalaciones de origen y está en tránsito hacia el destino.</p>
+</div>
+</div>
+<!-- Step 4: Processing (Completed) -->
+<div class="relative flex gap-md">
+<div class="stepper-line completed"></div>
+<div class="flex flex-col items-center flex-shrink-0 w-6">
+<div class="w-6 h-6 rounded-full bg-tertiary text-white flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="pb-1">
+<p class="font-label-bold text-label-bold text-on-surface">Procesando en Almacén</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">11 Oct, 14:20 PM</p>
+</div>
+</div>
+<!-- Step 5: Paid (Completed) -->
+<div class="relative flex gap-md">
+<div class="stepper-line completed"></div>
+<div class="flex flex-col items-center flex-shrink-0 w-6">
+<div class="w-6 h-6 rounded-full bg-tertiary text-white flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="pb-1">
+<p class="font-label-bold text-label-bold text-on-surface">Pago Confirmado</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">11 Oct, 10:15 AM</p>
+</div>
+</div>
+<!-- Step 6: Order Placed (Completed) -->
+<div class="relative flex gap-md">
+<div class="flex flex-col items-center flex-shrink-0 w-6">
+<div class="w-6 h-6 rounded-full bg-tertiary text-white flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[16px]">check</span>
+</div>
+</div>
+<div class="pb-1">
+<p class="font-label-bold text-label-bold text-on-surface">Pedido Realizado</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">11 Oct, 10:00 AM</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Shipping Details -->
+<section class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-md mb-md">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-on-surface-variant">location_on</span>
+<h4 class="font-title-md text-title-md">Dirección de Entrega</h4>
+</div>
+<div class="space-y-base">
+<p class="font-label-bold text-label-bold text-on-surface">Ricardo Mendoza</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Calle de la Victoria, 14, 3ºB</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">28012 Madrid, España</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">+34 612 345 678</p>
+</div>
+</section>
+<!-- Support Actions -->
+<div class="grid grid-cols-2 gap-sm">
+<button class="flex items-center justify-center gap-xs bg-surface-container-lowest border border-primary-container text-primary-container font-label-bold text-label-bold py-md rounded-lg active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">support_agent</span>
+                Ayuda
+            </button>
+<button class="flex items-center justify-center gap-xs bg-primary-container text-white font-label-bold text-label-bold py-md rounded-lg shadow-md active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px]">chat_bubble</span>
+                Contactar
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest dark:bg-inverse-surface shadow-[0_-2px_10px_rgba(0,0,0,0.05)] flex justify-around items-center py-2 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-bold text-label-bold">Categories</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">fiber_new</span>
+<span class="font-label-bold text-label-bold">New</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container dark:text-primary-fixed font-bold active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for the progress bar
+        window.addEventListener('DOMContentLoaded', () => {
+            const progressBar = document.querySelector('.bg-primary-container.h-full');
+            progressBar.style.width = '0%';
+            setTimeout(() => {
+                progressBar.style.transition = 'width 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                progressBar.style.width = '65%';
+            }, 300);
+        });
+    </script>
+</body></html>

@@ -1124,6 +1124,11 @@ const Home: React.FC = () => {
                             </h3>
 
                             <div className="mt-auto">
+                              {(product.origin === 'fivebelow' || (product.sku && product.sku.includes('FB'))) && (
+                                <p className="text-[10px] font-bold text-orange-600 mb-1 flex items-center gap-1">
+                                  <Truck className="h-3 w-3" /> Entrega: 15-20 días
+                                </p>
+                              )}
                               <div className="flex items-baseline gap-1">
                                 <span className="text-lg font-bold text-blue-900">${price.toFixed(2)}</span>
                                 {originalPrice > price && (
@@ -1262,6 +1267,11 @@ const Home: React.FC = () => {
                               </h3>
 
                               <div className="mt-auto">
+                                {(product.origin === 'fivebelow' || (product.sku && product.sku.includes('FB'))) && (
+                                  <p className="text-[10px] font-bold text-orange-600 mb-1 flex items-center gap-1">
+                                    <Truck className="h-3 w-3" /> Entrega: 15-20 días
+                                  </p>
+                                )}
                                 <div className="flex items-baseline gap-1">
                                   <span className="text-lg font-bold text-green-700">${price.toFixed(2)}</span>
                                   {originalPrice > price && (
@@ -1355,19 +1365,22 @@ const Home: React.FC = () => {
 
                       if (isProduct && product) {
                         const isSpecialPrice = product.salePrice2 === -10 || product.salePrice1 === -10;
-                        const isOrderBasis = product.origin === 'fivebelow' || product.origin === 'walgreens' || isSpecialPrice;
+                        const isFB = product.origin === 'fivebelow' || (product.sku && product.sku.includes('FB'));
+                        const isOrderBasis = product.origin === 'fivebelow' || product.origin === 'walgreens' || isSpecialPrice || isFB;
 
                         if (product.isConsolidated && product.consolidatedProducts) {
                           const hasStock = product.consolidatedProducts.some(id => getAvailableQuantity(id) > 0);
                           isDisabled = !hasStock && !isOrderBasis;
                           const variantsWithStock = product.consolidatedProducts.filter(id => getAvailableQuantity(id) > 0).length;
                           stockInfo = `${variantsWithStock}/${product.consolidatedProducts.length} ${t('home.variants')} disponibles`;
-                          if (isOrderBasis && !hasStock) stockInfo = 'Bajo pedido';
+                          if (isOrderBasis && !hasStock) {
+                            stockInfo = isFB ? '🚚 Entrega: 15-20 días' : 'Bajo pedido';
+                          }
                         } else {
                           const availableQty = getAvailableQuantity(product.id);
                           if (isOrderBasis) {
                             isDisabled = false;
-                            stockInfo = availableQty > 0 ? `${availableQty} disponibles` : 'Bajo pedido';
+                            stockInfo = availableQty > 0 ? `${availableQty} disponibles` : (isFB ? '🚚 Entrega: 15-20 días' : 'Bajo pedido');
                           } else {
                             isDisabled = availableQty === 0;
                             stockInfo = availableQty > 0 ? `${availableQty} disponibles` : t('home.outOfStockLabel');
@@ -1452,7 +1465,7 @@ const Home: React.FC = () => {
                                 <p className="text-[10px] text-purple-600 mb-1 font-medium italic">Marca: {perfume.brand}</p>
                               )}
 
-                              <p className={`text-[10px] mb-2 font-bold ${isDisabled ? 'text-red-500' : 'text-green-600'}`}>
+                              <p className={`text-[10px] mb-2 font-bold ${isDisabled ? 'text-red-500' : (stockInfo.includes('🚚') ? 'text-orange-600' : 'text-green-600')}`}>
                                 {stockInfo}
                               </p>
 

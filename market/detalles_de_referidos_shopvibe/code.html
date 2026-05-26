@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#7a3000",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#eae7e7",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed": "#351000",
+                    "on-background": "#1c1b1b",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-container": "#572000",
+                    "inverse-surface": "#313030",
+                    "inverse-primary": "#ffb693",
+                    "surface-container-highest": "#e5e2e1",
+                    "outline": "#8e7164",
+                    "tertiary": "#006e2f",
+                    "on-secondary-fixed": "#410002",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "primary-container": "#ff6b00",
+                    "on-tertiary-fixed": "#002109",
+                    "on-tertiary-container": "#003a15",
+                    "on-error-container": "#93000a",
+                    "surface-bright": "#fcf9f8",
+                    "secondary": "#bb000f",
+                    "tertiary-fixed": "#6bff8f",
+                    "surface-container": "#f0eded",
+                    "surface": "#fcf9f8",
+                    "surface-variant": "#e5e2e1",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "background": "#fcf9f8",
+                    "secondary-container": "#e32322",
+                    "on-primary": "#ffffff",
+                    "outline-variant": "#e2bfb0",
+                    "on-secondary-container": "#fffbff",
+                    "on-surface": "#1c1b1b",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-low": "#f6f3f2",
+                    "surface-tint": "#a04100",
+                    "inverse-on-surface": "#f3f0ef",
+                    "secondary-fixed": "#ffdad5",
+                    "on-secondary-fixed-variant": "#930009",
+                    "primary": "#a04100",
+                    "tertiary-container": "#00b050",
+                    "surface-dim": "#dcd9d9",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-surface-variant": "#5a4136",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "gutter": "12px",
+                    "lg": "24px",
+                    "xs": "4px",
+                    "md": "16px",
+                    "margin-mobile": "12px",
+                    "margin-desktop": "24px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "title-md": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        -webkit-tap-highlight-color: transparent;
+      }
+      .referral-card {
+        border: 1px solid #EEEEEE;
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body-lg text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim border-b border-surface-container-highest dark:border-outline-variant flex justify-between items-center px-margin-mobile h-14 w-full">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary-container dark:text-primary-fixed">ShopVibe</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined">shopping_bag</span>
+</button>
+</div>
+</header>
+<main class="mt-14 px-margin-mobile">
+<!-- Hero Section -->
+<section class="py-lg text-center bg-gradient-to-b from-primary-container/10 to-transparent -mx-margin-mobile px-margin-mobile mb-md">
+<div class="relative w-48 h-48 mx-auto mb-md overflow-hidden rounded-full flex items-center justify-center">
+<img alt="Celebration Rewards" class="w-full h-full object-cover" data-alt="A vibrant digital illustration of a stylized gift box exploding with golden coins and colorful confetti against a soft orange background. The lighting is high-key and festive, creating a high-energy e-commerce promotional vibe. The visual style is modern, sleek, and high-contrast, perfectly matching a professional corporate retail application. The overall mood is triumphant and encouraging." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfjfq48LrN67XZM5Rbqa8vs2WEiUTjhZ4PyXjOPH7Kf3LQ7KxiD8-nLoeFDIk2FWcKSSvfGpU-f8V9AZzgQBDrjmTHOt8waEj-iw3CyQj56W95SYmIDl1t_iY1di5aC1NygkmFEAwrve5lalUkvmrY-z9fKcIAUPIOcLdu_gayuyFXavKcQEFwskkkzdK2GIp7DUOzh6k4RfBSVd6XQsql6gbd-urTdDxQKErKO02xaE7_XIVoSQnezx4TfGQHLs8eAQd-XhANkqNu"/>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-xs">Invita a tus amigos y gana $10</h2>
+<p class="text-on-surface-variant font-body-sm px-4">Recibe crédito por cada amigo que realice su primera compra.</p>
+</section>
+<!-- Referral Code Box -->
+<section class="mb-lg">
+<div class="referral-card bg-surface-container-lowest rounded-xl p-md flex flex-col items-center shadow-sm">
+<span class="font-label-bold text-label-bold text-on-surface-variant uppercase mb-sm">Tu código de referido</span>
+<div class="flex items-center justify-between w-full bg-surface-container-low border border-outline-variant rounded-lg p-sm group transition-all active:bg-surface-container-high">
+<span class="font-price-lg text-price-lg text-primary select-all" id="referralCode">VIBE-12345</span>
+<button class="bg-primary-container text-on-primary font-label-bold px-md py-sm rounded-lg flex items-center gap-xs active:scale-95 transition-all" onclick="copyCode()">
+<span class="material-symbols-outlined text-[18px]">content_copy</span>
+                        COPIAR
+                    </button>
+</div>
+</div>
+</section>
+<!-- Social Sharing -->
+<section class="mb-lg">
+<div class="flex justify-around items-center">
+<div class="flex flex-col items-center gap-xs cursor-pointer group">
+<div class="w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform">
+<span class="material-symbols-outlined">chat_bubble</span>
+</div>
+<span class="font-label-bold text-[10px] text-on-surface-variant">WhatsApp</span>
+</div>
+<div class="flex flex-col items-center gap-xs cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-[#1877F2] flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform">
+<span class="material-symbols-outlined">social_leaderboard</span>
+</div>
+<span class="font-label-bold text-[10px] text-on-surface-variant">Facebook</span>
+</div>
+<div class="flex flex-col items-center gap-xs cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform">
+<span class="material-symbols-outlined">mail</span>
+</div>
+<span class="font-label-bold text-[10px] text-on-surface-variant">Mensaje</span>
+</div>
+<div class="flex flex-col items-center gap-xs cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface shadow-sm active:scale-90 transition-transform">
+<span class="material-symbols-outlined">more_horiz</span>
+</div>
+<span class="font-label-bold text-[10px] text-on-surface-variant">Más</span>
+</div>
+</div>
+</section>
+<!-- Steps Section -->
+<section class="mb-lg">
+<h3 class="font-title-md text-title-md text-on-surface mb-md">¿Cómo funciona?</h3>
+<div class="space-y-md">
+<div class="flex items-start gap-md">
+<div class="w-8 h-8 rounded-full bg-primary-container/10 flex-shrink-0 flex items-center justify-center">
+<span class="font-bold text-primary">1</span>
+</div>
+<div>
+<h4 class="font-label-bold text-on-surface">Comparte tu código</h4>
+<p class="font-body-sm text-on-surface-variant">Envía tu enlace o código único a tus amigos por redes sociales.</p>
+</div>
+</div>
+<div class="flex items-start gap-md">
+<div class="w-8 h-8 rounded-full bg-primary-container/10 flex-shrink-0 flex items-center justify-center">
+<span class="font-bold text-primary">2</span>
+</div>
+<div>
+<h4 class="font-label-bold text-on-surface">Tus amigos se registran y compran</h4>
+<p class="font-body-sm text-on-surface-variant">Ellos obtienen un descuento de bienvenida en su primera orden.</p>
+</div>
+</div>
+<div class="flex items-start gap-md">
+<div class="w-8 h-8 rounded-full bg-primary-container/10 flex-shrink-0 flex items-center justify-center">
+<span class="font-bold text-primary">3</span>
+</div>
+<div>
+<h4 class="font-label-bold text-on-surface">Tú recibes tu recompensa</h4>
+<p class="font-body-sm text-on-surface-variant">Una vez se confirme la compra, verás tus $10 en tu balance.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Rewards Section -->
+<section class="mb-lg">
+<h3 class="font-title-md text-title-md text-on-surface mb-md">Mis Recompensas</h3>
+<div class="grid grid-cols-2 gap-gutter">
+<div class="bg-surface-container rounded-xl p-md border border-outline-variant/30">
+<span class="font-label-bold text-on-surface-variant text-[10px] uppercase block mb-xs">Ganado</span>
+<span class="font-price-lg text-price-lg text-tertiary-container">$40.00</span>
+<span class="block font-body-sm text-[11px] text-on-surface-variant mt-xs">4 Referidos exitosos</span>
+</div>
+<div class="bg-surface-container rounded-xl p-md border border-outline-variant/30">
+<span class="font-label-bold text-on-surface-variant text-[10px] uppercase block mb-xs">Pendiente</span>
+<span class="font-price-lg text-price-lg text-on-surface-variant">$10.00</span>
+<span class="block font-body-sm text-[11px] text-on-surface-variant mt-xs">1 Amigo en proceso</span>
+</div>
+</div>
+</section>
+<!-- Footer Link -->
+<div class="text-center py-md mb-xl">
+<a class="text-primary font-label-bold underline active:opacity-50 transition-opacity" href="#">Términos y condiciones</a>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest dark:bg-inverse-surface shadow-[0_-2px_10px_rgba(0,0,0,0.05)] flex justify-around items-center py-2 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-bold text-label-bold">Categories</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">fiber_new</span>
+<span class="font-label-bold text-label-bold">New</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container dark:text-primary-fixed font-bold active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        function copyCode() {
+            const code = document.getElementById('referralCode').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = event.currentTarget;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check</span> COPIADO';
+                btn.classList.replace('bg-primary-container', 'bg-tertiary-container');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.replace('bg-tertiary-container', 'bg-primary-container');
+                }, 2000);
+            });
+        }
+
+        // Add small hover effect for sharing buttons
+        document.querySelectorAll('.group').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                el.style.transform = 'translateY(-2px)';
+            });
+            el.addEventListener('mouseleave', () => {
+                el.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body></html>

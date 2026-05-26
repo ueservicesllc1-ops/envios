@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Trash2, Plus, Minus, CreditCard, ShoppingCart, User, X, Check, Upload, CheckCircle, Menu, Package, LayoutDashboard, LogOut, Wallet, Truck, Search, ChevronDown, MapPin, Phone } from 'lucide-react';
 import { PayPalButtons } from "@paypal/react-paypal-js";
@@ -21,10 +21,16 @@ import AddressModal from '../components/AddressModal';
 import { emailService } from '../services/emailService';
 import { format, addDays } from 'date-fns';
 
+declare global {
+    interface Window {
+        payphone: any;
+    }
+}
+
 const CartPage: React.FC = () => {
     const navigate = useNavigate();
     const { t } = useLanguage();
-    const { user, isAdmin } = useAuth();
+    const { user, isAdmin, loading: authLoading } = useAuth();
 
     // Header states
     const [searchTerm, setSearchTerm] = useState('');
@@ -90,12 +96,20 @@ const CartPage: React.FC = () => {
         address: ''
     });
 
-    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'banco_pichincha' | 'paypal' | null>(null);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'banco_pichincha' | 'paypal' | 'payphone' | null>(null);
     const [showBankDetails, setShowBankDetails] = useState(false);
     const [receiptFile, setReceiptFile] = useState<File | null>(null);
     const [uploadingReceipt, setUploadingReceipt] = useState(false);
     const [rewardCoupon, setRewardCoupon] = useState<Coupon | null>(null);
     const [termsAccepted, setTermsAccepted] = useState(false);
+    
+    const customerInfoRef = useRef(customerInfo);
+    useEffect(() => { customerInfoRef.current = customerInfo; }, [customerInfo]);
+
+    const rewardCouponRef = useRef(rewardCoupon);
+    useEffect(() => { rewardCouponRef.current = rewardCoupon; }, [rewardCoupon]);
+
+    const [confirmingPayPhone, setConfirmingPayPhone] = useState(false);
 
     // Direcciones guardadas
     const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -240,7 +254,148 @@ const CartPage: React.FC = () => {
         updateCartQuantity(itemId, newQuantity, type);
     };
 
-    const handleCheckout = async (paypalTransactionId?: string) => {
+    const isReadyToPay = !!(customerInfo.name && customerInfo.lastName && customerInfo.email && customerInfo.phone && customerInfo.address && termsAccepted);
+
+    const handleCheckoutRef = useRef<any>(null);
+    handleCheckoutRef.current = (txId: string) => handleCheckout(txId);
+
+    const finalAmountRef = useRef(0);
+    useEffect(() => {
+        finalAmountRef.current = Math.max(0, totalWithShipping - (rewardCoupon?.amount || 0));
+    }, [totalWithShipping, rewardCoupon]);
+
+    // Usar useRef para saber si ya renderizamos PayPhone
+    const payphoneInitialized = useRef(false);
+
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ppId = urlParams.get('id');
+        const ppClientTxId = urlParams.get('clientTransactionId');
+
+        if (ppId && ppClientTxId && !confirmingPayPhone && !authLoading) {
+            setConfirmingPayPhone(true);
+            setProcessingSale(true);
+            setShowCheckoutForm(true); 
+            
+            const confirmPayment = async () => {
+                try {
+                    // Restaurar info del cliente inmediatamente
+                    const savedInfo = localStorage.getItem('pp_customer_info');
+                    const savedCoupon = localStorage.getItem('pp_reward_coupon');
+                    if (savedInfo) {
+                        const parsedInfo = JSON.parse(savedInfo);
+                        setCustomerInfo(parsedInfo);
+                        customerInfoRef.current = parsedInfo;
+                    }
+                    if (savedCoupon) {
+                        const parsedCoupon = JSON.parse(savedCoupon);
+                        setRewardCoupon(parsedCoupon);
+                        rewardCouponRef.current = parsedCoupon;
+                    }
+                    setSelectedPaymentMethod('payphone');
+                    setTermsAccepted(true);
+                    
+                    // Dar tiempo para que el estado de React se actualice
+                    setTimeout(() => {
+                        if (handleCheckoutRef.current) {
+                            handleCheckoutRef.current(ppId);
+                        }
+                    }, 500);
+                } catch (error) {
+                    console.error('Error confirming PayPhone:', error);
+                    toast.error('Error al procesar el retorno de PayPhone.');
+                    setProcessingSale(false);
+                } finally {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            };
+            
+            confirmPayment();
+        }
+    }, [authLoading]);
+
+    useEffect(() => {
+        if (selectedPaymentMethod === 'payphone' && isReadyToPay && !payphoneInitialized.current) {
+            const ppButton = document.getElementById('pp-button');
+            if (ppButton) ppButton.innerHTML = '<div class="text-blue-600 font-medium py-4 text-center animate-pulse">Cargando pasarela PayPhone...</div>';
+
+            if (!window.payphone) {
+                const script = document.createElement('script');
+                script.src = 'https://pay.payphonetodoesposible.com/api/button/js?appId=E93vLM4zT0SF9akYjEJs5Q';
+                script.async = true;
+                
+                script.onload = () => {
+                    if (window.payphone && !payphoneInitialized.current) {
+                        payphoneInitialized.current = true;
+                        if (ppButton) ppButton.innerHTML = '';
+                        window.payphone.Button({
+                            token: 'xazfd45Ej6CDUepAZuZUr9WXnZsKJdV2-6HVakr0FmSPnVLJcG6sVQBFc2kEkr86sfMdRbfTvzTFkU951FyrtUkEScF7DP-kNKuzek2TEUDMdplgFFu9S_2LLu0OD8BFEIas8DiglZxOVJ4CDH2EzEqwwM9We7fKCG3aUcr7bjy3DD7cWeMySIIM3gwHYZtRBRBOA5q_r7iMeSUeTHjU7zTJOmo5yePAX3bRO5xGf5jRSaeXAJ5LcZIFq1788r75uKCgnLrI5GOoz4Pu2RdjYU3PQF7wF9_QayA6KMu61BxmDMYTCgVEcKYnG8OtXO-qmncMNw',
+                            btnHorizontal: true,
+                            btnDark: true,
+                            createOrder: function(actions: any) {
+                                localStorage.setItem('pp_customer_info', JSON.stringify(customerInfoRef.current));
+                                if (rewardCouponRef.current) localStorage.setItem('pp_reward_coupon', JSON.stringify(rewardCouponRef.current));
+
+                                return actions.prepare({
+                                    amount: Math.round(finalAmountRef.current * 100),
+                                    amountWithoutTax: Math.round(finalAmountRef.current * 100),
+                                    currency: "USD",
+                                    clientTransactionId: "VENTA-" + Date.now()
+                                });
+                            },
+                            onComplete: function(model: any, actions: any) {
+                                const ppButton = document.getElementById('pp-button');
+                                if (ppButton) ppButton.innerHTML = '<div class="text-blue-600 font-medium py-4 text-center animate-pulse">Procesando tu pedido, por favor espera...</div>';
+                                
+                                if (handleCheckoutRef.current) {
+                                    handleCheckoutRef.current(model.transactionId || 'payphone-' + Date.now());
+                                }
+                            }
+                        }).render("#pp-button");
+                    }
+                };
+                
+                script.onerror = () => {
+                    if (ppButton) ppButton.innerHTML = '<div class="text-red-500 font-medium py-4 text-center">Fallo de conexión con PayPhone.</div>';
+                };
+                
+                document.body.appendChild(script);
+            } else if (!payphoneInitialized.current) {
+                // Si el script ya existe pero el botón no se ha renderizado en este montaje
+                payphoneInitialized.current = true;
+                if (ppButton) ppButton.innerHTML = '';
+                window.payphone.Button({
+                    token: 'xazfd45Ej6CDUepAZuZUr9WXnZsKJdV2-6HVakr0FmSPnVLJcG6sVQBFc2kEkr86sfMdRbfTvzTFkU951FyrtUkEScF7DP-kNKuzek2TEUDMdplgFFu9S_2LLu0OD8BFEIas8DiglZxOVJ4CDH2EzEqwwM9We7fKCG3aUcr7bjy3DD7cWeMySIIM3gwHYZtRBRBOA5q_r7iMeSUeTHjU7zTJOmo5yePAX3bRO5xGf5jRSaeXAJ5LcZIFq1788r75uKCgnLrI5GOoz4Pu2RdjYU3PQF7wF9_QayA6KMu61BxmDMYTCgVEcKYnG8OtXO-qmncMNw',
+                    btnHorizontal: true,
+                    btnDark: true,
+                    createOrder: function(actions: any) {
+                        localStorage.setItem('pp_customer_info', JSON.stringify(customerInfoRef.current));
+                        if (rewardCouponRef.current) localStorage.setItem('pp_reward_coupon', JSON.stringify(rewardCouponRef.current));
+
+                        return actions.prepare({
+                            amount: Math.round(finalAmountRef.current * 100),
+                            amountWithoutTax: Math.round(finalAmountRef.current * 100),
+                            currency: "USD",
+                            clientTransactionId: "VENTA-" + Date.now()
+                        });
+                    },
+                    onComplete: function(model: any, actions: any) {
+                        const ppButton = document.getElementById('pp-button');
+                        if (ppButton) ppButton.innerHTML = '<div class="text-blue-600 font-medium py-4 text-center animate-pulse">Procesando tu pedido, por favor espera...</div>';
+                        
+                        if (handleCheckoutRef.current) {
+                            handleCheckoutRef.current(model.transactionId || 'payphone-' + Date.now());
+                        }
+                    }
+                }).render("#pp-button");
+            }
+        }
+        
+        // No removemos el script ni reseteamos payphoneInitialized en el cleanup 
+        // para evitar el error de zoid_allow_delegate_payphone_button
+    }, [selectedPaymentMethod, isReadyToPay]);
+
+    const handleCheckout = async (transactionId?: string) => {
         if (!user) {
             toast.error(t('auth.loginRequired'));
             navigate('/login');
@@ -254,8 +409,9 @@ const CartPage: React.FC = () => {
             return;
         }
 
-        // Validar información del cliente
-        if (!customerInfo.address || !customerInfo.phone) {
+        // Validar información del cliente usando el ref por si venimos de un redirect
+        const currentCustomerInfo = customerInfoRef.current;
+        if (!currentCustomerInfo.address || !currentCustomerInfo.phone) {
             toast.error('Por favor selecciona una dirección de envío válida');
             // Si estuviéramos en modo lista, ir al checkout (aunque ya deberíamos estar ahí)
             setShowCheckoutForm(true);
@@ -344,8 +500,8 @@ const CartPage: React.FC = () => {
             let saleStatus: 'pending' | 'confirmed' | 'cancelled' = 'pending';
             if (selectedPaymentMethod === 'banco_pichincha') {
                 saleStatus = 'pending';
-            } else if (selectedPaymentMethod === 'paypal' && paypalTransactionId) {
-                saleStatus = 'confirmed'; // Pago confirmado por PayPal
+            } else if ((selectedPaymentMethod === 'paypal' || selectedPaymentMethod === 'payphone') && transactionId) {
+                saleStatus = 'confirmed'; // Pago confirmado
             } else {
                 saleStatus = 'confirmed'; // Otros métodos
             }
@@ -359,65 +515,65 @@ const CartPage: React.FC = () => {
                 totalAmount: finalTotal,
                 shippingCost: shippingCost || 0,
                 shippingWeight: shippingWeight || 0,
-                customerName: `${customerInfo.name} ${customerInfo.lastName}`.trim(),
-                customerEmail: customerInfo.email || '',
-                customerPhone: customerInfo.phone || '',
-                customerAddress: customerInfo.address || '',
+                customerName: `${currentCustomerInfo.name} ${currentCustomerInfo.lastName}`.trim(),
+                customerEmail: currentCustomerInfo.email || '',
+                customerPhone: currentCustomerInfo.phone || '',
+                customerAddress: currentCustomerInfo.address || '',
                 status: saleStatus,
                 paymentMethod: selectedPaymentMethod || 'banco_pichincha',
                 receiptUrl: receiptUrl || '',
-                notes: appliedCoupon && couponCode
-                    ? `Venta desde Tienda Online - Cupón aplicado: ${couponCode} (-$${couponDiscountAmount})`
+                notes: rewardCouponRef.current && activeCouponId
+                    ? `Venta desde Tienda Online - Cupón aplicado: ${activeCouponId}`
                     : 'Venta desde Tienda Online',
                 createdAt: new Date()
             };
 
-            if (paypalTransactionId) {
-                saleData.paypalTransactionId = paypalTransactionId;
+            if (transactionId) {
+                saleData.paypalTransactionId = transactionId;
             }
 
+            // GUARDAR EN FIREBASE PRIMERO
+            toast.success('Procesando tu pedido...');
             await onlineSaleService.create(saleData);
 
             // Marcar cupón como usado
-            // Marcar cupón como usado
             if (activeCouponId) {
-                const { couponService } = await import('../services/couponService');
-                await couponService.useCoupon(activeCouponId, saleNumber);
-                // Limpiar cupón del estado global
-                setAppliedCoupon(false);
-                setCouponActive(false);
-                setCouponDiscount(0);
-                setCouponCode('');
-                setActiveCouponId(null);
-            }
-
-            // 🎯 ENVIAR EMAIL DE CONFIRMACIÓN (solo si pago confirmado)
-            if (saleStatus === 'confirmed' && customerInfo.email) {
                 try {
-                    await emailService.sendCompraExitosa({
-                        customerName: `${customerInfo.name} ${customerInfo.lastName}`,
-                        customerEmail: customerInfo.email,
-                        orderNumber: saleNumber,
-                        securityCode: securityCode,
-                        totalAmount: finalTotal,
-                        items: cart.map(item => ({
-                            name: item.type === 'product' ? item.product!.name : item.perfume!.name,
-                            quantity: item.quantity,
-                            price: item.type === 'product' ? item.product!.salePrice1 : item.perfume!.price
-                        })),
-                        deliveryAddress: customerInfo.address,
-                        estimatedDate: format(addDays(new Date(), 7), 'dd/MM/yyyy')
-                    });
-                    console.log('✅ Email de confirmación enviado');
-                } catch (emailError) {
-                    console.error('Error enviando email:', emailError);
-                    // No bloqueamos el flujo si falla el email
+                    const { couponService } = await import('../services/couponService');
+                    await couponService.useCoupon(activeCouponId, saleNumber);
+                    // Limpiar cupón del estado global
+                    setAppliedCoupon(false);
+                    setCouponActive(false);
+                    setCouponDiscount(0);
+                    setCouponCode('');
+                    setActiveCouponId(null);
+                } catch (e) {
+                    console.error("Error al usar cupón:", e);
                 }
             }
 
-            // ÉXITO
+            // LIMPIAR CARRITO DESPUÉS DE GUARDAR EXITOSAMENTE
             clearCart();
-            // Redirigir a página de éxito
+            localStorage.removeItem('pp_customer_info');
+            localStorage.removeItem('pp_reward_coupon');
+
+            // Fire and forget email para no bloquear el flujo
+            emailService.sendCompraExitosa({
+                customerName: `${currentCustomerInfo.name} ${currentCustomerInfo.lastName}`,
+                customerEmail: currentCustomerInfo.email,
+                orderNumber: saleNumber,
+                securityCode: securityCode,
+                totalAmount: finalTotal,
+                items: saleItems.map((item: any) => ({
+                    name: item.productName,
+                    quantity: item.quantity,
+                    price: item.unitPrice
+                })),
+                deliveryAddress: currentCustomerInfo.address,
+                estimatedDate: format(addDays(new Date(), 7), 'dd/MM/yyyy')
+            }).catch(error => console.error("Error enviando email de confirmación:", error));
+
+            // REDIRIGIR AL FINAL
             navigate('/order-success', { state: { orderNumber: saleNumber, securityCode } });
 
         } catch (error: any) {
@@ -451,132 +607,8 @@ const CartPage: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-12">
-            {/* Header Estilo Envíos Ecuador */}
-            <header className="sticky top-0 z-40 bg-white shadow-md mb-6">
-                <div className="bg-blue-900 text-white">
-                    <div className="container mx-auto px-4 py-3">
-                        <div className="flex items-center justify-between gap-4">
-
-                            {/* Mobile Header: Menu + Compact Logo + Cart */}
-                            <div className="md:hidden flex items-center justify-between w-full">
-                                <div className="flex items-center gap-3">
-                                    <button onClick={() => setShowMobileMenu(true)} className="text-white p-1">
-                                        <Menu className="h-6 w-6" />
-                                    </button>
-                                    <div className="flex flex-col cursor-pointer" onClick={() => navigate('/')}>
-                                        <img src="/logo-compras-express.png" alt="Compras Express" className="h-8 object-contain bg-white rounded px-1" />
-                                        <span className="text-[9px] text-yellow-400 font-medium tracking-wide mt-1">USA - Ecuador</span>
-                                    </div>
-                                </div>
-                                <button onClick={() => navigate('/cart')} className="relative p-1 text-white">
-                                    <ShoppingCart className="h-6 w-6" />
-                                    {cart.length > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-yellow-400 text-blue-900 text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                                            {cart.length}
-                                        </span>
-                                    )}
-                                </button>
-                            </div>
-
-                            {/* Desktop Logo */}
-                            <div className="hidden md:flex items-center gap-4">
-                                <div className="flex flex-col cursor-pointer" onClick={() => navigate('/')}>
-                                    <div className="flex items-center gap-2">
-                                        <img src="/logo-compras-express.png" alt="Compras Express" className="h-10 object-contain bg-white rounded px-2 py-1" />
-                                    </div>
-                                    <span className="text-[10px] text-yellow-400 leading-none tracking-wide mt-1">Compra en USA y recíbelo en Ecuador</span>
-                                </div>
-                            </div>
-
-                            {/* SearchBar (Desktop Only) */}
-                            <div className="hidden md:flex flex-1 max-w-3xl mx-4">
-                                <div className="flex w-full bg-white rounded-md overflow-hidden shadow-sm h-10">
-                                    <input
-                                        type="text"
-                                        placeholder="Buscar productos..."
-                                        className="flex-1 px-4 text-sm text-gray-700 focus:outline-none"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                    <button
-                                        className="px-5 text-gray-500 hover:text-blue-900"
-                                        onClick={() => navigate(`/?search=${searchTerm}`)}
-                                    >
-                                        <Search className="h-5 w-5" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* User Menu (Desktop Only) */}
-                            <div className="hidden md:flex items-center gap-6 text-white text-sm font-medium">
-                                {user ? (
-                                    <div className="relative group cursor-pointer flex items-center gap-1">
-                                        <div className="flex flex-col items-end leading-tight">
-                                            <span className="text-[11px] font-normal opacity-90">Hola, {user.displayName?.split(' ')[0] || 'Usuario'}</span>
-                                            <span className="flex items-center gap-1 font-bold">Mi cuenta <ChevronDown className="h-3 w-3" /></span>
-                                        </div>
-                                        <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded shadow-xl py-2 text-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                            <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
-                                                <p className="font-bold truncate">{user.email}</p>
-                                            </div>
-                                            <button onClick={() => navigate('/my-orders')} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
-                                                <Package className="h-4 w-4" /> Mis pedidos
-                                            </button>
-                                            <button onClick={() => navigate('/my-addresses')} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
-                                                <MapPin className="h-4 w-4" /> Mis direcciones
-                                            </button>
-                                            <button onClick={() => navigate('/profile')} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
-                                                <User className="h-4 w-4" /> Configuración
-                                            </button>
-                                            {(isVerifiedSeller || isAdmin) && (
-                                                <button
-                                                    className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2"
-                                                    onClick={() => navigate('/dashboard')}
-                                                >
-                                                    <LayoutDashboard className="h-4 w-4 text-yellow-600" /> Panel Vendedor
-                                                </button>
-                                            )}
-                                            <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2">
-                                                <LogOut className="h-4 w-4" /> Cerrar sesión
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => navigate('/login')} className="flex items-center gap-2 hover:underline">
-                                        <User className="h-5 w-5" /> Login
-                                    </button>
-                                )}
-
-                                {/* Desktop Cart Button */}
-                                <button
-                                    className="flex items-center gap-1 relative group"
-                                    onClick={() => navigate('/cart')}
-                                >
-                                    <ShoppingCart className="h-6 w-6" />
-                                    {cart.length > 0 && (
-                                        <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
-                                            {cart.length}
-                                        </span>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Title Bar for Cart */}
-                <div className="bg-gray-100 border-b border-gray-200 py-2 md:py-3">
-                    <div className="container mx-auto px-4 flex items-center gap-3">
-                        <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
-                            <ArrowLeft className="h-5 w-5" />
-                        </button>
-                        <h1 className="text-base md:text-lg font-bold text-gray-800">Tu Carrito ({cart.length} items)</h1>
-                    </div>
-                </div>
-            </header>
-
-            <div className="container mx-auto px-4 py-8">
+        <div className="min-h-screen bg-gray-50 pb-24 pt-4">
+            <div className="container mx-auto px-4 py-4">
                 <div className="flex flex-col lg:flex-row gap-8">
 
                     {/* Lista de Items */}
@@ -602,6 +634,11 @@ const CartPage: React.FC = () => {
                                                     <div>
                                                         <h3 className="font-semibold text-gray-900">{displayItem.name}</h3>
                                                         <p className="text-sm text-gray-500">{item.type === 'product' ? 'Producto' : 'Perfume'}</p>
+                                                        {item.type === 'product' && ((item.product as any).origin === 'fivebelow' || (item.product?.sku && item.product.sku.includes('FB'))) && (
+                                                            <p className="text-xs font-bold text-orange-600 mt-1 flex items-center gap-1">
+                                                                <Truck className="h-3 w-3" /> Entrega: 15-20 días
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     <button
                                                         onClick={() => removeFromCart(item.product?.id || item.perfume?.id || '', item.type)}
@@ -767,6 +804,17 @@ const CartPage: React.FC = () => {
                                         </div>
                                         {selectedPaymentMethod === 'paypal' && <CheckCircle className="text-blue-500" />}
                                     </div>
+
+                                    <div
+                                        onClick={() => { setSelectedPaymentMethod('payphone'); setShowBankDetails(false); }}
+                                        className={`p-4 border rounded-lg cursor-pointer flex items-center justify-between ${selectedPaymentMethod === 'payphone' ? 'border-orange-500 bg-orange-50' : 'hover:bg-gray-50'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <CreditCard className="text-orange-500" />
+                                            <span className="font-medium">Tarjeta de Crédito/Débito Local</span>
+                                        </div>
+                                        {selectedPaymentMethod === 'payphone' && <CheckCircle className="text-orange-500" />}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -776,6 +824,13 @@ const CartPage: React.FC = () => {
                     <div className="w-full lg:w-96">
                         <div className="bg-white p-6 rounded-xl shadow-sm sticky top-24">
                             <h2 className="text-lg font-bold mb-4">Resumen del Pedido</h2>
+
+                            {cart.some(item => item.type === 'product' && ((item.product as any).origin === 'fivebelow' || (item.product?.sku && item.product.sku.includes('FB')))) && (
+                                <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800 flex items-start gap-2">
+                                    <Truck className="h-5 w-5 flex-shrink-0 text-orange-600" />
+                                    <p>Tu orden incluye productos con tiempo de entrega de <strong>15 a 20 días</strong>.</p>
+                                </div>
+                            )}
 
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
@@ -844,7 +899,7 @@ const CartPage: React.FC = () => {
                                     </button>
                                 )
                             ) : (
-                                selectedPaymentMethod === 'paypal' ? (
+                                (selectedPaymentMethod === 'paypal' || selectedPaymentMethod === 'payphone') ? (
                                     <div className="mt-6 space-y-4">
                                         <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-sm">
                                             <input
@@ -877,16 +932,18 @@ const CartPage: React.FC = () => {
                                             </label>
                                         </div>
 
-                                        {(!customerInfo.name || !customerInfo.lastName || !customerInfo.email || !customerInfo.phone || !customerInfo.address || !termsAccepted) ? (
+                                        {!isReadyToPay ? (
                                             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
                                                 <p className="text-yellow-800 font-medium text-sm">
-                                                    🔒 Para habilitar el pago, completa todos los datos de envío y acepta los términos.
+                                                    🔒 Para habilitar el pago, acepta los términos y condiciones.
                                                 </p>
                                             </div>
                                         ) : (
                                             <div className="z-0 relative space-y-4">
-                                                <div className="relative z-0">
-                                                    <PayPalButtons
+                                                {selectedPaymentMethod === 'paypal' ? (
+                                                    <>
+                                                        <div className="relative z-0">
+                                                            <PayPalButtons
                                                         fundingSource="paypal"
                                                         style={{ layout: "vertical", label: "pay", color: "gold" }}
                                                         createOrder={(data, actions) => {
@@ -965,6 +1022,10 @@ const CartPage: React.FC = () => {
                                                         }}
                                                     />
                                                 </div>
+                                                    </>
+                                                ) : (
+                                                    <div id="pp-button" className="min-h-[50px] w-full mt-4 flex justify-center items-center"></div>
+                                                )}
                                             </div>
                                         )}
                                     </div>

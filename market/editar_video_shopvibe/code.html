@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShopVibe Video Editor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#006e2f",
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#572000",
+                    "surface-tint": "#a04100",
+                    "on-tertiary-fixed": "#002109",
+                    "on-secondary-container": "#fffbff",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "tertiary-container": "#00b050",
+                    "surface-variant": "#e5e2e1",
+                    "surface-dim": "#dcd9d9",
+                    "on-surface": "#1c1b1b",
+                    "on-error": "#ffffff",
+                    "surface-container": "#f0eded",
+                    "outline": "#8e7164",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "primary-container": "#ff6b00",
+                    "on-background": "#1c1b1b",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "on-secondary-fixed": "#410002",
+                    "inverse-on-surface": "#f3f0ef",
+                    "primary-fixed": "#ffdbcc",
+                    "secondary": "#bb000f",
+                    "primary-fixed-dim": "#ffb693",
+                    "primary": "#a04100",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#ffb693",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-container": "#003a15",
+                    "inverse-surface": "#313030",
+                    "on-surface-variant": "#5a4136",
+                    "on-secondary-fixed-variant": "#930009",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-high": "#eae7e7",
+                    "outline-variant": "#e2bfb0",
+                    "on-tertiary": "#ffffff",
+                    "secondary-container": "#e32322",
+                    "background": "#fcf9f8",
+                    "secondary-fixed": "#ffdad5",
+                    "on-primary-fixed": "#351000",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#f6f3f2",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#e5e2e1",
+                    "surface-bright": "#fcf9f8",
+                    "tertiary-fixed": "#6bff8f",
+                    "surface": "#fcf9f8"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "lg": "24px",
+                    "sm": "8px",
+                    "xs": "4px",
+                    "xl": "40px",
+                    "md": "16px",
+                    "gutter": "12px",
+                    "base": "4px",
+                    "margin-desktop": "24px",
+                    "margin-mobile": "12px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "title-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(49, 48, 48, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .timeline-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .playhead {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .video-container {
+            height: 100dvh;
+            width: 100vw;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black text-white font-body-lg overflow-hidden">
+<!-- Main Editor Canvas -->
+<div class="relative video-container flex flex-col items-center justify-center overflow-hidden">
+<!-- Video Preview Background -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover" data-alt="A stylish fashion model posing in a vibrant urban environment, wearing contemporary high-street apparel with bold orange accents. The lighting is dramatic and warm, mimicking a sunset in a bustling city street. The visual style is cinematic and high-definition, consistent with professional e-commerce video production for a trendy global marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDA7LEUN8ycFkK_FMbCQyqeL-GjAAAGO2XEgKZp4fj0Ji3D_m1gjRNt4FrKpsRHf530WsSu6Z72CnAiGJwHtKvO4HZESpEvMmyQWNtMIjWlYX7Jj8u8igdqeYuNVDOP5ZKKWl1nqQzfRMfiZipL5GfA__ZxAxnE1230famPRhJjW4trCLfhCdGrW9W8y5mybZesdrElp77gN-DOMCp41jP8QdJ0hIbw-Uu4QEyJsDsquSe-TiXfF0Wke63qRCm74TSsEtj6wnNNcVf3"/>
+<!-- Overlay to darken edges for UI visibility -->
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60"></div>
+</div>
+<!-- Top AppBar Integration -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-20 w-full">
+<button class="w-10 h-10 flex items-center justify-center rounded-full glass-panel active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-white">close</span>
+</button>
+<div class="flex items-center gap-sm">
+<button class="flex items-center gap-xs glass-panel px-md py-sm rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">music_note</span>
+<span class="font-label-bold text-label-bold">Add music</span>
+</button>
+</div>
+<button class="bg-primary-container text-on-primary-container px-lg py-sm rounded-lg font-label-bold text-label-bold active:scale-95 transition-transform">
+                Next
+            </button>
+</header>
+<!-- Right Side Creative Tools -->
+<aside class="fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-lg z-40">
+<div class="flex flex-col items-center gap-xs">
+<button class="w-12 h-12 flex items-center justify-center rounded-full glass-panel hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined">filter_vintage</span>
+</button>
+<span class="font-label-bold text-label-bold text-[10px]">Filters</span>
+</div>
+<div class="flex flex-col items-center gap-xs">
+<button class="w-12 h-12 flex items-center justify-center rounded-full glass-panel hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined">auto_fix_high</span>
+</button>
+<span class="font-label-bold text-label-bold text-[10px]">Effects</span>
+</div>
+<div class="flex flex-col items-center gap-xs">
+<button class="w-12 h-12 flex items-center justify-center rounded-full glass-panel hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined">title</span>
+</button>
+<span class="font-label-bold text-label-bold text-[10px]">Text</span>
+</div>
+<div class="flex flex-col items-center gap-xs">
+<button class="w-12 h-12 flex items-center justify-center rounded-full glass-panel hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined">mood</span>
+</button>
+<span class="font-label-bold text-label-bold text-[10px]">Stickers</span>
+</div>
+<div class="flex flex-col items-center gap-xs">
+<button class="w-12 h-12 flex items-center justify-center rounded-full glass-panel hover:bg-white/20 transition-colors">
+<span class="material-symbols-outlined">content_cut</span>
+</button>
+<span class="font-label-bold text-label-bold text-[10px]">Edit</span>
+</div>
+</aside>
+<!-- Multi-track Timeline -->
+<section class="fixed bottom-0 left-0 w-full z-40 pb-lg pt-md glass-panel rounded-t-xl border-t border-white/10">
+<!-- Timeline Controls -->
+<div class="flex items-center justify-between px-margin-mobile mb-md">
+<div class="flex items-center gap-sm">
+<span class="font-label-bold text-label-bold text-white/60">00:04</span>
+<div class="h-1 w-1 rounded-full bg-white/20"></div>
+<span class="font-label-bold text-label-bold text-white/40">00:15</span>
+</div>
+<button class="p-xs text-white/80" onclick="togglePlay()">
+<span class="material-symbols-outlined filled-icon text-[32px]" id="playIcon">pause_circle</span>
+</button>
+<div class="flex items-center gap-md">
+<button class="material-symbols-outlined text-white/80">undo</button>
+<button class="material-symbols-outlined text-white/80">redo</button>
+</div>
+</div>
+<!-- Scrollable Timeline Tracks -->
+<div class="relative w-full overflow-x-auto timeline-scroll py-sm px-[50%] select-none">
+<div class="flex flex-col gap-xs min-w-max relative">
+<!-- Playhead Line -->
+<div class="absolute playhead top-0 bottom-0 w-1 bg-primary-container z-50 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)] pointer-events-none"></div>
+<!-- Track 1: Audio -->
+<div class="h-8 flex gap-1 items-center bg-tertiary/20 border border-tertiary/30 rounded-lg px-xs ml-xl relative w-[600px]">
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-sm mr-xs">music_note</span>
+<div class="flex-1 flex items-end gap-[2px] h-4">
+<div class="bg-tertiary-fixed-dim w-1 h-[40%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[70%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[50%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[90%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[30%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[60%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[40%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[80%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[20%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[50%] rounded-full"></div>
+<div class="bg-tertiary-fixed-dim w-1 h-[70%] rounded-full"></div>
+</div>
+</div>
+<!-- Track 2: Video Clips -->
+<div class="flex gap-xs items-center">
+<div class="relative group cursor-pointer">
+<div class="h-16 w-32 rounded-lg border-2 border-primary-container overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover opacity-80" data-alt="Close-up of high-fashion accessory details like jewelry and high-quality leather fabric, shot with macro focus and soft ambient light. Corporate modern style with high-contrast retail edge." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCRBotWO68I3v84xUzCR6zt4J6-6uwE1Lm_Xcayk9Hd-TdwWnJbmw8g85c-B6tV7b-_zpuDk4wHgjBX7rCGdAUYtrMgFyiUAXv6fVBql6LPSj8lxks3kEO9rcFRJmtrPEsMtgpIK5a9iS6tMBmLceK4OerlYxfHeMybIAj7EelODhJm2ZK_ya12sZEXo5Hl5zZYCJJkRbMHyfXgF7h49uS0xRgh-erv6gM_5jw0rT_VtSMNhLujqf4nORnmSt66lxYNrA3qcfDlhfl"/>
+</div>
+<div class="absolute inset-y-0 left-0 w-2 bg-primary-container rounded-l-lg flex items-center justify-center">
+<div class="w-[2px] h-4 bg-on-primary-container/50"></div>
+</div>
+<div class="absolute inset-y-0 right-0 w-2 bg-primary-container rounded-r-lg flex items-center justify-center">
+<div class="w-[2px] h-4 bg-on-primary-container/50"></div>
+</div>
+</div>
+<div class="h-16 w-24 rounded-lg border border-white/10 overflow-hidden bg-surface-container opacity-40">
+<img class="w-full h-full object-cover" data-alt="Full body shot of a model walking against a minimalist gray background, emphasizing the fluid movement of the vibrant retail apparel. Soft studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1TNeb6G1zJJt7KpAGYCQCRinqrTlXVcEnB8MxWpn_UF631azYp24AC2i5YGqcy2YmVrTb-T1C7695yDd--YjzBCAasPfUiUFjXGVIbVyNCYLc7qGr3Zq51RD7ffQCVX5VejebG0GFHUPDlfxn7sYX_mX5zvKiyrvXTcPtlQ4OiseJguKpzNSrX1Xf5SHXkHwKe6Mnyn1kFluAgJhU7wMiK4uxBxNJf77jROT1Db3es3C7XJs1DQzJH7FLynuaZk8IoY8ab9orXzEI"/>
+</div>
+<button class="h-16 w-16 rounded-lg border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-xs glass-panel">
+<span class="material-symbols-outlined text-white/40">add</span>
+</button>
+</div>
+<!-- Track 3: Text Overlays -->
+<div class="h-6 flex gap-xs items-center ml-24">
+<div class="h-full px-sm bg-primary/40 border border-primary/60 rounded-full flex items-center">
+<span class="text-[10px] font-label-bold">Flash Sale!</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Action Bar (Simplified Shell) -->
+<div class="flex justify-around items-center px-lg pt-md">
+<button class="flex flex-col items-center gap-xs opacity-60">
+<span class="material-symbols-outlined">drafts</span>
+<span class="text-[10px] font-label-bold uppercase tracking-wider">Drafts</span>
+</button>
+<div class="w-[2px] h-8 bg-white/10"></div>
+<button class="flex flex-col items-center gap-xs text-primary-container">
+<span class="material-symbols-outlined filled-icon">movie</span>
+<span class="text-[10px] font-label-bold uppercase tracking-wider">Editor</span>
+</button>
+</div>
+</section>
+<!-- Tooltip / Interaction Feedback (Floating) -->
+<div class="absolute bottom-60 left-1/2 -translate-x-1/2 pointer-events-none opacity-0 transition-opacity duration-300" id="trimTooltip">
+<div class="glass-panel px-md py-xs rounded-full border border-white/20 shadow-xl">
+<span class="text-body-sm font-body-sm text-white">4.2s Clip</span>
+</div>
+</div>
+</div>
+<!-- Script for Interactions -->
+<script>
+        let isPlaying = true;
+        const playIcon = document.getElementById('playIcon');
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            if(isPlaying) {
+                playIcon.innerText = 'pause_circle';
+            } else {
+                playIcon.innerText = 'play_circle';
+            }
+        }
+
+        // Simple timeline drag simulation visual
+        const timeline = document.querySelector('.timeline-scroll');
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        timeline.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - timeline.offsetLeft;
+            scrollLeft = timeline.scrollLeft;
+        });
+        timeline.addEventListener('mouseleave', () => {
+            isDown = false;
+        });
+        timeline.addEventListener('mouseup', () => {
+            isDown = false;
+        });
+        timeline.addEventListener('mousemove', (e) => {
+            if(!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - timeline.offsetLeft;
+            const walk = (x - startX) * 2;
+            timeline.scrollLeft = scrollLeft - walk;
+        });
+
+        // Initialize timeline position
+        timeline.scrollLeft = 0;
+    </script>
+</body></html>

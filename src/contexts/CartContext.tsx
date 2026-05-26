@@ -122,7 +122,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }));
     };
 
-    const clearCart = () => setCart([]);
+    const clearCart = () => {
+        setCart([]);
+        localStorage.removeItem('cart');
+    };
 
     // Cálculos
     const perfumeSubtotal = cart.reduce((sum, item) => {

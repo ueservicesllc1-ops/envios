@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Seleccionar Productos - ShopLive</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Custom scrollbar for high-density feel */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e2bfb0;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#f0eded",
+                        "tertiary-fixed": "#6bff8f",
+                        "on-surface-variant": "#5a4136",
+                        "primary": "#a04100",
+                        "on-primary-container": "#572000",
+                        "on-secondary-fixed-variant": "#930009",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#ffdad5",
+                        "outline-variant": "#e2bfb0",
+                        "surface-tint": "#a04100",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#e5e2e1",
+                        "surface-container-highest": "#e5e2e1",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbcc",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#ff6b00",
+                        "on-tertiary-container": "#003a15",
+                        "surface-container-low": "#f6f3f2",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "tertiary": "#006e2f",
+                        "surface": "#fcf9f8",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#ffb693",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#1c1b1b",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-bright": "#fcf9f8",
+                        "secondary-container": "#e32322",
+                        "tertiary-container": "#00b050",
+                        "secondary": "#bb000f",
+                        "on-tertiary-fixed": "#002109",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-fixed": "#351000",
+                        "on-secondary-container": "#fffbff",
+                        "inverse-on-surface": "#f3f0ef",
+                        "background": "#fcf9f8",
+                        "on-surface": "#1c1b1b",
+                        "inverse-surface": "#313030",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "surface-dim": "#dcd9d9",
+                        "outline": "#8e7164",
+                        "on-secondary-fixed": "#410002",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "surface-container-high": "#eae7e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "12px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "xs": "4px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "gutter": "12px",
+                        "margin-desktop": "24px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "price-lg": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "title-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col font-body-lg text-body-lg">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full flex justify-between items-center px-margin-mobile h-14 z-50 bg-surface dark:bg-on-background">
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 transition-transform hover:opacity-80 transition-opacity text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Seleccionar Productos</h1>
+</div>
+<div class="flex items-center gap-md">
+<button class="active:scale-95 transition-transform hover:opacity-80 transition-opacity text-on-surface-variant">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="active:scale-95 transition-transform hover:opacity-80 transition-opacity text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</div>
+</header>
+<!-- Search Section -->
+<main class="flex-1 mt-14 mb-24">
+<div class="px-margin-mobile pt-md">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-primary-container text-body-lg transition-all placeholder:text-on-surface-variant/60" placeholder="Search product name or SKU" type="text"/>
+</div>
+</div>
+<!-- Inventory Stats -->
+<div class="px-margin-mobile py-md flex items-center justify-between">
+<span class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-widest">Inventory (124)</span>
+<div class="flex gap-xs">
+<div class="px-2 py-1 bg-surface-container-highest rounded text-[10px] font-bold uppercase">All</div>
+<div class="px-2 py-1 text-[10px] font-bold uppercase text-on-surface-variant">Fashion</div>
+<div class="px-2 py-1 text-[10px] font-bold uppercase text-on-surface-variant">Tech</div>
+</div>
+</div>
+<!-- Product Grid (2-column mobile as per spec) -->
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-gutter px-margin-mobile">
+<!-- Product Card 1 -->
+<div class="product-card group relative bg-surface border border-[#EEEEEE] rounded-lg overflow-hidden transition-all hover:shadow-md cursor-pointer" onclick="toggleSelection(this)">
+<div class="relative aspect-square">
+<img class="w-full h-full object-cover" data-alt="A high-quality studio photograph of a minimalist white smartwatch with a clean silicone band, set against a soft grey background. The lighting is bright and professional, highlighting the sleek curves and reflective screen of the device. The overall aesthetic is modern, tech-focused, and premium, fitting a high-end retail marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB37NStSv8TJZe3tWa1A7APfrYOY0K7e0j6iAstRptywztobDPZ3_oZu28Hdt3QbXm94i9iCeF_5O_cIy1mGTwzeIY6ClglNePdf3OJvdfuTujW_YyvwtLbmOcO_JayX299yJ_GzyOxPzA-0dwOwfmNEvzdjERI8KC7Ci8J55Ocn_V_UPa8MjCyM77Acgzy4HBcBeA4rSC2P75CjlCw1yNScBbrbsd02dhX9FB-uqDM56xI4D7j1nF_9vYoR9DHcSuaftIbFnjIzM6m"/>
+<div class="selection-overlay absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white bg-black/20 flex items-center justify-center transition-all">
+<span class="material-symbols-outlined text-white text-sm hidden">check</span>
+</div>
+</div>
+<div class="p-sm flex flex-col gap-xs">
+<h3 class="font-label-bold text-label-bold text-on-surface line-clamp-2 leading-tight">Minimalist Pro Watch Series 5</h3>
+<div class="flex flex-col">
+<span class="text-secondary font-bold text-body-lg">$129.00</span>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[10px] text-on-surface-variant">4.8 | 1.2k sold</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="product-card group relative bg-surface border border-[#EEEEEE] rounded-lg overflow-hidden transition-all hover:shadow-md cursor-pointer" onclick="toggleSelection(this)">
+<div class="relative aspect-square">
+<img class="w-full h-full object-cover" data-alt="Professional over-ear wireless headphones in a deep matte black finish, positioned dynamically in a bright, high-contrast studio setting. The lighting captures the metallic textures and soft leather padding, evoking a sense of high-fidelity audio quality. The scene is clean, energetic, and retail-ready with a contemporary commercial vibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFT2OuphF_Hw9gQyMPdLPcFxkZK4UKRc5mSDsOCwdXLY1RU_encaEvx7AeZs5Q_P_swvGq0ZqQyP9XmFN7sLSiaImD20vyJ4Z6UvtLViGY26o9RPqaD0PXYgY3N16g-7GF0kHYRKpqRbkOxca9iItyJAUjeparBhUCFcICRSnG4lVYCwBwCPsr3piGLQUuGQ558ACSHQ5I-_NwzKdDgoTelPPL0l8Xb98pW9H0AhC1zs5CRAq-FhirH-VbV2bQEAIfliHXcLnSdOWq"/>
+<div class="selection-overlay absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white bg-black/20 flex items-center justify-center transition-all">
+<span class="material-symbols-outlined text-white text-sm hidden">check</span>
+</div>
+</div>
+<div class="p-sm flex flex-col gap-xs">
+<h3 class="font-label-bold text-label-bold text-on-surface line-clamp-2 leading-tight">Acoustic Pro Noise Cancelling</h3>
+<div class="flex flex-col">
+<span class="text-secondary font-bold text-body-lg">$299.99</span>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[10px] text-on-surface-variant">4.9 | 850 sold</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="product-card group relative bg-surface border border-[#EEEEEE] rounded-lg overflow-hidden transition-all hover:shadow-md cursor-pointer" onclick="toggleSelection(this)">
+<div class="relative aspect-square">
+<img class="w-full h-full object-cover" data-alt="Close-up of stylish high-top sneakers in vibrant orange and white leather, displayed on a clean reflective surface. The lighting is sharp and high-key, emphasizing the premium stitching and material quality. The background is a soft neutral tone to make the bright orange pop, creating a high-energy fashion retail atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrZNHNa7rEbyxOthICFaFkqWsjhWKwoMz5tjr9KNVCeIHnh9fmoJbEGmxRR52hCN9hZNRzvE5kmhfqfO413WGNvNYZDzW_ajru5R-zrjYT6B6_ygLBLsWpU5LKDqmm3U-qOG_Sr3zMyn9iTIx8mbqfSA3md3C54SFhJ9PxzAmqiD4nlFA8QhkmECD0sodHxfAI973gFqoeyIV0_xpWo0t7og0HlbJDWxcMGlTf-AAI-D9FO9-OXeR_U_ZoHc0fRnTzVKnGlW3Nlvq3"/>
+<div class="selection-overlay absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white bg-black/20 flex items-center justify-center transition-all">
+<span class="material-symbols-outlined text-white text-sm hidden">check</span>
+</div>
+</div>
+<div class="p-sm flex flex-col gap-xs">
+<h3 class="font-label-bold text-label-bold text-on-surface line-clamp-2 leading-tight">StreetVibe High-Top Sneakers</h3>
+<div class="flex flex-col">
+<span class="text-secondary font-bold text-body-lg">$85.50</span>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[10px] text-on-surface-variant">4.7 | 3.4k sold</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="product-card group relative bg-surface border border-[#EEEEEE] rounded-lg overflow-hidden transition-all hover:shadow-md cursor-pointer" onclick="toggleSelection(this)">
+<div class="relative aspect-square">
+<img class="w-full h-full object-cover" data-alt="Luxury designer sunglasses with dark polarized lenses and gold-toned frames, placed on a bright, minimalist marble surface. Sunlight creates elegant shadows, highlighting the premium craftsmanship and fashion-forward design. The overall mood is sophisticated, sunny, and high-end lifestyle retail." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCx-4-TGQfuhO8C_ZWFwVl340OuNs7J8I7e-AxBcLluPcdNTLbr5AQscPh5epOm6AQ1-qm53gxGcfcbiwjeVtbFtF4jwMSfSSW8EH6izm4iYacbggfCvRWQJFUK1CrfG2KJZ45joTL9WcYQnIwsaRWuBsWhJyCyUyXYvWrLmcjPuPvrv0mHApwru3PJgvThiXnmRl-jgLnM_C3Q4Qw5FvhsmFXY1pMVy3o6YcB4uT4U8JMIV_6Mk69OID6mu_tlykqExhS3nOkqPbsv"/>
+<div class="selection-overlay absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white bg-black/20 flex items-center justify-center transition-all">
+<span class="material-symbols-outlined text-white text-sm hidden">check</span>
+</div>
+</div>
+<div class="p-sm flex flex-col gap-xs">
+<h3 class="font-label-bold text-label-bold text-on-surface line-clamp-2 leading-tight">Aura Gold Aviator Shades</h3>
+<div class="flex flex-col">
+<span class="text-secondary font-bold text-body-lg">$150.00</span>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[10px] text-on-surface-variant">4.6 | 520 sold</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 5 -->
+<div class="product-card group relative bg-surface border border-[#EEEEEE] rounded-lg overflow-hidden transition-all hover:shadow-md cursor-pointer" onclick="toggleSelection(this)">
+<div class="relative aspect-square">
+<img class="w-full h-full object-cover" data-alt="Vibrant red athletic running shoe isolated on a crisp white background. The lighting is high-contrast, showcasing the breathable mesh texture and aerodynamic silhouette. The image is clean and energetic, perfect for a high-performance sports apparel product listing." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJELTkfTRz8KON7bsBLvzMgQ9405VvXe8dSuZFTm3n-pEW--RrjQyWB-ZUlblJqS0AyqvR2SA5F8nkvloM9WtqMRvo_wLsmzPbPeo-DuOI1M19TfDVYh7rJXrca4fN-NAOairPBMbeORDcf1pq-iYJhxdxig3nlZouPKrUaLQUwg6YxJi6c-470tTYAFq0ICnN5iRdAmVBTCln3zx6CxCOkqeJ1BAedAF6D3CodXVI0Rm6agcdLEAe3CddhjZVzdOsDQgJFM7uS1fy"/>
+<div class="selection-overlay absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white bg-black/20 flex items-center justify-center transition-all">
+<span class="material-symbols-outlined text-white text-sm hidden">check</span>
+</div>
+</div>
+<div class="p-sm flex flex-col gap-xs">
+<h3 class="font-label-bold text-label-bold text-on-surface line-clamp-2 leading-tight">Velocity Nitro Running Shoe</h3>
+<div class="flex flex-col">
+<span class="text-secondary font-bold text-body-lg">$110.00</span>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[10px] text-on-surface-variant">4.8 | 2.1k sold</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 6 -->
+<div class="product-card group relative bg-surface border border-[#EEEEEE] rounded-lg overflow-hidden transition-all hover:shadow-md cursor-pointer" onclick="toggleSelection(this)">
+<div class="relative aspect-square">
+<img class="w-full h-full object-cover" data-alt="Retro-style instant film camera in a playful pastel mint color, photographed in a bright, airy setting with soft natural light. The design is nostalgic yet modern, appealing to a creative, social-media-savvy audience. The background is a clean white with subtle soft shadows for depth." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB4cxbVMEM-1tAQxjZdxUzz3YLR81aIA3RBX2XJ5X_6ErQDlFvyOKZG-B1lpk9ubuEDGQU4Frc160hc9G9wwp5rZnZR-6txsXmE7UE9AnHopHPt-qAJUUHPWzfIvKrElBk2HgRZNeUzj9HmcTOZliSBGYyFm0EDy2YkLDbF7zB6qPIwO3rb9eG0yNDbJVVmgC_vk-5XD-V86-Rqfj17aXrOMn4y1skzRpHnShwMxm5EdU15o7E6WmnaH48rhgo3BwmsJNHeZ5QR_Kpl"/>
+<div class="selection-overlay absolute top-2 right-2 w-6 h-6 rounded-full border-2 border-white bg-black/20 flex items-center justify-center transition-all">
+<span class="material-symbols-outlined text-white text-sm hidden">check</span>
+</div>
+</div>
+<div class="p-sm flex flex-col gap-xs">
+<h3 class="font-label-bold text-label-bold text-on-surface line-clamp-2 leading-tight">InstaSnap Retro Camera</h3>
+<div class="flex flex-col">
+<span class="text-secondary font-bold text-body-lg">$79.99</span>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[10px] text-on-surface-variant">4.5 | 980 sold</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Footer -->
+<footer class="fixed bottom-0 left-0 w-full z-50 bg-surface/90 backdrop-blur-md border-t border-[#EEEEEE] px-margin-mobile py-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+<div class="flex items-center justify-between max-w-7xl mx-auto">
+<div class="flex flex-col">
+<span class="font-headline-lg-mobile text-primary" id="selected-count">0</span>
+<span class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Productos Seleccionados</span>
+</div>
+<button class="bg-primary-container text-on-primary-container px-10 py-3 rounded-xl font-bold active:scale-95 transition-all shadow-lg hover:shadow-primary-container/20">
+                Done
+            </button>
+</div>
+</footer>
+<script>
+        let selectedCount = 0;
+        const countDisplay = document.getElementById('selected-count');
+
+        function toggleSelection(card) {
+            const overlay = card.querySelector('.selection-overlay');
+            const icon = overlay.querySelector('span');
+            const isSelected = card.getAttribute('data-selected') === 'true';
+
+            if (isSelected) {
+                card.setAttribute('data-selected', 'false');
+                card.classList.remove('ring-2', 'ring-primary-container', 'bg-primary-container/5');
+                overlay.classList.remove('bg-primary-container');
+                overlay.classList.add('bg-black/20');
+                icon.classList.add('hidden');
+                selectedCount--;
+            } else {
+                card.setAttribute('data-selected', 'true');
+                card.classList.add('ring-2', 'ring-primary-container', 'bg-primary-container/5');
+                overlay.classList.add('bg-primary-container');
+                overlay.classList.remove('bg-black/20');
+                icon.classList.remove('hidden');
+                selectedCount++;
+            }
+            
+            countDisplay.innerText = selectedCount;
+            
+            // Visual feedback for counter
+            countDisplay.classList.add('scale-125');
+            setTimeout(() => countDisplay.classList.remove('scale-125'), 200);
+        }
+
+        // Search bar micro-interaction
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('scale-[1.02]');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('scale-[1.02]');
+        });
+    </script>
+</body></html>

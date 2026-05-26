@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShopVibe AR Try-On</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ar-grid {
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+            background-size: 32px 32px;
+            perspective: 1000px;
+            transform: rotateX(60deg);
+        }
+        .shimmer-text {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .tracking-dot {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 0.4; }
+            100% { transform: scale(0.8); opacity: 0.8; }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed": "#002109",
+                      "tertiary-fixed": "#6bff8f",
+                      "inverse-surface": "#313030",
+                      "on-surface": "#1c1b1b",
+                      "on-surface-variant": "#5a4136",
+                      "tertiary-fixed-dim": "#4ae176",
+                      "surface-tint": "#a04100",
+                      "on-error-container": "#93000a",
+                      "on-background": "#1c1b1b",
+                      "error-container": "#ffdad6",
+                      "primary": "#a04100",
+                      "on-tertiary-fixed-variant": "#005321",
+                      "on-secondary": "#ffffff",
+                      "background": "#fcf9f8",
+                      "tertiary-container": "#00b050",
+                      "on-secondary-fixed": "#410002",
+                      "outline": "#8e7164",
+                      "on-primary": "#ffffff",
+                      "surface-bright": "#fcf9f8",
+                      "primary-fixed-dim": "#ffb693",
+                      "surface-container-high": "#eae7e7",
+                      "primary-fixed": "#ffdbcc",
+                      "outline-variant": "#e2bfb0",
+                      "on-tertiary": "#ffffff",
+                      "surface-container": "#f0eded",
+                      "primary-container": "#ff6b00",
+                      "on-primary-fixed": "#351000",
+                      "on-secondary-fixed-variant": "#930009",
+                      "surface": "#fcf9f8",
+                      "inverse-primary": "#ffb693",
+                      "surface-container-highest": "#e5e2e1",
+                      "on-error": "#ffffff",
+                      "secondary-container": "#e32322",
+                      "inverse-on-surface": "#f3f0ef",
+                      "surface-dim": "#dcd9d9",
+                      "secondary-fixed-dim": "#ffb4aa",
+                      "on-primary-container": "#572000",
+                      "error": "#ba1a1a",
+                      "surface-variant": "#e5e2e1",
+                      "surface-container-low": "#f6f3f2",
+                      "secondary": "#bb000f",
+                      "on-secondary-container": "#fffbff",
+                      "tertiary": "#006e2f",
+                      "secondary-fixed": "#ffdad5",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-container": "#003a15",
+                      "on-primary-fixed-variant": "#7a3000"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "xl": "40px",
+                      "sm": "8px",
+                      "base": "4px",
+                      "xs": "4px",
+                      "margin-desktop": "24px",
+                      "lg": "24px",
+                      "gutter": "12px",
+                      "md": "16px",
+                      "margin-mobile": "12px"
+              },
+              "fontFamily": {
+                      "title-md": ["Inter"],
+                      "price-lg": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "label-bold": ["Inter"]
+              },
+              "fontSize": {
+                      "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black overflow-hidden select-none">
+<!-- AR Live Feed Background -->
+<div class="fixed inset-0 z-0">
+<img alt="AR live view" class="w-full h-full object-cover grayscale-[20%]" data-alt="A first-person point-of-view perspective of a smartphone camera feed showing a person's feet on a polished concrete floor. The lighting is bright and natural, coming from large windows. Overlaid on the image is a subtle digital grid and high-tech tracking markers. The aesthetic is clean, professional, and tech-forward, with soft morning light creating a high-fidelity retail environment for augmented reality shopping." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCF5wBFUKYPYCj4CXtXCp5tBr064O_yn3OHJGOQcJd_wHMRFq9mvU7tm1vqVBTe7dGUTefns0HBnGd2WtjB_WOR6lOlinw4RRqZNmerUOEL-0sS3kjj5H0cJ7f27SCRSiS9ttaPbk3oDL_CSz4GXrK5HOTp6lifCJK4qz03HY6t5qkyrfiH9jDwJLbr5wWhDEucMUHcUBJMFdC_wskZCXmlSkoL3Ca_zHQOoYhEq16WgBquYMHbBHBNoMXp5WXGL7eZNx0aCleA4qlz"/>
+<!-- AR Tracking Visuals -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<!-- Floor Grid -->
+<div class="ar-grid absolute bottom-0 left-0 right-0 h-1/2 w-full opacity-30 border-t border-white/20"></div>
+<!-- Target Reticle -->
+<div class="relative w-48 h-48 border border-white/20 rounded-full flex items-center justify-center">
+<div class="w-2 h-2 bg-primary-container rounded-full tracking-dot"></div>
+<!-- Scanning Lines -->
+<div class="absolute top-0 w-full h-0.5 bg-gradient-to-r from-transparent via-primary-container/50 to-transparent animate-[bounce_3s_infinite]"></div>
+</div>
+<!-- Virtual Product Placement (Example Sneakers) -->
+<div class="absolute transform translate-y-32 scale-125 opacity-90 drop-shadow-2xl">
+<img alt="Virtual Shoe" class="w-64 h-auto" data-alt="A highly detailed 3D model of a futuristic athletic sneaker in vibrant orange and obsidian black. The shoe is shown from a side perspective as if floating in mid-air for an AR try-on experience. High-gloss finishes and intricate fabric textures are visible under sharp, studio-style lighting. The design reflects a modern, corporate high-performance aesthetic with bold branding and a sleek silhouette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCk7C0LQS-kGcxXsWGGYy7LZLoxnCM_t0Kj3vyQ5j5QW3k-6Ll5PDyhEiwLRQzam88GEJUSuZpmwbEAoDgN0X753OlGzaeW4HUsA9JNQSXNgoi1TODgzaIWkFmxQdIh7LMQfpechUhbQ-ko4Kvh8Nf_BBj3f1jwSsZiMKe1Gf9-68AccNp76oWYz7kih8-1vSm5FXooQndl8q2WRc002o1q8kvZIqvh-Nm-hr2vQ6k1rNXQewzfTP1kCqvHXgrOKrykv2bL4bybm6B9"/>
+</div>
+</div>
+</div>
+<!-- UI Overlay Layer -->
+<div class="relative z-10 flex flex-col h-screen text-white">
+<!-- TopAppBar (Transcribed from JSON logic) -->
+<header class="fixed top-0 w-full z-50 bg-gradient-to-b from-black/60 to-transparent flex justify-between items-center px-margin-mobile h-16 w-full">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="font-display-lg text-[20px] text-primary-fixed leading-tight">ShopVibe</span>
+<span class="text-[10px] font-label-bold uppercase tracking-[0.2em] text-white/70">AR Engine Active</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">help</span>
+</button>
+</header>
+<!-- Floating Badges -->
+<div class="mt-20 px-margin-mobile flex flex-col gap-sm items-end">
+<!-- Price Badge -->
+<div class="bg-black/40 backdrop-blur-lg border border-white/10 rounded-xl p-3 flex flex-col items-end animate-[fadeInRight_0.5s_ease-out]">
+<span class="font-label-bold text-[10px] text-white/60 uppercase">Current Price</span>
+<span class="font-price-lg text-primary-container">$189.00</span>
+</div>
+<!-- Fit Score Badge -->
+<div class="bg-black/40 backdrop-blur-lg border border-white/10 rounded-xl p-3 flex flex-col items-end animate-[fadeInRight_0.7s_ease-out]">
+<span class="font-label-bold text-[10px] text-white/60 uppercase">Fit Score</span>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-tertiary-container text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-title-md text-white">98% Match</span>
+</div>
+</div>
+</div>
+<!-- Main Action & Content Footer -->
+<div class="mt-auto pb-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+<!-- Real-time Capture Button -->
+<div class="flex justify-center mb-6">
+<button class="relative group" onclick="capturePhoto()">
+<div class="w-16 h-16 rounded-full border-4 border-white/30 flex items-center justify-center group-active:scale-90 transition-transform">
+<div class="w-12 h-12 rounded-full bg-white group-hover:bg-primary-container transition-colors shadow-xl"></div>
+</div>
+<!-- Photo Tooltip -->
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-black px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                        CAPTURE SHOT
+                    </div>
+</button>
+</div>
+<!-- Product Variation Carousel -->
+<div class="px-margin-mobile mb-6">
+<div class="flex items-center gap-sm overflow-x-auto pb-4 no-scrollbar">
+<!-- Variant 1 (Active) -->
+<div class="flex-shrink-0 w-20 h-20 rounded-xl border-2 border-primary-container bg-white/10 backdrop-blur-md p-1 relative">
+<img alt="Variant Orange" class="w-full h-full object-contain" data-alt="Close up thumbnail of a vibrant orange athletic shoe, showing the high-density mesh texture and bold branding. The lighting is sharp, emphasizing the sleek curves and high-contrast retail-focused design of the sneaker's side profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLGGOu2vkzD3SPZ6ET8HNK2lneMzCNe2SUXfupG4ToaVhPJYz_nwDOeMqxUdlf1Sy3YdOcZRAoV7i99XXCPhmNqXgUynfNqpq08D50JRTveQtlcsdbNYy-Two3Ec0BMbGek87OduYXZuAiYZlJBBXVwPmTT_-hUDFibH0XHdyCbs1y3YhpL_VnPhgnKiOrfxVUaqshyUE-fJboBb8hCJHiTGbsLpDxBMlq3J9QcS0Fg69ELc5O1aZsWZA2ZUX94XsZthQbRJOaJ_NN"/>
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary-container text-[8px] font-bold px-1.5 py-0.5 rounded-full text-on-primary-container">ACTIVE</div>
+</div>
+<!-- Variant 2 -->
+<div class="flex-shrink-0 w-20 h-20 rounded-xl border border-white/10 bg-black/40 backdrop-blur-md p-1 opacity-60 hover:opacity-100 transition-opacity">
+<img alt="Variant Black" class="w-full h-full object-contain" data-alt="Close up thumbnail of a sleek matte black athletic shoe, focusing on the sophisticated textile patterns and premium finish. The background is a dark, neutral environment, making the deep blacks and subtle highlights of the shoe pop. Modern retail style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBhd0emOegiq1Lt06qnAoxwFV74LODxIWcfGWw-ebT3KYY8aWX65gS8TI_s5UFuCFn14g2QVqYB82Ubm-L6tWepr2CP1LYHVem9s9f4ryITm4Bine5bvzpCxcPxfXGxSV3uzXwFLIqZ7yw-QeWGrBWfZ_zQ1v7dbGIK9UWXRnaVikYsgYlz7N5dXF4DL3hIAfQul6WlpDNeLZ_aNrk9Y1uKXXpwxOvFQkONPpes7mzDZJ5S0mDwSXoVbykd7XJd4JUhFdbfygycYbR"/>
+</div>
+<!-- Variant 3 -->
+<div class="flex-shrink-0 w-20 h-20 rounded-xl border border-white/10 bg-black/40 backdrop-blur-md p-1 opacity-60 hover:opacity-100 transition-opacity">
+<img alt="Variant White" class="w-full h-full object-contain" data-alt="Close up thumbnail of a pristine white athletic shoe with soft grey accents. The lighting is high-key and bright, highlighting the clean lines and minimalist aesthetic of the footwear. Designed for a modern, corporate fashion look." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4s4-sSYVaXL60aayNX5H1Dvbfr0rqdBLrbZ2vneMBe5eCCdf8XruszjoIzRIz_I6hs2jNYt-gnsP46AoGCzj5iirEzaPH7TTMOtyW6f3vHY4Jh8wv0Cp6x8GCxMxxuVBZ9VCHHuKmDt6mwO55j7HVIvikauSZgorcax-8bxf60zrEPZLLFGjpQpUGUwiGk1TNiRacBBeBiP40ssJZmVCnttLO4OmBAh8tVPoeTHjKWqXgVu1KTTlwZb32UVjlfBynukrJcC5CRjnI"/>
+</div>
+<!-- Variant 4 -->
+<div class="flex-shrink-0 w-20 h-20 rounded-xl border border-white/10 bg-black/40 backdrop-blur-md p-1 opacity-60 hover:opacity-100 transition-opacity">
+<img alt="Variant Blue" class="w-full h-full object-contain" data-alt="Close up thumbnail of a deep electric blue athletic sneaker, showing dynamic textures and high-performance synthetic materials. The lighting creates a sense of motion and energy, aligning with a high-conversion retail design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6fjORAA4fnKLZhtPV6STAHZQx6KnJHx-mBPAUfyetVaK991no5PiPzaB5B6jbQ4i612jySRU-G-VnXCYlHg8yysaxg1Au27BK9CeWOV-G-5Xh0MGJ-eah1lvo-2_RxIE4Wt4hD7C1BSdeHIXfd4oxv0fb3gmjju92a6eKgMrGSVePtYPbzyIMMAJ5pkpsbQl_P2uIPEXFZDvgeHtO-pUQdepVprMEqHTVxM8CdWiZoksBcCbSe6wYDs_Zr4agO9v35Xq6Zq51Kee3"/>
+</div>
+</div>
+</div>
+<!-- Primary CTA Button -->
+<div class="px-margin-mobile">
+<button class="w-full bg-primary-container text-on-primary-container font-headline-lg-mobile text-headline-lg-mobile py-4 rounded-xl flex items-center justify-center gap-sm active:scale-[0.98] transition-transform shadow-[0_8px_30px_rgb(255,107,0,0.4)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
+                    ADD TO CART
+                </button>
+</div>
+</div>
+<!-- AR Status Indicator -->
+<div class="fixed bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-xs">
+<div class="w-1.5 h-1.5 bg-tertiary-container rounded-full animate-pulse"></div>
+<span class="font-label-bold text-[9px] text-white/40 tracking-widest uppercase">Stability High • tracking locked</span>
+</div>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+        function capturePhoto() {
+            // Flash effect
+            const flash = document.createElement('div');
+            flash.className = 'fixed inset-0 bg-white z-[100] animate-pulse';
+            document.body.appendChild(flash);
+            
+            // Haptic feedback simulation
+            if ('vibrate' in navigator) {
+                navigator.vibrate(50);
+            }
+
+            setTimeout(() => {
+                flash.remove();
+                alert('Photo saved to your ShopVibe Gallery!');
+            }, 300);
+        }
+
+        // Add some floating animation to elements
+        document.querySelectorAll('.backdrop-blur-lg').forEach((el, i) => {
+            el.style.animation = `float ${3 + i}s ease-in-out infinite`;
+        });
+
+        // Dynamic Grid Tracking Effect
+        window.addEventListener('mousemove', (e) => {
+            const grid = document.querySelector('.ar-grid');
+            if(grid) {
+                const moveX = (e.clientX - window.innerWidth / 2) / 50;
+                const moveY = (e.clientY - window.innerHeight / 2) / 50;
+                grid.style.transform = `rotateX(60deg) translateX(${moveX}px) translateY(${moveY}px)`;
+            }
+        });
+    </script>
+<style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</body></html>

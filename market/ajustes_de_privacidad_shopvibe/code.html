@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ajustes de Privacidad - ShopVibe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#a04100",
+                    "inverse-primary": "#ffb693",
+                    "surface-dim": "#dcd9d9",
+                    "primary": "#a04100",
+                    "error-container": "#ffdad6",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "surface-variant": "#e5e2e1",
+                    "inverse-surface": "#313030",
+                    "surface-container": "#f0eded",
+                    "on-error": "#ffffff",
+                    "outline": "#8e7164",
+                    "tertiary-fixed": "#6bff8f",
+                    "error": "#ba1a1a",
+                    "outline-variant": "#e2bfb0",
+                    "on-error-container": "#93000a",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#1c1b1b",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "primary-fixed-dim": "#ffb693",
+                    "primary-container": "#ff6b00",
+                    "tertiary-container": "#00b050",
+                    "surface-bright": "#fcf9f8",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-surface": "#1c1b1b",
+                    "secondary": "#bb000f",
+                    "on-secondary-fixed": "#410002",
+                    "secondary-container": "#e32322",
+                    "on-tertiary-container": "#003a15",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed": "#351000",
+                    "on-primary": "#ffffff",
+                    "surface-container-high": "#eae7e7",
+                    "surface": "#fcf9f8",
+                    "background": "#fcf9f8",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "primary-fixed": "#ffdbcc",
+                    "surface-container-highest": "#e5e2e1",
+                    "secondary-fixed": "#ffdad5",
+                    "tertiary": "#006e2f",
+                    "on-tertiary-fixed": "#002109",
+                    "surface-container-low": "#f6f3f2",
+                    "on-secondary-fixed-variant": "#930009",
+                    "on-surface-variant": "#5a4136",
+                    "on-primary-container": "#572000",
+                    "on-secondary-container": "#fffbff",
+                    "inverse-on-surface": "#f3f0ef"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "base": "4px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "margin-mobile": "12px",
+                    "margin-desktop": "24px",
+                    "gutter": "12px",
+                    "xs": "4px",
+                    "xl": "40px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .switch-checkbox:checked + .switch-label { background-color: #ff6b00; }
+        .switch-checkbox:checked + .switch-label .switch-dot { transform: translateX(20px); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2bfb0; border-radius: 10px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 bg-surface dark:bg-surface-container-highest border-b border-outline-variant dark:border-outline flex items-center justify-between px-margin-mobile py-sm w-full">
+<div class="flex items-center gap-md">
+<button class="p-base hover:bg-surface-container-low transition-colors active:scale-95 duration-100 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Privacidad</h1>
+</div>
+<button class="p-base hover:bg-surface-container-low transition-colors active:scale-95 duration-100 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="settings">settings</span>
+</button>
+</header>
+<main class="flex-grow pb-xl custom-scrollbar overflow-y-auto">
+<!-- SECTION: Perfil -->
+<section class="mt-md px-margin-mobile">
+<h2 class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider mb-sm">Perfil</h2>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-md">
+<div class="flex items-start justify-between">
+<div class="flex-1 pr-md">
+<div class="flex items-center gap-sm mb-xs">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="lock">lock</span>
+<span class="font-title-md text-title-md">Cuenta Privada</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Solo los seguidores que aceptes podrán ver tu feed, colecciones y lives programados.</p>
+</div>
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in mt-1">
+<input class="switch-checkbox absolute block w-6 h-6 rounded-full bg-white border-2 border-outline-variant appearance-none cursor-pointer z-10 checked:border-primary-container transition-all" id="toggle_private" name="toggle" type="checkbox"/>
+<label class="switch-label block overflow-hidden h-6 rounded-full bg-surface-container-highest cursor-pointer transition-colors duration-200 ease-in" for="toggle_private">
+<span class="switch-dot block w-4 h-4 mt-[2px] ml-[2px] rounded-full bg-white transition-transform duration-200 ease-in shadow-sm"></span>
+</label>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION: Visibilidad -->
+<section class="mt-lg px-margin-mobile">
+<h2 class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider mb-sm">Visibilidad</h2>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
+<!-- Row: Historial de Compras -->
+<button class="w-full flex items-center justify-between p-md border-b border-outline-variant active:bg-surface-container-low transition-colors text-left">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="history">history</span>
+<div>
+<p class="font-title-md text-title-md">Historial de Compras</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Quién puede verlo: <span class="text-primary font-semibold">Solo Amigos</span></p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- Row: Lista de Deseos -->
+<button class="w-full flex items-center justify-between p-md border-b border-outline-variant active:bg-surface-container-low transition-colors text-left">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="favorite">favorite</span>
+<div>
+<p class="font-title-md text-title-md">Lista de Deseos</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Estado: <span class="text-primary font-semibold">Privada</span></p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- Row: Estado en Línea (Switch) -->
+<div class="flex items-center justify-between p-md active:bg-surface-container-low transition-colors">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="sensors">sensors</span>
+<div>
+<p class="font-title-md text-title-md">Estado en Línea</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Mostrar cuando estoy viendo un Live</p>
+</div>
+</div>
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="switch-checkbox absolute block w-6 h-6 rounded-full bg-white border-2 border-outline-variant appearance-none cursor-pointer z-10 checked:border-primary-container transition-all" id="toggle_online" name="toggle" type="checkbox"/>
+<label class="switch-label block overflow-hidden h-6 rounded-full bg-surface-container-highest cursor-pointer transition-colors duration-200 ease-in" for="toggle_online">
+<span class="switch-dot block w-4 h-4 mt-[2px] ml-[2px] rounded-full bg-white transition-transform duration-200 ease-in shadow-sm"></span>
+</label>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION: Interacciones -->
+<section class="mt-lg px-margin-mobile">
+<h2 class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider mb-sm">Interacciones</h2>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
+<button class="w-full flex items-center justify-between p-md border-b border-outline-variant active:bg-surface-container-low transition-colors text-left">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="chat_bubble">chat_bubble</span>
+<p class="font-title-md text-title-md">Quién puede enviarme mensajes</p>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-md border-b border-outline-variant active:bg-surface-container-low transition-colors text-left">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="alternate_email">alternate_email</span>
+<p class="font-title-md text-title-md">Etiquetas y Menciones</p>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-md active:bg-surface-container-low transition-colors text-left">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="block">block</span>
+<p class="font-title-md text-title-md">Lista de Usuarios Bloqueados</p>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- SECTION: Seguridad y Datos -->
+<section class="mt-lg px-margin-mobile mb-xl">
+<h2 class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider mb-sm">Seguridad y Datos</h2>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
+<!-- Publicidad Personalizada -->
+<div class="flex items-center justify-between p-md border-b border-outline-variant">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="ad_units">ad_units</span>
+<div>
+<p class="font-title-md text-title-md">Publicidad Personalizada</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Usa mi actividad para mejores recomendaciones</p>
+</div>
+</div>
+<div class="relative inline-block w-12 h-6 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="switch-checkbox absolute block w-6 h-6 rounded-full bg-white border-2 border-outline-variant appearance-none cursor-pointer z-10 checked:border-primary-container transition-all" id="toggle_ads" name="toggle" type="checkbox"/>
+<label class="switch-label block overflow-hidden h-6 rounded-full bg-surface-container-highest cursor-pointer transition-colors duration-200 ease-in" for="toggle_ads">
+<span class="switch-dot block w-4 h-4 mt-[2px] ml-[2px] rounded-full bg-white transition-transform duration-200 ease-in shadow-sm"></span>
+</label>
+</div>
+</div>
+<!-- Descargar Datos -->
+<button class="w-full flex items-center justify-between p-md border-b border-outline-variant active:bg-surface-container-low transition-colors text-left">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="download">download</span>
+<p class="font-title-md text-title-md">Descargar mis datos</p>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- Eliminar Cuenta (Alert style) -->
+<button class="w-full flex items-center justify-between p-md active:bg-error-container/30 transition-colors text-left group">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-error" data-icon="delete_forever">delete_forever</span>
+<p class="font-title-md text-title-md text-error">Eliminar cuenta</p>
+</div>
+<span class="material-symbols-outlined text-error/50 group-active:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<p class="mt-md text-center font-body-sm text-body-sm text-on-surface-variant/60 px-lg">
+                ShopVibe protege tus datos con cifrado de grado bancario. Lee nuestra Política de Datos para más información.
+            </p>
+</section>
+</main>
+<!-- BottomNavBar (Hidden for transactional/focused pages but present per instructions if needed as top-level shell) -->
+<!-- Assuming this is a sub-page, we suppress it to prioritize focus as per Shell Visibility Rules. However, the system asks to include it if it's a primary ecosystem screen. We'll include it for navigation context but hidden by default on this specific "Settings" sub-view if it were a full page. To follow "The Destination Rule" and "Automatic Suppression", I will omit it here because Settings is a task-focused sub-page. -->
+<script>
+        // Micro-interaction for ripple or active states
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('touchstart', () => {
+                button.classList.add('opacity-80');
+            });
+            button.addEventListener('touchend', () => {
+                button.classList.remove('opacity-80');
+            });
+        });
+
+        // Toggle logic visual feedback
+        const toggles = document.querySelectorAll('.switch-checkbox');
+        toggles.forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                const parent = e.target.closest('.relative');
+                if(e.target.checked) {
+                    console.log(`${e.target.id} enabled`);
+                } else {
+                    console.log(`${e.target.id} disabled`);
+                }
+            });
+        });
+    </script>
+</body></html>

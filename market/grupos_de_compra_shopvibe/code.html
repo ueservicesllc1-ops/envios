@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VibeShop - Comunidades</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#a04100",
+                        "primary": "#a04100",
+                        "secondary-container": "#e32322",
+                        "surface-dim": "#dcd9d9",
+                        "tertiary-fixed": "#6bff8f",
+                        "surface-container-highest": "#e5e2e1",
+                        "inverse-on-surface": "#f3f0ef",
+                        "surface-container-low": "#f6f3f2",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "on-primary-container": "#572000",
+                        "background": "#fcf9f8",
+                        "on-background": "#1c1b1b",
+                        "inverse-primary": "#ffb693",
+                        "tertiary": "#006e2f",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#e5e2e1",
+                        "inverse-surface": "#313030",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#eae7e7",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "on-secondary-fixed": "#410002",
+                        "outline": "#8e7164",
+                        "on-secondary-container": "#fffbff",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#fcf9f8",
+                        "secondary-fixed": "#ffdad5",
+                        "on-primary-fixed": "#351000",
+                        "on-tertiary-fixed": "#002109",
+                        "surface-container": "#f0eded",
+                        "secondary": "#bb000f",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#930009",
+                        "primary-container": "#ff6b00",
+                        "tertiary-container": "#00b050",
+                        "on-surface-variant": "#5a4136",
+                        "on-surface": "#1c1b1b",
+                        "surface": "#fcf9f8",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-tertiary-container": "#003a15",
+                        "primary-fixed": "#ffdbcc",
+                        "outline-variant": "#e2bfb0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "xl": "40px",
+                        "gutter": "12px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "margin-mobile": "12px",
+                        "sm": "8px",
+                        "margin-desktop": "24px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "price-lg": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface flex justify-between items-center px-margin-mobile h-14 w-full">
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">VibeShop</span>
+<div class="flex gap-4">
+<button class="transition-transform active:scale-95 hover:opacity-80">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+</button>
+<button class="transition-transform active:scale-95 hover:opacity-80">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<main class="pt-14 pb-20">
+<!-- Search & Filter Section -->
+<section class="px-margin-mobile mt-6">
+<div class="relative w-full flex items-center bg-surface-container-low border border-outline-variant rounded-xl px-md py-3 focus-within:border-primary transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant mr-3" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full text-body-lg text-on-surface placeholder:text-on-surface-variant" placeholder="Buscar grupos de compras..." type="text"/>
+</div>
+</section>
+<!-- Tabbed Navigation -->
+<nav class="mt-6 border-b border-outline-variant overflow-x-auto hide-scrollbar">
+<div class="flex px-margin-mobile">
+<button class="px-6 py-3 border-b-2 border-primary text-primary font-label-bold whitespace-nowrap">Grupos</button>
+<button class="px-6 py-3 border-b-2 border-transparent text-on-surface-variant font-label-bold whitespace-nowrap">Destaques</button>
+<button class="px-6 py-3 border-b-2 border-transparent text-on-surface-variant font-label-bold whitespace-nowrap">Meus Grupos</button>
+<button class="px-6 py-3 border-b-2 border-transparent text-on-surface-variant font-label-bold whitespace-nowrap">Convites</button>
+</div>
+</nav>
+<!-- Trending Groups (Asymmetric / Bento Lite) -->
+<section class="px-margin-mobile mt-8">
+<h2 class="font-title-md text-title-md mb-4 flex items-center">
+<span class="material-symbols-outlined text-secondary mr-2" data-icon="trending_up">trending_up</span>
+                Bombando Agora
+            </h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Group Card 1: Fashion Hunters -->
+<div class="group relative overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:shadow-lg">
+<div class="h-40 w-full relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A high-fashion photography session featuring stylish models in vibrant designer streetwear against a minimalist urban studio background. The scene is drenched in high-contrast cinematic lighting with warm orange undertones, reflecting a modern retail aesthetic. Crisp details show textured fabrics and trendy accessories, creating an atmosphere of exclusivity and professional style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDP2HV8p2iB5Ezg5gKbocl4mrnwObe1A9Mmjf_j1NPgp4X-ITkNTURlA3oR_tpEgFy5mI2CIxJYDhEN41__PehBAN7EDl16brSbYrxthdlJ8sJ95fhBDHb8wUesIo12ipPVelifpIHObOoKDDOBsRhuk-vHIXpF32XdL_AfXBnQGf6yXs0Xaj-IeclhaTuybR-Xc2hiDX0yAehIsSdIrIBEaGgYS0DN54thoRDkiqPqEKQTL1JTQPcPT_BJ5dkcMtf8oi77OPL077qS"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 flex items-center bg-primary-container/90 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[14px] text-on-primary mr-1" data-icon="groups">groups</span>
+<span class="text-on-primary text-[10px] font-label-bold">12.5k Members</span>
+</div>
+</div>
+<div class="p-md">
+<h3 class="font-title-md text-title-md text-on-surface">Fashion Hunters</h3>
+<p class="text-body-sm text-on-surface-variant mt-1 line-clamp-2">The ultimate destination for luxury street style deals and limited drop alerts.</p>
+<button class="mt-4 w-full py-3 bg-primary-container text-on-primary rounded-lg font-label-bold transition-all active:scale-95 hover:brightness-110">
+                            Unirse
+                        </button>
+</div>
+</div>
+<!-- Group Card 2: Tech Deals -->
+<div class="group relative overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest transition-all hover:shadow-lg">
+<div class="h-40 w-full relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A futuristic tech workspace showcasing sleek computer hardware, glowing RGB peripherals, and minimalist gadgets arranged on a dark matte surface. Sharp neon orange light accents cut through the clean professional composition. The atmosphere is energetic and focused on high-performance technology, perfectly capturing a modern geek-chic vibe for a digital community." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkkmBEU4DwSXuhF9bPBuUeEe8rOrr_scogZO1HyaqaDup_I-6auAFvN3yWufhUB7gQ04iS6wSkuhNRN2OqeAKnFpMB0riHExoFJL-yiVolWC_jy_fI2nPsTj8bB8S3SyHSBHfDUo_X5m1AfPIrhcI2nuR7SK4ULnT_mq29-Fc4OSOmJV_S3K5D7GTM43kXSoyVQJOLV78S5sBGWtqlphaNbSjlKicxWfDN5b_TN1fvHgOzqtGdAy3sptBEHVxgwsO9r1Q3KTYqMA3x"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+<div class="absolute bottom-3 left-3 flex items-center bg-primary-container/90 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[14px] text-on-primary mr-1" data-icon="groups">groups</span>
+<span class="text-on-primary text-[10px] font-label-bold">8.2k Members</span>
+</div>
+</div>
+<div class="p-md">
+<h3 class="font-title-md text-title-md text-on-surface">Tech Deals</h3>
+<p class="text-body-sm text-on-surface-variant mt-1 line-clamp-2">Flash sales on the latest gadgets, PC parts, and exclusive smart home offers.</p>
+<button class="mt-4 w-full py-3 bg-primary-container text-on-primary rounded-lg font-label-bold transition-all active:scale-95 hover:brightness-110">
+                            Unirse
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Categories / Chips -->
+<section class="px-margin-mobile mt-8">
+<div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+<span class="px-4 py-2 bg-primary text-on-primary rounded-full font-label-bold text-body-sm whitespace-nowrap">Todos</span>
+<span class="px-4 py-2 bg-surface-container border border-outline-variant text-on-surface-variant rounded-full font-label-bold text-body-sm whitespace-nowrap">Gaming</span>
+<span class="px-4 py-2 bg-surface-container border border-outline-variant text-on-surface-variant rounded-full font-label-bold text-body-sm whitespace-nowrap">Cozinha</span>
+<span class="px-4 py-2 bg-surface-container border border-outline-variant text-on-surface-variant rounded-full font-label-bold text-body-sm whitespace-nowrap">Fitness</span>
+<span class="px-4 py-2 bg-surface-container border border-outline-variant text-on-surface-variant rounded-full font-label-bold text-body-sm whitespace-nowrap">Pet Lovers</span>
+</div>
+</section>
+<!-- List View Groups -->
+<section class="px-margin-mobile mt-6 mb-12 flex flex-col gap-4">
+<!-- Group Item 3 -->
+<div class="flex gap-4 p-3 bg-surface border border-outline-variant rounded-xl items-center hover:bg-surface-container-low transition-colors">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A cozy and aesthetically pleasing living room setup featuring minimalist Scandinavian furniture, soft neutral textiles, and bright indoor plants. Soft natural daylight floods through a large window, creating a warm, inviting light-mode feel. The composition is elegant and high-density, highlighting home decor trends with strategic pops of terracotta and deep green." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeM2TL4CjaGiygw7UA2AH0O8qcCMTPlw0d6XXXVrrwDrmeJjnuieIwPZ5T7OQ6hKmI3aig2jiBHPYgcdBdRJ-SPJO2sP5QlVmd3DMC3Sy8e5mryLk3l8MlT0SdJ_7i9njl-yX-w4zqei-OOeNBazuXfGOhh45fiZYp1S5pS1bYYlaNjqZ4xKxbttIGiMe2bEkHVRd1owcHWd--lDW_yWqZHYfgNh_9UZnaveAtpj8MxOn-CFt19nlmj_Q-X9-sP8VHLfB2fijUiUtn"/>
+</div>
+<div class="flex-grow min-w-0">
+<h4 class="font-title-md text-on-surface truncate">Home Decor Enthusiasts</h4>
+<div class="flex items-center text-on-surface-variant text-[12px] gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="group">group</span>
+<span>4.5k members</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="text-tertiary font-label-bold">Active Now</span>
+</div>
+<p class="text-body-sm text-on-surface-variant line-clamp-1">Find the best furniture deals and decor inspiration.</p>
+</div>
+<button class="bg-secondary-container/10 text-secondary px-4 py-2 rounded-full font-label-bold text-body-sm hover:bg-secondary-container/20 active:scale-95 transition-all">
+                    Unirse
+                </button>
+</div>
+<!-- Group Item 4 -->
+<div class="flex gap-4 p-3 bg-surface border border-outline-variant rounded-xl items-center hover:bg-surface-container-low transition-colors">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A modern professional gym environment with high-end fitness equipment, showcasing athletes in motion. The lighting is dramatic and focused, utilizing sharp contrasts and a high-key professional look. Vibrant energetic orange elements of the ShopVibe brand are integrated through apparel or gym equipment highlights, conveying a sense of health and community." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuCIfHF4u5_B3ZQTZjMHVHswFg4Q_Cf7dn7GAPoFuSpuq7U3MGnzuf9kpo01g7x2Ad-vjfRtSxh7r7MlwJb8FGPQvwab5bG_GEJtsWO2GpKyng3dGfwaho_m29VGDgQdtYQRmWgQro1IXl5gMJus41APsvezvLHamleMNNbMgoTE4Z2GYvG-rfMOqjOq5iA7mibG_6VMyF26qFQCOP0x06s3wDHvauqkHJSZLtYqErY3y1lFNQBKxWtu9ESXV653ons5JtBHDfNmiK"/>
+</div>
+<div class="flex-grow min-w-0">
+<h4 class="font-title-md text-on-surface truncate">Gym Gear &amp; Nutrition</h4>
+<div class="flex items-center text-on-surface-variant text-[12px] gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="group">group</span>
+<span>15.2k members</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="text-tertiary font-label-bold">New Deals</span>
+</div>
+<p class="text-body-sm text-on-surface-variant line-clamp-1">Supplements and fitness gear at community prices.</p>
+</div>
+<button class="bg-secondary-container/10 text-secondary px-4 py-2 rounded-full font-label-bold text-body-sm hover:bg-secondary-container/20 active:scale-95 transition-all">
+                    Unirse
+                </button>
+</div>
+<!-- Group Item 5 -->
+<div class="flex gap-4 p-3 bg-surface border border-outline-variant rounded-xl items-center hover:bg-surface-container-low transition-colors">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A contemporary designer kitchen featuring stainless steel appliances, marble countertops, and vibrant fresh produce. The scene is bright and commercial, with soft diffuse lighting that emphasizes clean surfaces and professional culinary tools. The mood is upscale and inspiring, reflecting a community of food enthusiasts looking for quality and style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCR-87H8MdzXJH9jvtz570TFtipo10yzhXf4bj65-d7eaRNS20vQTns5bwgRTPXXRogVlkn5f-gOQuKEXuC5H815MGcIT3JgDUzRzQx0p0n1VE9QzI14Ir5Cg0o06qNaN5ElpMQ9SQy8ccahRYErgklnVeAMeZDL8DqvYY-I9LbKgqBB6fa1lR9yx_wfNVDAlWvUqG1VmBozd6d7drLdxFA94O9f6K0QbCAvGS9U6mT0jfyzimSNTPm2WuWbVDCqTOLOPAQ557CNW6Z"/>
+</div>
+<div class="flex-grow min-w-0">
+<h4 class="font-title-md text-on-surface truncate">Master Chef Essentials</h4>
+<div class="flex items-center text-on-surface-variant text-[12px] gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="group">group</span>
+<span>2.1k members</span>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<span class="text-on-surface-variant">Hot Group</span>
+</div>
+<p class="text-body-sm text-on-surface-variant line-clamp-1">Discounted air fryers, knives, and gourmet gadgets.</p>
+</div>
+<button class="bg-secondary-container/10 text-secondary px-4 py-2 rounded-full font-label-bold text-body-sm hover:bg-secondary-container/20 active:scale-95 transition-all">
+                    Unirse
+                </button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full h-16 flex justify-around items-center bg-surface border-t border-outline-variant px-xs pb-safe z-50">
+<button class="flex flex-col items-center justify-center text-on-surface-variant transition-all active:scale-90 hover:bg-surface-container-low px-4">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant transition-all active:scale-90 hover:bg-surface-container-low px-4">
+<span class="material-symbols-outlined" data-icon="live_tv">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary transition-all active:scale-90 hover:bg-surface-container-low px-4">
+<span class="material-symbols-outlined" data-icon="play_circle" data-weight="fill">play_circle</span>
+<span class="font-label-bold text-label-bold">Vibe</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant transition-all active:scale-90 hover:bg-surface-container-low px-4">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant transition-all active:scale-90 hover:bg-surface-container-low px-4">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</button>
+</nav>
+<script>
+        // Simple Interaction Script
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (this.innerText === 'Unirse') {
+                    this.innerText = 'Unido';
+                    this.classList.remove('bg-primary-container', 'text-on-primary', 'text-secondary');
+                    this.classList.add('bg-tertiary-container', 'text-on-tertiary');
+                    
+                    // Create floating heart effect
+                    const heart = document.createElement('span');
+                    heart.className = 'material-symbols-outlined absolute pointer-events-none text-tertiary';
+                    heart.style.left = '50%';
+                    heart.style.top = '0';
+                    heart.style.transform = 'translate(-50%, -50%)';
+                    heart.innerText = 'favorite';
+                    heart.style.transition = 'all 1s ease-out';
+                    this.classList.add('relative');
+                    this.appendChild(heart);
+                    
+                    setTimeout(() => {
+                        heart.style.opacity = '0';
+                        heart.style.top = '-40px';
+                        setTimeout(() => heart.remove(), 1000);
+                    }, 50);
+                }
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShopVibe - Centro de Recompensas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-background": "#1c1b1b",
+                      "error": "#ba1a1a",
+                      "primary-fixed-dim": "#ffb693",
+                      "inverse-on-surface": "#f3f0ef",
+                      "on-primary-fixed": "#351000",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-fixed-variant": "#005321",
+                      "surface-variant": "#e5e2e1",
+                      "on-tertiary": "#ffffff",
+                      "on-surface": "#1c1b1b",
+                      "tertiary-container": "#00b050",
+                      "on-secondary-container": "#fffbff",
+                      "tertiary": "#006e2f",
+                      "surface-bright": "#fcf9f8",
+                      "on-tertiary-fixed": "#002109",
+                      "secondary-container": "#e32322",
+                      "primary": "#a04100",
+                      "outline": "#8e7164",
+                      "surface": "#fcf9f8",
+                      "surface-dim": "#dcd9d9",
+                      "surface-container": "#f0eded",
+                      "on-primary-container": "#572000",
+                      "inverse-surface": "#313030",
+                      "on-tertiary-container": "#003a15",
+                      "surface-container-low": "#f6f3f2",
+                      "secondary-fixed": "#ffdad5",
+                      "secondary": "#bb000f",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#e2bfb0",
+                      "surface-tint": "#a04100",
+                      "on-error": "#ffffff",
+                      "inverse-primary": "#ffb693",
+                      "on-error-container": "#93000a",
+                      "primary-container": "#ff6b00",
+                      "on-secondary-fixed": "#410002",
+                      "surface-container-highest": "#e5e2e1",
+                      "on-secondary-fixed-variant": "#930009",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#eae7e7",
+                      "on-surface-variant": "#5a4136",
+                      "background": "#fcf9f8",
+                      "tertiary-fixed-dim": "#4ae176",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "primary-fixed": "#ffdbcc",
+                      "tertiary-fixed": "#6bff8f",
+                      "secondary-fixed-dim": "#ffb4aa",
+                      "on-secondary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "md": "16px",
+                      "sm": "8px",
+                      "lg": "24px",
+                      "gutter": "12px",
+                      "xl": "40px",
+                      "margin-desktop": "24px",
+                      "margin-mobile": "12px",
+                      "base": "4px",
+                      "xs": "4px"
+              },
+              "fontFamily": {
+                      "price-lg": ["Inter"],
+                      "label-bold": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "title-md": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "body-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                      "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #ff6b00 0%, #a04100 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim w-full top-0 sticky border-b border-outline-variant dark:border-outline z-50 flex items-center justify-between px-margin-mobile h-16">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-title-md text-title-md text-primary">Recompensas</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary">help_outline</span>
+</button>
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+</div>
+</header>
+<main class="max-w-md mx-auto md:max-w-4xl px-margin-mobile py-md space-y-lg">
+<!-- Hero Section: Vibe Points & Streak -->
+<section class="hero-gradient rounded-xl p-lg text-on-primary shadow-lg relative overflow-hidden">
+<!-- Decorative light effect -->
+<div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+<div class="relative z-10 flex flex-col gap-md">
+<div class="flex justify-between items-start">
+<div>
+<p class="font-label-bold text-label-bold opacity-90">Puntos Vibe Totales</p>
+<h2 class="font-display-lg text-display-lg mt-xs flex items-center gap-2">
+                            2,450 
+                            <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">stars</span>
+</h2>
+</div>
+<div class="bg-white/20 backdrop-blur-md px-sm py-xs rounded-lg flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<span class="font-label-bold text-label-bold">Racha: 5 días</span>
+</div>
+</div>
+<div class="mt-md flex gap-sm overflow-x-auto no-scrollbar pb-xs">
+<div class="bg-white/10 border border-white/20 rounded-lg p-sm min-w-[100px] flex flex-col items-center">
+<span class="font-label-bold text-[10px] mb-xs">HOY</span>
+<div class="bg-white text-primary rounded-full w-8 h-8 flex items-center justify-center font-bold">+50</div>
+</div>
+<div class="bg-white/10 border border-white/20 rounded-lg p-sm min-w-[100px] flex flex-col items-center">
+<span class="font-label-bold text-[10px] mb-xs">MAÑANA</span>
+<div class="border border-white/40 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">+100</div>
+</div>
+<div class="bg-white/10 border border-white/20 rounded-lg p-sm min-w-[100px] flex flex-col items-center">
+<span class="font-label-bold text-[10px] mb-xs">DÍA 3</span>
+<div class="border border-white/40 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">+150</div>
+</div>
+<div class="bg-white/10 border border-white/20 rounded-lg p-sm min-w-[100px] flex flex-col items-center opacity-50">
+<span class="font-label-bold text-[10px] mb-xs">DÍA 4</span>
+<div class="border border-white/40 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">🎁</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Daily Missions Section -->
+<section class="space-y-md">
+<div class="flex justify-between items-center px-xs">
+<h3 class="font-title-md text-title-md">Misiones Diarias</h3>
+<span class="text-primary font-label-bold text-label-bold">Reset en 14h</span>
+</div>
+<div class="space-y-sm">
+<!-- Mission 1 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-md flex items-center gap-md">
+<div class="bg-primary-container/20 p-md rounded-lg text-primary">
+<span class="material-symbols-outlined text-2xl">live_tv</span>
+</div>
+<div class="flex-1 space-y-xs">
+<div class="flex justify-between">
+<h4 class="font-label-bold text-label-bold">Mira una Live 5 min</h4>
+<span class="text-primary font-bold text-xs">+50 pts</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-3/5"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant">3 de 5 minutos</p>
+</div>
+<button class="bg-primary-container text-on-primary-container px-4 py-1.5 rounded-full font-label-bold text-label-bold active:scale-95 transition-transform">
+                        Ir
+                    </button>
+</div>
+<!-- Mission 2 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-md flex items-center gap-md">
+<div class="bg-primary-container/20 p-md rounded-lg text-primary">
+<span class="material-symbols-outlined text-2xl">share</span>
+</div>
+<div class="flex-1 space-y-xs">
+<div class="flex justify-between">
+<h4 class="font-label-bold text-label-bold">Comparte un Vibe</h4>
+<span class="text-primary font-bold text-xs">+20 pts</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full w-full"></div>
+</div>
+<p class="text-[10px] text-tertiary">Completado</p>
+</div>
+<button class="bg-tertiary text-on-tertiary px-4 py-1.5 rounded-full font-label-bold text-label-bold active:scale-95 transition-transform">
+                        Canjear
+                    </button>
+</div>
+<!-- Mission 3 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-md flex items-center gap-md">
+<div class="bg-primary-container/20 p-md rounded-lg text-primary">
+<span class="material-symbols-outlined text-2xl">person_add</span>
+</div>
+<div class="flex-1 space-y-xs">
+<div class="flex justify-between">
+<h4 class="font-label-bold text-label-bold">Invita a un amigo</h4>
+<span class="text-primary font-bold text-xs">+500 pts</span>
+</div>
+<div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-0"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant">0 de 1 invitados</p>
+</div>
+<button class="bg-primary-container text-on-primary-container px-4 py-1.5 rounded-full font-label-bold text-label-bold active:scale-95 transition-transform">
+                        Ir
+                    </button>
+</div>
+</div>
+</section>
+<!-- Rewards Shop Preview -->
+<section class="space-y-md">
+<div class="flex justify-between items-center px-xs">
+<h3 class="font-title-md text-title-md">Tienda de Canje</h3>
+<button class="text-primary font-label-bold text-label-bold flex items-center">
+                    Ver todos <span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+<div class="flex gap-md overflow-x-auto no-scrollbar -mx-margin-mobile px-margin-mobile pb-md">
+<!-- Coupon 1 -->
+<div class="min-w-[160px] bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col active:scale-95 transition-transform">
+<div class="h-24 bg-primary-container flex flex-col items-center justify-center text-on-primary-container p-sm text-center">
+<span class="font-black text-2xl">5% OFF</span>
+<span class="font-label-bold text-[10px] uppercase">En todo el sitio</span>
+</div>
+<div class="p-sm flex-1 flex flex-col justify-between gap-xs">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-bold text-sm">500 pts</span>
+</div>
+<button class="w-full border border-primary text-primary py-1 rounded-lg font-label-bold text-[10px]">CANJEAR</button>
+</div>
+</div>
+<!-- Coupon 2 -->
+<div class="min-w-[160px] bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col active:scale-95 transition-transform">
+<div class="h-24 bg-tertiary-container flex flex-col items-center justify-center text-on-tertiary-container p-sm text-center">
+<span class="material-symbols-outlined text-3xl">local_shipping</span>
+<span class="font-label-bold text-xs uppercase">Envío Gratis</span>
+</div>
+<div class="p-sm flex-1 flex flex-col justify-between gap-xs">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-bold text-sm">1,000 pts</span>
+</div>
+<button class="w-full border border-primary text-primary py-1 rounded-lg font-label-bold text-[10px]">CANJEAR</button>
+</div>
+</div>
+<!-- Coupon 3 -->
+<div class="min-w-[160px] bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col active:scale-95 transition-transform">
+<div class="h-24 bg-secondary-container flex flex-col items-center justify-center text-white p-sm text-center">
+<span class="font-black text-2xl">10€</span>
+<span class="font-label-bold text-[10px] uppercase">Bono Regalo</span>
+</div>
+<div class="p-sm flex-1 flex flex-col justify-between gap-xs">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-bold text-sm">2,000 pts</span>
+</div>
+<button class="w-full border border-primary text-primary py-1 rounded-lg font-label-bold text-[10px]">CANJEAR</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Leaderboard Preview (Bonus UI) -->
+<section class="bg-surface-container-low rounded-xl p-md border border-outline-variant">
+<h3 class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-widest mb-md">Ranking Semanal</h3>
+<div class="space-y-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<span class="font-bold text-primary w-4">1</span>
+<img alt="Avatar" class="w-8 h-8 rounded-full border border-primary/20" data-alt="A clean, high-density professional portrait avatar of a smiling young person with a neutral background, styled in a modern high-contrast corporate aesthetic with soft lighting and minimalist design elements." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAX-VR8uZmow2dh028MMXtoFeJe9IhlPtKzrFX36JSQ-SkIyqIgLA218RuE8aFXu5FkMav6_iMSS97D8tfZSZ77tcSkb3Jrhq40taUVwNBSWbgeBmybs6mibqbCacl8FJbC_fJ4K2k0xlOqLUXFfUDcfdEhptl5GtlVZ7CShHqlZQU3FofMyOkZgCFxDN5EI97uyII5be_zTBaxiOi5VWXoEtS9Cj1rWUx3gTAo9y5B9YQehnkVcK_99jXUnJKopvsljC4dCTRE566a"/>
+<span class="font-body-sm text-body-sm">Alex M.</span>
+</div>
+<span class="font-label-bold text-label-bold">8,420 pts</span>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant pt-sm">
+<div class="flex items-center gap-sm">
+<span class="font-bold text-on-surface-variant w-4">12</span>
+<div class="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs uppercase">Tu</div>
+<span class="font-body-sm text-body-sm font-bold">Tú</span>
+</div>
+<span class="font-label-bold text-label-bold">2,450 pts</span>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-2 px-1 bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors p-2 rounded-lg active:scale-90 duration-150">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors p-2 rounded-lg active:scale-90 duration-150">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors p-2 rounded-lg active:scale-90 duration-150">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-label-bold text-label-bold">Vibe</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold text-label-bold">Puntos</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors p-2 rounded-lg active:scale-90 duration-150">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</button>
+</nav>
+<script>
+        // Micro-interaction: Claim button success state
+        document.querySelectorAll('button').forEach(btn => {
+            if(btn.textContent.trim() === 'Canjear' && !btn.closest('.min-w-\\[160px\\]')) {
+                btn.addEventListener('click', function() {
+                    this.innerHTML = '<span class="material-symbols-outlined">check</span>';
+                    this.classList.remove('bg-tertiary');
+                    this.classList.add('bg-on-surface-variant');
+                    this.disabled = true;
+                    
+                    // Create confetti-like effect (simplified)
+                    const effect = document.createElement('div');
+                    effect.className = 'fixed inset-0 pointer-events-none flex items-center justify-center z-[100]';
+                    effect.innerHTML = '<div class="animate-ping bg-primary-container w-24 h-24 rounded-full opacity-75"></div>';
+                    document.body.appendChild(effect);
+                    setTimeout(() => effect.remove(), 500);
+                });
+            }
+        });
+    </script>
+</body></html>

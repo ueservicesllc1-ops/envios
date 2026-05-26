@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary": "#006e2f",
+                    "surface-dim": "#dcd9d9",
+                    "error": "#ba1a1a",
+                    "secondary": "#bb000f",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-primary-container": "#572000",
+                    "on-error": "#ffffff",
+                    "on-background": "#1c1b1b",
+                    "inverse-primary": "#ffb693",
+                    "on-secondary-container": "#fffbff",
+                    "tertiary-fixed": "#6bff8f",
+                    "secondary-fixed": "#ffdad5",
+                    "outline": "#8e7164",
+                    "on-surface-variant": "#5a4136",
+                    "on-secondary-fixed": "#410002",
+                    "surface-container": "#f0eded",
+                    "primary-container": "#ff6b00",
+                    "background": "#fcf9f8",
+                    "on-secondary-fixed-variant": "#930009",
+                    "on-tertiary": "#ffffff",
+                    "inverse-on-surface": "#f3f0ef",
+                    "inverse-surface": "#313030",
+                    "error-container": "#ffdad6",
+                    "surface-container-low": "#f6f3f2",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-fixed": "#351000",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "tertiary-container": "#00b050",
+                    "surface-container-highest": "#e5e2e1",
+                    "surface": "#fcf9f8",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "on-tertiary-container": "#003a15",
+                    "on-error-container": "#93000a",
+                    "surface-variant": "#e5e2e1",
+                    "primary": "#a04100",
+                    "surface-tint": "#a04100",
+                    "secondary-container": "#e32322",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#eae7e7",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-primary": "#ffffff",
+                    "outline-variant": "#e2bfb0",
+                    "on-surface": "#1c1b1b",
+                    "surface-bright": "#fcf9f8"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "margin-mobile": "12px",
+                    "gutter": "12px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "xs": "4px",
+                    "margin-desktop": "24px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "title-md": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .mystery-box-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(2deg); }
+        }
+        .glow-pulse {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; filter: blur(20px); scale: 1; }
+            50% { opacity: 0.9; filter: blur(35px); scale: 1.1; }
+        }
+        .confetti {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #ff6b00;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .reveal-stage {
+            perspective: 1000px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-lg overflow-x-hidden min-h-screen flex flex-col">
+<!-- Top AppBar -->
+<header class="bg-surface dark:bg-surface-container-highest w-full top-0 border-b border-outline-variant dark:border-outline flex items-center justify-between px-margin-mobile py-sm w-full sticky z-50">
+<div class="flex items-center gap-md">
+<button class="active:scale-95 duration-100 hover:bg-surface-container-low transition-colors p-2 rounded-full">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">arrow_back</span>
+</button>
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-container !text-headline-lg-mobile">ShopVibe</h1>
+</div>
+<button class="active:scale-95 duration-100 hover:bg-surface-container-low transition-colors p-2 rounded-full">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">settings</span>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center px-margin-mobile py-lg overflow-hidden relative">
+<!-- Background Light Effects -->
+<div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+<div class="glow-pulse bg-primary-fixed w-[300px] h-[300px] rounded-full mix-blend-multiply opacity-50"></div>
+</div>
+<!-- Mystery Box Reveal Section -->
+<div class="reveal-stage w-full max-w-md flex flex-col items-center">
+<div class="relative w-64 h-64 mystery-box-animation mb-lg">
+<!-- Particle / Sparkle effects -->
+<div class="absolute inset-0 z-0" id="particles-container"></div>
+<!-- The 3D-Style Box Image -->
+<div class="relative z-10 w-full h-full">
+<img alt="Mystery Box" class="w-full h-full object-contain filter drop-shadow-2xl" data-alt="A highly detailed 3D render of a premium orange gift box with a glossy texture and a thick white satin ribbon. The lid is partially lifted, revealing a warm, intense golden light glowing from within. Tiny glowing sparkles and golden dust particles are seen drifting into the air against a soft, clean white studio background, creating a high-end celebratory and magical mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB22PrFo0pF4ulilxolNwjiCY4aUh91cjpWZDbke2En_ruqIlQW7IkV2ibITqmUgsHyN9_Cmc6p2caLiqsQNY-63_JyHECGp07EP5050fbjrfPO0aWcn8flWZpOfSrosXDdgcXVXM7BQMn1nlpzvsvkQHcIsvAr8QO1VjRmDMcelt9IISwgA28mxivMAQxWk8uE5y4sR6bcXBxiQi6nBy7mFKAprKNo6xl8xTlqYghonIM5L_8nHcbsuTaAmio4u7UiXe1xmj8UQygU"/>
+</div>
+<!-- Inner Light Beam -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-64 bg-gradient-to-t from-transparent via-primary-fixed to-transparent opacity-40 blur-xl"></div>
+</div>
+<!-- Content Area -->
+<div class="text-center z-20 transition-all duration-700 animate-in fade-in slide-in-from-bottom-8">
+<h2 class="font-display-lg text-display-lg text-primary mb-xs">¡Felicidades!</h2>
+<p class="font-title-md text-title-md text-on-surface-variant mb-lg">Has desbloqueado un premio exclusivo</p>
+<!-- Prize Card -->
+<div class="bg-surface-container-lowest border-2 border-primary-container rounded-xl p-md mb-xl flex items-center gap-md shadow-xl ring-4 ring-primary-fixed/30 relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-16 h-16 bg-primary rotate-45 flex items-end justify-center pb-1">
+<span class="material-symbols-outlined text-on-primary scale-75" style="font-variation-settings: 'FILL' 1;">stars</span>
+</div>
+<div class="w-20 h-20 bg-primary-fixed rounded-lg flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[40px]" style="font-variation-settings: 'FILL' 1;">confirmation_number</span>
+</div>
+<div class="text-left">
+<span class="text-label-bold font-label-bold bg-secondary-container text-on-secondary px-2 py-0.5 rounded-full uppercase tracking-wider mb-1 inline-block">Limitado</span>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Cupón 50% DCTO</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Válido en toda la tienda por 24h</p>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-sm w-full">
+<button class="w-full py-md px-lg bg-primary-container text-on-primary-container font-headline-lg-mobile text-headline-lg-mobile rounded-xl shadow-lg hover:bg-primary transition-all active:scale-95 flex items-center justify-center gap-sm">
+                        RECLAMAR PREMIO
+                        <span class="material-symbols-outlined">auto_awesome</span>
+</button>
+<button class="w-full py-md px-lg bg-transparent border-2 border-primary-container text-primary font-title-md text-title-md rounded-xl hover:bg-primary-fixed transition-all active:scale-95">
+                        Compartir logro
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center h-16 px-2 border-t border-outline-variant bg-surface dark:bg-surface-container-highest shadow-md z-50">
+<!-- Home -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</button>
+<!-- Categories -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="category">category</span>
+<span class="font-label-bold text-label-bold">Categories</span>
+</button>
+<!-- Live (Active State Logic: Using Live since opening a box is an event) -->
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-fixed dark:bg-primary-container rounded-xl px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="live_tv" style="font-variation-settings: 'FILL' 1;">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</button>
+<!-- Cart -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</button>
+<!-- Profile -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</button>
+</nav>
+<script>
+        // Simple particle generator for atmosphere
+        function createParticles() {
+            const container = document.getElementById('particles-container');
+            const colors = ['#ff6b00', '#ffd700', '#ffffff'];
+            
+            for (let i = 0; i < 40; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti rounded-full';
+                
+                const size = Math.random() * 6 + 2 + 'px';
+                particle.style.width = size;
+                particle.style.height = size;
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // Random position
+                particle.style.left = '50%';
+                particle.style.top = '50%';
+                
+                container.appendChild(particle);
+                
+                animateParticle(particle);
+            }
+        }
+
+        function animateParticle(p) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * 150 + 50;
+            const tx = Math.cos(angle) * distance;
+            const ty = Math.sin(angle) * distance - 20;
+            const duration = Math.random() * 2000 + 1000;
+            
+            p.animate([
+                { transform: 'translate(0, 0) scale(0)', opacity: 0 },
+                { transform: `translate(${tx * 0.5}px, ${ty * 0.5}px) scale(1.2)`, opacity: 1, offset: 0.2 },
+                { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+            ], {
+                duration: duration,
+                iterations: Infinity,
+                easing: 'ease-out',
+                delay: Math.random() * 2000
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+        });
+    </script>
+</body></html>

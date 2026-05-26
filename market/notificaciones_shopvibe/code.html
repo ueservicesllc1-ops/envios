@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Inbox - ShopVibe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#eae7e7",
+                    "on-tertiary-container": "#003a15",
+                    "on-tertiary-fixed": "#002109",
+                    "surface-variant": "#e5e2e1",
+                    "on-primary-container": "#572000",
+                    "tertiary-container": "#00b050",
+                    "surface-tint": "#a04100",
+                    "on-secondary-fixed-variant": "#930009",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed": "#410002",
+                    "secondary": "#bb000f",
+                    "primary": "#a04100",
+                    "surface-dim": "#dcd9d9",
+                    "outline-variant": "#e2bfb0",
+                    "on-surface": "#1c1b1b",
+                    "on-secondary-container": "#fffbff",
+                    "secondary-fixed": "#ffdad5",
+                    "tertiary": "#006e2f",
+                    "primary-fixed-dim": "#ffb693",
+                    "background": "#fcf9f8",
+                    "primary-container": "#ff6b00",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "secondary-container": "#e32322",
+                    "on-surface-variant": "#5a4136",
+                    "primary-fixed": "#ffdbcc",
+                    "surface-container-highest": "#e5e2e1",
+                    "error-container": "#ffdad6",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#f0eded",
+                    "surface-bright": "#fcf9f8",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed": "#351000",
+                    "inverse-on-surface": "#f3f0ef",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed": "#6bff8f",
+                    "on-primary": "#ffffff",
+                    "outline": "#8e7164",
+                    "surface-container-low": "#f6f3f2",
+                    "surface": "#fcf9f8",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#313030",
+                    "on-error": "#ffffff",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-background": "#1c1b1b",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "inverse-primary": "#ffb693"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "lg": "24px",
+                    "gutter": "12px",
+                    "md": "16px",
+                    "margin-desktop": "24px",
+                    "margin-mobile": "12px",
+                    "xl": "40px",
+                    "sm": "8px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "title-md": ["Inter"],
+                    "label-bold": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fcf9f8;
+        }
+        /* Custom scroll hide */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface">
+<!-- TopAppBar Shell -->
+<header class="flex justify-between items-center px-margin-mobile h-14 w-full z-50 bg-surface border-b border-outline-variant fixed top-0 left-0 right-0">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform duration-150">
+<span class="material-symbols-outlined text-primary">menu</span>
+</button>
+<h1 class="font-display-lg text-headline-lg-mobile italic font-black text-primary">ShopVibe</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform duration-150 relative">
+<span class="material-symbols-outlined text-primary">shopping_cart</span>
+<span class="absolute -top-1 -right-1 bg-secondary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">2</span>
+</button>
+</div>
+</header>
+<main class="pt-14 pb-20 max-w-2xl mx-auto px-margin-mobile">
+<!-- Tab Bar (Contextual) -->
+<div class="flex gap-4 py-4 sticky top-14 bg-background z-40 overflow-x-auto no-scrollbar">
+<button class="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-bold text-label-bold shadow-sm">All</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant transition-colors">Activities</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant transition-colors">Orders</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant transition-colors">Sales</button>
+</div>
+<!-- Section: Today -->
+<section class="mt-2">
+<h2 class="font-title-md text-title-md text-on-surface-variant mb-4 px-1">Today</h2>
+<div class="space-y-1">
+<!-- Notification: New Follower -->
+<div class="flex items-center gap-3 p-3 bg-surface hover:bg-surface-container-low transition-colors rounded-xl border border-transparent hover:border-outline-variant group">
+<div class="relative w-12 h-12 flex-shrink-0">
+<img class="w-full h-full rounded-full object-cover" data-alt="A professional close-up portrait of a trendy young woman with a warm, welcoming expression. The lighting is soft and natural, emphasizing a clean e-commerce social media aesthetic. She has stylish accessories and the overall vibe is high-end, modern, and engaging for a social commerce platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcMOx_coWLgmOOizRNkInzHY_fyGhwkBqGYyx43ioo-r3PRgbSKOJADVTnX2izDLyqN3F_1HaQxwFeJOcIsH8QdeDlLNkqFdmLkXPNTbPdNK_8AnnQz00f8c8qFQA3JIldL1FqhfQZt70bSpxmLCRy1Dff5OC4YrmvJ6KY-3DvPnJh-OZQWQ1em6P-mTtV9MXK3Vm4NHfjGXhAFHBT4qsRxk2tPoKaoZ1C6J_wRuC7I7zsZ-XZIRW02FKYC5Y5IqTsIQMSu3vthvo2"/>
+<div class="absolute -bottom-1 -right-1 bg-primary text-white w-5 h-5 rounded-full flex items-center justify-center border-2 border-surface">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">person_add</span>
+</div>
+</div>
+<div class="flex-grow">
+<p class="font-body-sm text-body-sm leading-snug">
+<span class="font-bold">kristen_vibes</span> started following you.
+                        </p>
+<p class="text-[11px] text-on-surface-variant mt-0.5">2h ago</p>
+</div>
+<button class="bg-primary px-4 py-1.5 rounded-lg text-white font-label-bold text-label-bold active:scale-95 transition-transform">Follow</button>
+</div>
+<!-- Notification: Flash Sale Alert -->
+<div class="flex items-center gap-3 p-3 bg-surface hover:bg-surface-container-low transition-colors rounded-xl border border-transparent hover:border-outline-variant">
+<div class="w-12 h-12 flex-shrink-0 bg-secondary-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div class="flex-grow">
+<p class="font-body-sm text-body-sm leading-snug">
+<span class="text-secondary font-black">FLASH SALE!</span> 40% OFF your wishlist items ending in <span class="font-mono bg-on-secondary-fixed-variant text-white px-1 rounded">02:45:12</span>
+</p>
+<p class="text-[11px] text-on-surface-variant mt-0.5">4h ago</p>
+</div>
+<div class="w-12 h-12 flex-shrink-0">
+<img class="w-full h-full rounded-lg object-cover" data-alt="A vibrant, high-contrast product shot of a sleek red athletic sneaker against a clean studio background. The lighting is sharp and professional, highlighting the texture and design of the shoe. The image conveys a sense of speed, energy, and commercial desirability, perfectly fitting a flash sale notification." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3g4dPSizI7Q-qktT99e15NRxq1pVcNPjLtKHEkRuqfrglRrzYZACz05yMCaRytmuTkbGxLNaQMO5wvtbIaA5Z-rng_-qKOML4tRcmdVISiEM11zm6sf77_QcRHpWzbjUKTiDnLlh57_ISVEqMVQ0wlsfJDaL2C3zBSRKMcqK9KRQmsPeGrV8nTP0UxgGhygXufVYR3_MNMIQH3W2cLB9eA4FL7WSp0ZXtfAT08DKXiGgIM0eSLgQF4tYHLpaweAkJWG3tHD6JCmTB"/>
+</div>
+</div>
+<!-- Notification: Like on Video -->
+<div class="flex items-center gap-3 p-3 bg-surface hover:bg-surface-container-low transition-colors rounded-xl border border-transparent hover:border-outline-variant">
+<div class="flex -space-x-4">
+<img class="w-8 h-8 rounded-full border-2 border-surface object-cover" data-alt="A portrait of a stylish man with a confident look, set against a minimalist urban background. The lighting is crisp and the composition is focused on his expression, embodying a modern lifestyle brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQnqM6ytwhdj6ditgVJ4h-Ah7rw24i3C9E4p7AbjVVT2ZKL_yht3tJpJaGBh-8H-UPS_esXYsFAo2k5cjBFeHLOeokdIzCZlBym_K9kpeO8lboT0zirRhtgbAm9bu9JHtXtd9DvFrYyMCjqOhNc-Uy8CQPIeK-2Ux8R2rxf17Ti2YXfYJc8YLgIX_ScW5btLkaPG4s0VJsZsUtLuuqxm0p5lHXeUdG5h85FgdSrbfHzYMDCWAffaGSpkWIJUmaJ4olFGeJ6fMREc-T"/>
+<img class="w-8 h-8 rounded-full border-2 border-surface object-cover" data-alt="A high-energy portrait of a smiling woman, captured with professional studio lighting that emphasizes her vibrant personality. The colors are bright and clean, typical of a high-conversion retail platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCz6PqYIRvcmEyS_Z32ZK1S2yBpD9iS0WIjmj4UMMf32jIZZFYUQRPJHHBFIsQty2NtN2MkrTTb_feqjRUyt8axQXGsLoGOz4FS8oUh0QXPyAfoPo-ch8YDhNn4Fv9F1GhKaxa-o-WBaaEKqrzXoVSdjTqd9HztVonVQ4YAf_NtaZh6QkQa4coUB03-NIuiSM5GwLX40tfeTnz1EVgg7oOrV5dL9OH-_VDzGqePw7F3i8HZ6vOmoEQdMvb_gl2_0BZpI8WJ7uM9QSpI"/>
+</div>
+<div class="flex-grow">
+<p class="font-body-sm text-body-sm leading-snug">
+<span class="font-bold">alex_m</span> and <span class="font-bold">4 others</span> liked your video.
+                        </p>
+<p class="text-[11px] text-on-surface-variant mt-0.5">6h ago</p>
+</div>
+<div class="w-10 h-14 flex-shrink-0 relative overflow-hidden rounded-md">
+<img class="w-full h-full object-cover grayscale-[0.2]" data-alt="A vertical fashion-style video thumbnail showing a model in vibrant streetwear. The shot is dynamic and colorful, designed to look like a high-engagement social media clip for a shopping app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRbQnq5ZmCWl6C-SBzLsYk7Gi-ZQglogjdGnPpkxeeVWGjON2VuVtvY0FUCSswKNiw60GpKi_yL4iHTDtIHs_JASk2QLnu2KX1crSEwoft0wqN5WdpyJQ2vVetlmynjaabj8KvBGO0zuewYzEm_2-a0HC0yfhmQHgJiYFTG-fI_3KJPB_ytZ23jaBoEGgKsYmMjq0gRTqwnRUwhsjx5f_pjY7Q8KPnvLv_GZpYmAIVFeA4a5hdEQWYMWcFVQHhouYi-7FY_VT581i2"/>
+<div class="absolute inset-0 bg-black/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xs" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: This Week -->
+<section class="mt-8">
+<h2 class="font-title-md text-title-md text-on-surface-variant mb-4 px-1">This Week</h2>
+<div class="space-y-1">
+<!-- Notification: Order Update -->
+<div class="flex items-center gap-3 p-3 bg-surface hover:bg-surface-container-low transition-colors rounded-xl border border-transparent hover:border-outline-variant">
+<div class="w-12 h-12 flex-shrink-0 bg-tertiary-container rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-container">local_shipping</span>
+</div>
+<div class="flex-grow">
+<p class="font-body-sm text-body-sm leading-snug">
+                            Your order <span class="font-bold">#SV-9283</span> is on the way! Estimated delivery: Tomorrow.
+                        </p>
+<p class="text-[11px] text-on-surface-variant mt-0.5">Tuesday</p>
+</div>
+<button class="border border-outline px-3 py-1.5 rounded-lg font-label-bold text-label-bold text-on-surface hover:bg-surface-container-high active:scale-95 transition-all">Track</button>
+</div>
+<!-- Notification: Comment -->
+<div class="flex items-center gap-3 p-3 bg-surface hover:bg-surface-container-low transition-colors rounded-xl border border-transparent hover:border-outline-variant">
+<img class="w-12 h-12 rounded-full object-cover flex-shrink-0" data-alt="A headshot of a young man with a friendly, approachable smile. The shot is clean and professionally lit, suitable for a user avatar in a modern tech environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPRd2n6CjiYAZ6ZGvQDltCxYj1Gf8QU6cuXGNHZRhTLMVPooAZ3qUV8Vl-FHEGAUC2sPeFkVAU-bVb-lnFguqTY4i8Qgb0ntHrMWMaVGAR0P4_hkYIjSZxSU-gmC3l5EYAH55IzHqQZlW8HY3n0eb-nxhrgR_qqotQ64McSJUS9UIOgFwRTP4VPiJIvX9seLziVyrNDPT5iNKrP6q21uxP_G1jaYGEeOgOxBjYfxf9eseomXBygDzaAJHZ04svrvm64NnzjGoqORP5"/>
+<div class="flex-grow">
+<p class="font-body-sm text-body-sm leading-snug">
+<span class="font-bold">marc_tech</span> commented: "Where did you get those shades? 🔥"
+                        </p>
+<p class="text-[11px] text-on-surface-variant mt-0.5">Monday</p>
+</div>
+<div class="w-10 h-14 flex-shrink-0 relative overflow-hidden rounded-md">
+<img class="w-full h-full object-cover" data-alt="Close up of luxury sunglasses resting on a reflective surface. The lighting is dramatic and commercial, focusing on the details of the accessory to match the user's comment in the inbox." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjjbOFwOryqoNKP1_4lnlarxCvYCppGhXt14zuw9a4WJjCnFNnh_STA6zU_kNOOi5PJGAWOeYOf_SL6R4ZvjP2PIex5IHxHQUrsRV2GYwp9WkGKpY3YuLznb1ngg9l1L7dxHhiPHwlz4l0i2Cg9kBSidrnCcNCm3r9ci-rMMw5qjfKjvltG15PO5k-XxLU4SP1a9Ctn30wR877XYl7VUHyn7qkZhHxBp0HY3RnxJtcREIcCPi87NAICie4sAcPBgZ324HTcOd7pM9w"/>
+</div>
+</div>
+<!-- Notification: System / Gift -->
+<div class="flex items-center gap-3 p-3 bg-surface hover:bg-surface-container-low transition-colors rounded-xl border border-transparent hover:border-outline-variant">
+<div class="w-12 h-12 flex-shrink-0 bg-primary-container/10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">featured_seasonal_and_gifts</span>
+</div>
+<div class="flex-grow">
+<p class="font-body-sm text-body-sm leading-snug">
+                            Congratulations! You've earned a <span class="text-primary font-bold">Vibe Elite</span> badge for your active shopping.
+                        </p>
+<p class="text-[11px] text-on-surface-variant mt-0.5">Sep 24</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center h-16 px-2 bg-surface border-t border-outline-variant shadow-lg">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-90 duration-200 px-4 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</a>
+<!-- Discover -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-90 duration-200 px-4 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-bold text-label-bold">Discover</span>
+</a>
+<!-- Upload -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-90 duration-200 px-4 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined text-primary scale-125">add_box</span>
+<span class="font-label-bold text-label-bold mt-0.5">Upload</span>
+</a>
+<!-- Inbox (ACTIVE) -->
+<a class="flex flex-col items-center justify-center text-primary font-bold hover:bg-surface-container-low transition-colors active:scale-90 duration-200 px-4 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">mail</span>
+<span class="font-label-bold text-label-bold">Inbox</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-90 duration-200 px-4 py-1 rounded-lg" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for follow buttons
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.innerText === 'Follow') {
+                btn.addEventListener('click', function() {
+                    if (this.innerText === 'Follow') {
+                        this.innerText = 'Following';
+                        this.classList.remove('bg-primary');
+                        this.classList.add('bg-surface-container-high', 'text-on-surface-variant');
+                    } else {
+                        this.innerText = 'Follow';
+                        this.classList.add('bg-primary');
+                        this.classList.remove('bg-surface-container-high', 'text-on-surface-variant');
+                    }
+                });
+            }
+        });
+
+        // Countdown timer logic
+        function updateTimer() {
+            const timerEls = document.querySelectorAll('.font-mono');
+            timerEls.forEach(el => {
+                let parts = el.innerText.split(':');
+                let h = parseInt(parts[0]);
+                let m = parseInt(parts[1]);
+                let s = parseInt(parts[2]);
+
+                s--;
+                if (s < 0) { s = 59; m--; }
+                if (m < 0) { m = 59; h--; }
+                if (h < 0) { h = 0; m = 0; s = 0; }
+
+                el.innerText = 
+                    (h < 10 ? '0' + h : h) + ':' + 
+                    (m < 10 ? '0' + m : m) + ':' + 
+                    (s < 10 ? '0' + s : s);
+            });
+        }
+        setInterval(updateTimer, 1000);
+    </script>
+</body></html>

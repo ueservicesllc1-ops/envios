@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed": "#002109",
+                    "surface-tint": "#a04100",
+                    "surface-container-low": "#f6f3f2",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed": "#351000",
+                    "on-secondary-fixed": "#410002",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "surface-bright": "#fcf9f8",
+                    "tertiary": "#006e2f",
+                    "inverse-surface": "#313030",
+                    "on-error-container": "#93000a",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "background": "#fcf9f8",
+                    "surface-container": "#f0eded",
+                    "on-secondary-container": "#fffbff",
+                    "on-surface-variant": "#5a4136",
+                    "on-secondary": "#ffffff",
+                    "surface-variant": "#e5e2e1",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#00b050",
+                    "primary-container": "#ff6b00",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "secondary-fixed": "#ffdad5",
+                    "on-primary": "#ffffff",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "outline-variant": "#e2bfb0",
+                    "inverse-primary": "#ffb693",
+                    "outline": "#8e7164",
+                    "on-surface": "#1c1b1b",
+                    "on-background": "#1c1b1b",
+                    "primary-fixed-dim": "#ffb693",
+                    "surface-dim": "#dcd9d9",
+                    "secondary": "#bb000f",
+                    "surface": "#fcf9f8",
+                    "tertiary-fixed": "#6bff8f",
+                    "on-tertiary-container": "#003a15",
+                    "on-secondary-fixed-variant": "#930009",
+                    "surface-container-highest": "#e5e2e1",
+                    "on-primary-container": "#572000",
+                    "primary": "#a04100",
+                    "surface-container-high": "#eae7e7",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "secondary-container": "#e32322",
+                    "primary-fixed": "#ffdbcc",
+                    "inverse-on-surface": "#f3f0ef",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "8px",
+                    "xs": "4px",
+                    "margin-desktop": "24px",
+                    "md": "16px",
+                    "margin-mobile": "12px",
+                    "xl": "40px",
+                    "lg": "24px",
+                    "gutter": "12px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "title-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-lg text-body-lg">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim border-b border-surface-container-highest dark:border-outline-variant flex justify-between items-center px-margin-mobile h-14 w-full">
+<div class="flex items-center gap-2">
+<button class="active:scale-95 transition-transform hover:opacity-80 text-primary dark:text-inverse-primary">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary-container dark:text-primary-fixed">ShopVibe</h1>
+</div>
+<button class="active:scale-95 transition-transform hover:opacity-80 text-primary dark:text-inverse-primary">
+<span class="material-symbols-outlined">shopping_bag</span>
+</button>
+</header>
+<main class="flex-grow pt-14 pb-24 px-margin-mobile max-w-2xl mx-auto w-full">
+<!-- Main Heading -->
+<section class="mt-6 mb-4">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Mis Pedidos</h2>
+</section>
+<!-- Tab Navigation -->
+<nav class="flex overflow-x-auto no-scrollbar gap-2 mb-6 sticky top-14 bg-background/95 backdrop-blur-sm py-2 z-40">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary-container text-on-primary font-label-bold text-label-bold shadow-sm transition-all">Todos</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant transition-all">En camino</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant transition-all">Completados</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant transition-all">Cancelados</button>
+</nav>
+<!-- Order List -->
+<div class="flex flex-col gap-4">
+<!-- Order Card 1: Processing -->
+<div class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-4 transition-all active:scale-[0.98]">
+<div class="flex justify-between items-start mb-3">
+<div>
+<p class="font-label-bold text-label-bold text-on-surface-variant mb-1">#SV-12345678</p>
+<p class="font-body-sm text-body-sm text-outline">12 de Octubre, 2023</p>
+</div>
+<span class="bg-tertiary-fixed text-on-tertiary-fixed-variant px-2 py-1 rounded font-label-bold text-label-bold">En camino</span>
+</div>
+<div class="flex gap-2 mb-4">
+<img class="w-16 h-16 object-cover rounded-lg border border-outline-variant" data-alt="A high-end red athletic sneaker floating against a clean, minimalist studio background with soft overhead lighting. The composition is sleek and professional, highlighting the aerodynamic design and vibrant primary orange accents of the shoe. The overall aesthetic is modern, energetic, and perfectly suited for a premium retail interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHbpHRmdU_gYFntoyJu7LtOfYqnu3v8AlYDjzWVixGXN-Ts_ky3w4tMmHrtAlTTdpXzhh6FN19sQ-YD-rssZZik5hCP-AX3BSLTPKTwCdajp5mkAQO8fgcRGBi0LSDFouGo-BtTUHjYA6U6S-RiyaBCHvGNJRJSHIi860Akc8UqB8JpXK50jxPLcmR5WYEdGQmmCHuqdPZ1WRz-qrQBc6O64ykQnovXT0wQHsWbz7s2Fr4DAQo5rG98BJwcUbFWn_5TgBl6NzACXCf"/>
+<img class="w-16 h-16 object-cover rounded-lg border border-outline-variant" data-alt="A minimalist white smartwatch with a silver metallic casing displayed on a soft grey textured surface. The lighting is diffused and bright, creating a high-contrast corporate modern look. The image captures the fine details of the watch face and the sleek strap, emphasizing technological sophistication and clean design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqZxC8JCzR3fH7-aw7eKo-1r45LzItaBa4h_mu-wAFR-pEymT_1Q9Pm9Y4uZqzAPLr_a-1x5rF8sh7XZviyFwtYeQoLumM_Q-PeD8N9_NM4SGAp1Eed5JhMajVkV86_UAPMUtNtIIuy4tcF7_xOCYNBn_mE2jjlaN3pJ2FxNjZSOJg1SKJBM633bk7eDM_NGKW9giusvwFHURFQbNDXzE1sof_z6GHsR2dZ5n3vOAjcRqqzmJ3jiEEEVMy33ZycH6oPEuxOpdCW7T5"/>
+<div class="w-16 h-16 bg-surface-container flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant font-label-bold text-label-bold">
+                        +1
+                    </div>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-surface-container">
+<div class="flex flex-col">
+<span class="text-outline font-label-bold text-label-bold">Total</span>
+<span class="text-primary-container font-price-lg text-price-lg">$2,450.00</span>
+</div>
+<button class="bg-primary-container text-on-primary px-4 py-2 rounded-lg font-label-bold text-label-bold active:scale-95 transition-all shadow-sm">
+                        Rastrear Pedido
+                    </button>
+</div>
+</div>
+<!-- Order Card 2: Delivered -->
+<div class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-4">
+<div class="flex justify-between items-start mb-3">
+<div>
+<p class="font-label-bold text-label-bold text-on-surface-variant mb-1">#SV-12345670</p>
+<p class="font-body-sm text-body-sm text-outline">05 de Octubre, 2023</p>
+</div>
+<span class="bg-surface-variant text-on-surface-variant px-2 py-1 rounded font-label-bold text-label-bold">Entregado</span>
+</div>
+<div class="flex gap-2 mb-4">
+<img class="w-16 h-16 object-cover rounded-lg border border-outline-variant" data-alt="Premium black over-ear noise-canceling headphones resting on a polished wooden desk under warm, focused lighting. The scene suggests high quality and comfort, with sharp focus on the textures of the leather and metallic accents. The background is slightly blurred to maintain a professional, high-density e-commerce feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVRAp2cCohPZh_OJyA2t1_1SXoKtxjsilVqk7amrEZxrwDmzNQRPaalE-_fkvu0uYMVjf5woTy6OW2iyeCWGomjrFe4WgpCNt-1adBO6NN3mdKDcyEb2sRDTUU36r1uLMLyIb4glsGg9cZll2zxJmbUZOk1CVgz75EM87EB1_xd1A2w4bkY1P2_ACZqeUhXEtkypO2KNhDghE2py9YU6wOrNReOd1W0z3y-5Tf1d8Mc-rVauihnAzO1z9ZnizKkGvOnEDHNKMquxMn"/>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-surface-container">
+<div class="flex flex-col">
+<span class="text-outline font-label-bold text-label-bold">Total</span>
+<span class="text-primary-container font-price-lg text-price-lg">$899.00</span>
+</div>
+<button class="border border-primary-container text-primary-container px-4 py-2 rounded-lg font-label-bold text-label-bold active:scale-95 transition-all">
+                        Volver a comprar
+                    </button>
+</div>
+</div>
+<!-- Order Card 3: Processing -->
+<div class="bg-surface-container-lowest border border-surface-container-highest rounded-xl p-4">
+<div class="flex justify-between items-start mb-3">
+<div>
+<p class="font-label-bold text-label-bold text-on-surface-variant mb-1">#SV-12345592</p>
+<p class="font-body-sm text-body-sm text-outline">28 de Septiembre, 2023</p>
+</div>
+<span class="bg-primary-fixed text-on-primary-fixed-variant px-2 py-1 rounded font-label-bold text-label-bold">Procesando</span>
+</div>
+<div class="flex gap-2 mb-4">
+<img class="w-16 h-16 object-cover rounded-lg border border-outline-variant" data-alt="Modern white wireless earbuds displayed in their charging case against a vibrant orange and yellow gradient background. The lighting is high-key and energetic, reflecting a fast-paced retail environment. The image is crisp, emphasizing the glossy texture of the product and the bold corporate brand colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeFdo8kjeX8Uw3nDAzp1iri9vB5BhIzRcAEZRs7AFMoFAaU7EeEEeY-Yb8KU5uBDZ82erfqzS72G3a0ujpfQWmSFms9qRqlfw1XVrPGJq9QVR9dUewGeiCjic-n5ihwUVFc12jqbY9Fixtp3_nfjNkZLJMNAH7lrvLhJvpqWbN9BqcFZhq4KYwLkSiB2IorDUcegiCQ3zr-Fs6eK68-BIkRXY-bVrus8S5gLm4mbcTEf9fgFD-H-23rcyXc3aB3reWARJLqZQj6Eg0"/>
+</div>
+<div class="flex justify-between items-center pt-3 border-t border-surface-container">
+<div class="flex flex-col">
+<span class="text-outline font-label-bold text-label-bold">Total</span>
+<span class="text-primary-container font-price-lg text-price-lg">$1,200.00</span>
+</div>
+<button class="bg-primary-container text-on-primary px-4 py-2 rounded-lg font-label-bold text-label-bold active:scale-95 transition-all shadow-sm">
+                        Detalles
+                    </button>
+</div>
+</div>
+</div>
+<!-- Help Section -->
+<section class="mt-12 p-6 bg-surface-container-high rounded-2xl flex flex-col items-center text-center">
+<span class="material-symbols-outlined text-primary-container text-4xl mb-2">support_agent</span>
+<h3 class="font-title-md text-title-md text-on-surface mb-2">¿Necesitas ayuda con un pedido?</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Nuestro equipo de soporte está disponible 24/7 para ayudarte con cualquier inconveniente.</p>
+<button class="w-full py-3 bg-on-surface text-surface rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform">
+                Contactar Soporte
+            </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest dark:bg-inverse-surface shadow-[0_-2px_10px_rgba(0,0,0,0.05)] flex justify-around items-center w-full py-2 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-bold text-label-bold">Categories</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">fiber_new</span>
+<span class="font-label-bold text-label-bold">New</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container dark:text-primary-fixed font-bold hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple logic to toggle active states on tabs
+        const tabButtons = document.querySelectorAll('nav[role="navigation"] button, nav button');
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabButtons.forEach(b => {
+                    b.classList.remove('bg-primary-container', 'text-on-primary');
+                    b.classList.add('bg-surface-container-high', 'text-on-surface-variant');
+                });
+                btn.classList.remove('bg-surface-container-high', 'text-on-surface-variant');
+                btn.classList.add('bg-primary-container', 'text-on-primary');
+            });
+        });
+    </script>
+</body></html>

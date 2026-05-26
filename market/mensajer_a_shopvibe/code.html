@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#a04100",
+                    "primary": "#a04100",
+                    "secondary-container": "#e32322",
+                    "surface-dim": "#dcd9d9",
+                    "tertiary-fixed": "#6bff8f",
+                    "surface-container-highest": "#e5e2e1",
+                    "inverse-on-surface": "#f3f0ef",
+                    "surface-container-low": "#f6f3f2",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "on-primary-container": "#572000",
+                    "background": "#fcf9f8",
+                    "on-background": "#1c1b1b",
+                    "inverse-primary": "#ffb693",
+                    "tertiary": "#006e2f",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#e5e2e1",
+                    "inverse-surface": "#313030",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#eae7e7",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "on-secondary-fixed": "#410002",
+                    "outline": "#8e7164",
+                    "on-secondary-container": "#fffbff",
+                    "error": "#ba1a1a",
+                    "surface-bright": "#fcf9f8",
+                    "secondary-fixed": "#ffdad5",
+                    "on-primary-fixed": "#351000",
+                    "on-tertiary-fixed": "#002109",
+                    "surface-container": "#f0eded",
+                    "secondary": "#bb000f",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed-variant": "#930009",
+                    "primary-container": "#ff6b00",
+                    "tertiary-container": "#00b050",
+                    "on-surface-variant": "#5a4136",
+                    "on-surface": "#1c1b1b",
+                    "surface": "#fcf9f8",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-tertiary-container": "#003a15",
+                    "primary-fixed": "#ffdbcc",
+                    "outline-variant": "#e2bfb0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "4px",
+                    "xl": "40px",
+                    "gutter": "12px",
+                    "lg": "24px",
+                    "md": "16px",
+                    "margin-mobile": "12px",
+                    "sm": "8px",
+                    "margin-desktop": "24px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab {
+            position: relative;
+        }
+        .active-tab::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: #a04100;
+            border-radius: 99px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-14 bg-surface dark:bg-surface-dim">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary transition-transform active:scale-95 cursor-pointer">search</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary dark:text-primary-fixed">VibeShop</h1>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary transition-transform active:scale-95 cursor-pointer">notifications</span>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="pt-14 px-margin-mobile">
+<!-- Sticky Tabs Segment -->
+<div class="sticky top-14 z-40 bg-background/95 backdrop-blur-sm pt-4 pb-2">
+<div class="flex w-full border-b border-outline-variant">
+<button class="flex-1 py-3 font-title-md text-title-md active-tab text-primary transition-colors" id="tab-mensajes">Mensajes</button>
+<button class="flex-1 py-3 font-title-md text-title-md text-on-surface-variant transition-colors" id="tab-grupos">Grupos</button>
+</div>
+</div>
+<!-- Search / Filter Area -->
+<div class="mt-4 mb-6">
+<div class="flex items-center bg-surface-container-low rounded-lg px-3 py-2 border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant text-sm mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-full placeholder:text-on-surface-variant" placeholder="Buscar conversaciones..." type="text"/>
+</div>
+</div>
+<!-- Chat List -->
+<section class="space-y-1" id="chat-list">
+<!-- Chat Item 1 -->
+<div class="flex items-center p-3 rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover border-2 border-primary-container" data-alt="A close-up portrait of a stylish woman with a confident expression, set against a vibrant city backdrop at sunset. The lighting is warm and golden, reflecting the orange and red tones of a high-energy retail brand. The image is crisp, high-resolution, and perfectly suited for a modern social commerce interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9_ZJZzEgkKvA9DJkAiaRrYc96W4bFxHp9nau1C9ETOK1hMlJuoGQLYjMTDg8qrMsMoP6Tt2l7JicOErdrg13zQvthnrzGR-EzHUkPrfhx4lsIObV8FY7sLgCZtm6uDwgxB6W28UX-A1YmTJ2PbysyH-t-Lr7oK1AVilvRKN5C-vxjgg9-g_ea7d7jVM1UifB_zLJLg_zxWLo0SBQtCR46x24l4rCv1Ap8a3Hh58Fo0a5Iv325_PgHSl2GJ0HPAJyZBaRBUthYOOdK"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-tertiary-container border-2 border-surface rounded-full"></div>
+</div>
+<div class="ml-4 flex-1 border-b border-surface-container-highest pb-3 group-last:border-none">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-title-md text-title-md text-on-surface">Alex Rivera</h3>
+<span class="text-xs text-outline font-label-bold">14:20</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-body-sm text-on-surface-variant line-clamp-1 font-medium text-on-surface">¿Viste el descuento del 50% en zapatillas? 👟</p>
+<span class="bg-primary-container text-on-primary-container text-[10px] font-bold px-1.5 py-0.5 rounded-full">2</span>
+</div>
+</div>
+</div>
+<!-- Chat Item 2 -->
+<div class="flex items-center p-3 rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover" data-alt="A sharp, professional studio portrait of a young man smiling, wearing a clean white t-shirt. The background is a soft neutral gray to emphasize the subject. High-contrast lighting highlights the textures, consistent with a clean, modern, and trustworthy e-commerce aesthetic using a minimalist corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC1S2e7Fe7BezU4_sgjQGmeFxa7SaIxSb2tlVwvXrt2giendFX4_Rvnjt6ilZmpBoK9Airw398rLNxAaScxBsWtnvEgW1E-pzf0W5e_HRKzyysot7HUZS3xi3c0_Wwbz1UQh4f_FnCBrtURLTkZ7WZzZ_MavZOrFdM5jKxcPjnKAsFKUmwXfZ7dUtqtEiUocsxnLrp2OzlBlbK-W_B7LIFoHGLp_LG73kSTkvRJ_d1XuyaTmmWAKwFvbuzEN4oU5VGMhSkTy6TEmot8"/>
+</div>
+<div class="ml-4 flex-1 border-b border-surface-container-highest pb-3 group-last:border-none">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-title-md text-title-md text-on-surface">Marcos Tech</h3>
+<span class="text-xs text-outline font-label-bold">12:05</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-body-sm text-on-surface-variant line-clamp-1">El envío llega mañana sin falta.</p>
+</div>
+</div>
+</div>
+<!-- Chat Item 3 -->
+<div class="flex items-center p-3 rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover" data-alt="A portrait of a cheerful woman with braided hair, laughing in a sun-drenched outdoor market. Vibrant colors and natural daylight create an inviting and energetic atmosphere. The shot is high-density and visually engaging, aligning with a fast-paced retail and social marketplace brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsi_D73PyM8za2u91Seyqng4sJp8mqtUgXPRDEKvNWmXyvDVNLhmyvi1KpJEyolXBC8LDI-Ay99IUDMjaguhauDyx72YxEYDsAxHQSKU7LaDPVL8WlelEC3Ytt2AdPoEllN_2O5EAU_dFhrqMxj1dD7Tb5lAb8qV3SDZkThhE7vCNdmyqlkcWOLj9vi46c3eiry4yh0i7Zjeg6CvGDbY2SL4QB0bYIcYfnJ3xru-ssP6HYjZfx0hfVejX-Q3iVbjwH74Tw-d8hOOTv"/>
+<div class="absolute bottom-0 right-0 w-4 h-4 bg-tertiary-container border-2 border-surface rounded-full"></div>
+</div>
+<div class="ml-4 flex-1 border-b border-surface-container-highest pb-3 group-last:border-none">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-title-md text-title-md text-on-surface">Elena Vibe</h3>
+<span class="text-xs text-outline font-label-bold">Ayer</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-body-sm text-on-surface-variant line-clamp-1">¡Me encanta tu nueva colección!</p>
+</div>
+</div>
+</div>
+<!-- Chat Item 4 -->
+<div class="flex items-center p-3 rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="relative flex-shrink-0">
+<div class="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-xl">
+                        JD
+                    </div>
+</div>
+<div class="ml-4 flex-1 border-b border-surface-container-highest pb-3 group-last:border-none">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-title-md text-title-md text-on-surface">Juan Daniel</h3>
+<span class="text-xs text-outline font-label-bold">Ayer</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-body-sm text-on-surface-variant line-clamp-1">Gracias por la recomendación.</p>
+</div>
+</div>
+</div>
+<!-- Chat Item 5 -->
+<div class="flex items-center p-3 rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group">
+<div class="relative flex-shrink-0">
+<img class="w-14 h-14 rounded-full object-cover" data-alt="A moody, high-fashion portrait of a man in a dark environment with neon orange lighting accents. The style is cinematic and modern, focusing on depth and tonal contrast. It perfectly represents the high-end retail edge of the brand, blending technology with urban style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxrOs-_kEk5TEq0q8DDSX9X7wmKaNPylCG5ekMgih5aVQEBxpGoVsu6Zh6-IsYrSz1QUhJLyPcLBqlXVoLytgyxXgX8sq-e8iqrmZtzf6V_0LRRKzssC7RsxeqxAm9tkb2klv2-l0ylx01fkb-Dhnf8B25hHeE2RcFP9RxcJOnXau8i78ngpzulOiWY2yoq1NfsjyBAL6gv_oBvHiEXar4YFIxORdRVa-ZABV5LgmHo_rJAac-uY9D70l3fCVJ-HxbB9lkKyG-G3m2"/>
+</div>
+<div class="ml-4 flex-1 border-b border-surface-container-highest pb-3 group-last:border-none">
+<div class="flex justify-between items-baseline mb-1">
+<h3 class="font-title-md text-title-md text-on-surface">Soporte ShopVibe</h3>
+<span class="text-xs text-outline font-label-bold">Lun</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-body-sm text-on-surface-variant line-clamp-1">Su reembolso ha sido procesado exitosamente.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- FAB: New Message -->
+<button class="fixed bottom-20 right-6 w-14 h-14 bg-primary-container text-on-primary-container rounded-xl shadow-lg flex items-center justify-center transition-all active:scale-90 hover:scale-105 z-40">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_comment</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full h-16 flex justify-around items-center bg-surface dark:bg-surface-dim px-xs pb-safe z-50 border-t border-outline-variant">
+<!-- Home -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-low transition-all active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</div>
+<!-- Live -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-low transition-all active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</div>
+<!-- Vibe -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-low transition-all active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">play_circle</span>
+<span class="font-label-bold text-label-bold">Vibe</span>
+</div>
+<!-- Cart -->
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:bg-surface-container-low transition-all active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</div>
+<!-- Profile (Active for Message Hub) -->
+<div class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed hover:bg-surface-container-low transition-all active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</div>
+</nav>
+<script>
+        // Tab Switching Logic
+        const tabMensajes = document.getElementById('tab-mensajes');
+        const tabGrupos = document.getElementById('tab-grupos');
+        const chatList = document.getElementById('chat-list');
+
+        tabMensajes.addEventListener('click', () => {
+            tabMensajes.classList.add('active-tab', 'text-primary');
+            tabMensajes.classList.remove('text-on-surface-variant');
+            tabGrupos.classList.remove('active-tab', 'text-primary');
+            tabGrupos.classList.add('text-on-surface-variant');
+            
+            // Re-render DM content (mockup)
+            renderChats('direct');
+        });
+
+        tabGrupos.addEventListener('click', () => {
+            tabGrupos.classList.add('active-tab', 'text-primary');
+            tabGrupos.classList.remove('text-on-surface-variant');
+            tabMensajes.classList.remove('active-tab', 'text-primary');
+            tabMensajes.classList.add('text-on-surface-variant');
+            
+            // Re-render Group content (mockup)
+            renderChats('groups');
+        });
+
+        function renderChats(type) {
+            if(type === 'groups') {
+                chatList.innerHTML = `
+                    <div class="flex items-center p-3 rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-14 h-14 rounded-xl bg-tertiary-container flex items-center justify-center text-on-tertiary font-bold">
+                                <span class="material-symbols-outlined">groups</span>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1 pb-3">
+                            <div class="flex justify-between items-baseline mb-1">
+                                <h3 class="font-title-md text-title-md text-on-surface">Ofertas Relámpago ⚡</h3>
+                                <span class="text-xs text-outline font-label-bold">Ahora</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <p class="text-body-sm text-primary font-bold line-clamp-1">¡Nuevo cupón del 20% disponible!</p>
+                                <span class="bg-primary-container text-on-primary-container text-[10px] font-bold px-1.5 py-0.5 rounded-full">15</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center p-3 rounded-xl hover:bg-surface-container-low transition-colors cursor-pointer group">
+                        <div class="relative flex-shrink-0">
+                            <div class="w-14 h-14 rounded-xl bg-surface-container-highest flex items-center justify-center text-on-surface-variant font-bold">
+                                <span class="material-symbols-outlined">shopping_bag</span>
+                            </div>
+                        </div>
+                        <div class="ml-4 flex-1 pb-3">
+                            <div class="flex justify-between items-baseline mb-1">
+                                <h3 class="font-title-md text-title-md text-on-surface">Fans de Tech Global</h3>
+                                <span class="text-xs text-outline font-label-bold">1h</span>
+                            </div>
+                            <p class="text-body-sm text-on-surface-variant line-clamp-1">¿Alguien compró el nuevo monitor?</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                location.reload(); // Quick reset to initial state for demo
+            }
+        }
+    </script>
+</body></html>

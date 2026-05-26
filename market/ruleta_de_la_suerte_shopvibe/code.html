@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#6bff8f",
+                    "on-secondary-container": "#fffbff",
+                    "tertiary": "#006e2f",
+                    "on-primary-container": "#572000",
+                    "surface-tint": "#a04100",
+                    "surface-container-highest": "#e5e2e1",
+                    "secondary-container": "#e32322",
+                    "on-surface-variant": "#5a4136",
+                    "inverse-primary": "#ffb693",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "outline-variant": "#e2bfb0",
+                    "surface-dim": "#dcd9d9",
+                    "on-tertiary-container": "#003a15",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed": "#351000",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-secondary-fixed": "#410002",
+                    "error-container": "#ffdad6",
+                    "primary-container": "#ff6b00",
+                    "on-tertiary": "#ffffff",
+                    "background": "#fcf9f8",
+                    "surface-container-high": "#eae7e7",
+                    "primary": "#a04100",
+                    "surface": "#fcf9f8",
+                    "on-tertiary-fixed": "#002109",
+                    "error": "#ba1a1a",
+                    "on-background": "#1c1b1b",
+                    "surface-variant": "#e5e2e1",
+                    "outline": "#8e7164",
+                    "surface-container": "#f0eded",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#ffdad5",
+                    "tertiary-container": "#00b050",
+                    "on-secondary-fixed-variant": "#930009",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#313030",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-surface": "#1c1b1b",
+                    "surface-container-low": "#f6f3f2",
+                    "secondary": "#bb000f",
+                    "inverse-on-surface": "#f3f0ef",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "on-error": "#ffffff",
+                    "surface-bright": "#fcf9f8",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "4px",
+                    "margin-desktop": "24px",
+                    "lg": "24px",
+                    "xl": "40px",
+                    "md": "16px",
+                    "margin-mobile": "12px",
+                    "gutter": "12px",
+                    "sm": "8px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        @keyframes wheel-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .wheel-container {
+            perspective: 1000px;
+        }
+
+        .spin-animation {
+            transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1);
+        }
+
+        .scrolling-winners {
+            display: flex;
+            animation: scroll 20s linear infinite;
+        }
+
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #FF6B00;
+            opacity: 0;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(500px) rotate(720deg); opacity: 0; }
+        }
+
+        .sparkle {
+            position: absolute;
+            pointer-events: none;
+            background: white;
+            border-radius: 50%;
+            filter: blur(1px);
+            animation: sparkle-anim 1.5s infinite;
+        }
+
+        @keyframes sparkle-anim {
+            0%, 100% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-lg min-h-screen flex flex-col overflow-x-hidden">
+<!-- TopAppBar Shell -->
+<header class="bg-surface dark:bg-surface-container-highest w-full top-0 border-b border-outline-variant dark:border-outline z-50 sticky">
+<div class="flex items-center justify-between px-margin-mobile py-sm w-full">
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 duration-100 hover:bg-surface-container-low transition-colors p-1 rounded-full">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim">arrow_back</span>
+</button>
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-container" style="font-size: 24px; line-height: 32px;">ShopVibe</h1>
+</div>
+<div class="flex items-center gap-md bg-primary-fixed px-md py-xs rounded-full border border-primary-container shadow-sm">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold text-on-primary-fixed text-sm">2,450 Puntos</span>
+</div>
+</div>
+</header>
+<main class="flex-grow flex flex-col items-center justify-start py-lg px-margin-mobile gap-lg">
+<!-- Game Title & Stats -->
+<div class="text-center space-y-xs">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">¡Prueba tu Suerte!</h2>
+<div class="inline-flex items-center gap-xs px-md py-1 bg-surface-container-high rounded-full border border-outline-variant">
+<span class="material-symbols-outlined text-secondary text-base">schedule</span>
+<span class="font-label-bold text-on-surface-variant">1 giro disponible hoy</span>
+</div>
+</div>
+<!-- The Wheel Mechanism -->
+<div class="relative w-full max-w-[340px] aspect-square flex items-center justify-center wheel-container">
+<!-- Sparkles Background Effect -->
+<div class="absolute inset-0 pointer-events-none" id="sparkles-container"></div>
+<!-- Outer Glow -->
+<div class="absolute inset-0 bg-primary-container/20 rounded-full blur-3xl animate-pulse"></div>
+<!-- Wheel Frame -->
+<div class="relative w-full h-full rounded-full border-[8px] border-primary-container bg-surface shadow-[0_0_30px_rgba(255,107,0,0.3)] z-10 flex items-center justify-center overflow-hidden">
+<!-- Wheel Segments Canvas/Divs -->
+<div class="absolute inset-0 spin-animation" id="lucky-wheel" style="transform: rotate(0deg);">
+<div class="absolute inset-0 flex items-center justify-center">
+<!-- Segment 1 -->
+<div class="absolute top-0 w-full h-1/2 flex justify-center origin-bottom rotate-[0deg]">
+<div class="w-full h-full bg-[#FF6B00] border-r-2 border-surface flex flex-col items-center pt-8 text-white">
+<span class="font-label-bold text-[10px] uppercase">500 Vibe</span>
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">stars</span>
+</div>
+</div>
+<!-- Segment 2 -->
+<div class="absolute top-0 w-full h-1/2 flex justify-center origin-bottom rotate-[60deg]">
+<div class="w-full h-full bg-[#E32322] border-r-2 border-surface flex flex-col items-center pt-8 text-white">
+<span class="font-label-bold text-[10px] uppercase">10% OFF</span>
+<span class="material-symbols-outlined text-xl">sell</span>
+</div>
+</div>
+<!-- Segment 3 -->
+<div class="absolute top-0 w-full h-1/2 flex justify-center origin-bottom rotate-[120deg]">
+<div class="w-full h-full bg-[#00B050] border-r-2 border-surface flex flex-col items-center pt-8 text-white">
+<span class="font-label-bold text-[10px] uppercase">Envío Gratis</span>
+<span class="material-symbols-outlined text-xl">local_shipping</span>
+</div>
+</div>
+<!-- Segment 4 -->
+<div class="absolute top-0 w-full h-1/2 flex justify-center origin-bottom rotate-[180deg]">
+<div class="w-full h-full bg-[#FF6B00] border-r-2 border-surface flex flex-col items-center pt-8 text-white">
+<span class="font-label-bold text-[10px] uppercase">Caja Misteriosa</span>
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</div>
+</div>
+<!-- Segment 5 -->
+<div class="absolute top-0 w-full h-1/2 flex justify-center origin-bottom rotate-[240deg]">
+<div class="w-full h-full bg-[#E32322] border-r-2 border-surface flex flex-col items-center pt-8 text-white">
+<span class="font-label-bold text-[10px] uppercase">5% OFF</span>
+<span class="material-symbols-outlined text-xl">loyalty</span>
+</div>
+</div>
+<!-- Segment 6 -->
+<div class="absolute top-0 w-full h-1/2 flex justify-center origin-bottom rotate-[300deg]">
+<div class="w-full h-full bg-[#00B050] border-r-2 border-surface flex flex-col items-center pt-8 text-white">
+<span class="font-label-bold text-[10px] uppercase">100 Vibe</span>
+<span class="material-symbols-outlined text-xl">toll</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Center Cap -->
+<div class="relative z-20 w-16 h-16 rounded-full bg-surface border-4 border-primary-container shadow-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-primary font-bold text-2xl">auto_fix_high</span>
+</div>
+</div>
+<!-- Indicator Needle -->
+<div class="absolute -top-4 z-30 flex flex-col items-center">
+<div class="w-8 h-8 bg-primary-container rotate-45 rounded-sm shadow-md"></div>
+<div class="w-2 h-4 bg-primary rounded-b-full -mt-2"></div>
+</div>
+</div>
+<!-- Call to Action -->
+<div class="w-full flex flex-col gap-md items-center mt-md">
+<button class="w-full max-w-[280px] bg-primary-container text-on-primary-container font-headline-lg-mobile py-md rounded-xl shadow-lg active:scale-95 transition-all duration-200 uppercase tracking-wider flex items-center justify-center gap-md" id="spin-button">
+<span>Girar Gratis</span>
+<span class="material-symbols-outlined">restart_alt</span>
+</button>
+<p class="font-body-sm text-on-surface-variant">Próximo giro gratis en <span class="font-bold">23h 59m</span></p>
+</div>
+<!-- Social Proof Ticker -->
+<div class="w-full bg-surface-container overflow-hidden py-sm rounded-lg mt-xl relative">
+<div class="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-surface-container to-transparent z-10"></div>
+<div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-surface-container to-transparent z-10"></div>
+<div class="scrolling-winners whitespace-nowrap gap-lg flex items-center">
+<!-- Winner Items -->
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full bg-tertiary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[14px]">person</span></div>
+<span class="font-label-bold text-on-surface">@carla_m</span>
+<span class="font-body-sm text-on-surface-variant">ganó Caja Misteriosa</span>
+</div>
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[14px]">person</span></div>
+<span class="font-label-bold text-on-surface">@javi_88</span>
+<span class="font-body-sm text-on-surface-variant">ganó 500 Vibe Points</span>
+</div>
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full bg-secondary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[14px]">person</span></div>
+<span class="font-label-bold text-on-surface">@mariana.l</span>
+<span class="font-body-sm text-on-surface-variant">ganó 10% Descuento</span>
+</div>
+<!-- Duplicate for seamless scroll -->
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full bg-tertiary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[14px]">person</span></div>
+<span class="font-label-bold text-on-surface">@carla_m</span>
+<span class="font-body-sm text-on-surface-variant">ganó Caja Misteriosa</span>
+</div>
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center"><span class="material-symbols-outlined text-[14px]">person</span></div>
+<span class="font-label-bold text-on-surface">@javi_88</span>
+<span class="font-body-sm text-on-surface-variant">ganó 500 Vibe Points</span>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center h-16 px-2 bg-surface dark:bg-surface-container-highest border-t border-outline-variant bg-surface dark:bg-surface-container-highest shadow-md z-50">
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">category</span>
+<span class="font-label-bold text-label-bold">Categories</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim bg-primary-fixed dark:bg-primary-container rounded-xl px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold text-label-bold">Suerte</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant px-4 py-1 hover:bg-surface-container-high transition-all active:scale-90 duration-200">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</div>
+</nav>
+<!-- Modal for Result (Hidden by default) -->
+<div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-lg" id="result-modal">
+<div class="bg-surface rounded-2xl w-full max-w-[320px] p-xl flex flex-col items-center text-center gap-md relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary-container/10 to-transparent"></div>
+<div class="w-20 h-20 rounded-full bg-primary-container/20 flex items-center justify-center mb-sm">
+<span class="material-symbols-outlined text-4xl text-primary-container animate-bounce" style="font-variation-settings: 'FILL' 1;">emoji_events</span>
+</div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">¡Felicidades!</h3>
+<p class="font-body-lg text-on-surface">Has ganado una <span class="font-bold">Caja Misteriosa</span>. Se ha añadido a tu inventario.</p>
+<button class="w-full bg-primary text-on-primary font-title-md py-sm rounded-lg hover:brightness-110" onclick="closeModal()">¡Genial!</button>
+</div>
+</div>
+<script>
+        const wheel = document.getElementById('lucky-wheel');
+        const spinBtn = document.getElementById('spin-button');
+        const modal = document.getElementById('result-modal');
+        const sparklesContainer = document.getElementById('sparkles-container');
+        let isSpinning = false;
+
+        // Create random sparkles
+        function createSparkles() {
+            for(let i = 0; i < 15; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                const size = Math.random() * 6 + 4;
+                sparkle.style.width = size + 'px';
+                sparkle.style.height = size + 'px';
+                sparkle.style.left = Math.random() * 100 + '%';
+                sparkle.style.top = Math.random() * 100 + '%';
+                sparkle.style.animationDelay = Math.random() * 2 + 's';
+                sparklesContainer.appendChild(sparkle);
+            }
+        }
+        createSparkles();
+
+        function createConfetti() {
+            for(let i = 0; i < 50; i++) {
+                const conf = document.createElement('div');
+                conf.className = 'confetti';
+                conf.style.left = Math.random() * 100 + 'vw';
+                conf.style.backgroundColor = ['#FF6B00', '#E32322', '#00B050', '#FFC107'][Math.floor(Math.random() * 4)];
+                conf.style.transform = `rotate(${Math.random() * 360}deg)`;
+                conf.style.animation = `confetti-fall ${Math.random() * 2 + 1}s ease-out forwards`;
+                document.body.appendChild(conf);
+                setTimeout(() => conf.remove(), 3000);
+            }
+        }
+
+        spinBtn.addEventListener('click', () => {
+            if (isSpinning) return;
+            
+            isSpinning = true;
+            spinBtn.disabled = true;
+            spinBtn.classList.add('opacity-50');
+
+            // Logic: Random rotations + landing segment
+            // We have 6 segments, 60 degrees each.
+            // Let's target the "Caja Misteriosa" (Segment 4 at index 3, 180 deg)
+            const baseRotations = 5 * 360; 
+            const targetSegmentAngle = 180; // This puts it at the top indicator
+            const randomOffset = Math.random() * 40 - 20; // Some randomness within segment
+            const totalRotation = baseRotations + targetSegmentAngle + randomOffset;
+
+            wheel.style.transform = `rotate(${totalRotation}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                createConfetti();
+                showModal();
+            }, 4000);
+        });
+
+        function showModal() {
+            modal.classList.remove('pointer-events-none', 'opacity-0');
+            modal.classList.add('opacity-100');
+        }
+
+        function closeModal() {
+            modal.classList.add('pointer-events-none', 'opacity-0');
+            modal.classList.remove('opacity-100');
+            // Reset wheel position for a clean next spin look
+            wheel.style.transition = 'none';
+            wheel.style.transform = 'rotate(0deg)';
+            setTimeout(() => {
+                wheel.style.transition = 'transform 4s cubic-bezier(0.15, 0, 0.15, 1)';
+                spinBtn.disabled = false;
+                spinBtn.classList.remove('opacity-50');
+            }, 50);
+        }
+    </script>
+</body></html>

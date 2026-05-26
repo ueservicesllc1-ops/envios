@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Profile - ShopVibe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "primary-container": "#ff6b00",
+            "on-surface": "#1c1b1b",
+            "primary": "#a04100",
+            "outline-variant": "#e2bfb0",
+            "surface-container-low": "#f6f3f2",
+            "on-tertiary-container": "#003a15",
+            "secondary-fixed": "#ffdad5",
+            "inverse-primary": "#ffb693",
+            "surface-variant": "#e5e2e1",
+            "surface-tint": "#a04100",
+            "surface-container-high": "#eae7e7",
+            "surface-bright": "#fcf9f8",
+            "on-primary": "#ffffff",
+            "secondary-container": "#e32322",
+            "on-tertiary": "#ffffff",
+            "surface-container-highest": "#e5e2e1",
+            "on-secondary-fixed-variant": "#930009",
+            "surface": "#fcf9f8",
+            "outline": "#8e7164",
+            "on-surface-variant": "#5a4136",
+            "on-error-container": "#93000a",
+            "tertiary-fixed-dim": "#4ae176",
+            "secondary-fixed-dim": "#ffb4aa",
+            "on-background": "#1c1b1b",
+            "on-primary-fixed-variant": "#7a3000",
+            "on-primary-fixed": "#351000",
+            "on-tertiary-fixed": "#002109",
+            "on-primary-container": "#572000",
+            "error-container": "#ffdad6",
+            "on-secondary": "#ffffff",
+            "inverse-on-surface": "#f3f0ef",
+            "background": "#fcf9f8",
+            "tertiary-container": "#00b050",
+            "surface-container-lowest": "#ffffff",
+            "on-secondary-container": "#fffbff",
+            "surface-container": "#f0eded",
+            "primary-fixed": "#ffdbcc",
+            "surface-dim": "#dcd9d9",
+            "primary-fixed-dim": "#ffb693",
+            "tertiary": "#006e2f",
+            "error": "#ba1a1a",
+            "secondary": "#bb000f",
+            "on-tertiary-fixed-variant": "#005321",
+            "inverse-surface": "#313030",
+            "tertiary-fixed": "#6bff8f",
+            "on-error": "#ffffff",
+            "on-secondary-fixed": "#410002"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "base": "4px",
+            "margin-mobile": "12px",
+            "xs": "4px",
+            "margin-desktop": "24px",
+            "gutter": "12px",
+            "xl": "40px",
+            "sm": "8px",
+            "md": "16px",
+            "lg": "24px"
+          },
+          "fontFamily": {
+            "body-sm": ["Inter"],
+            "price-lg": ["Inter"],
+            "headline-lg": ["Inter"],
+            "headline-lg-mobile": ["Inter"],
+            "title-md": ["Inter"],
+            "display-lg": ["Inter"],
+            "body-lg": ["Inter"],
+            "label-bold": ["Inter"]
+          },
+          "fontSize": {
+            "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+            "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+            "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+            "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+            "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+            "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+            "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body-sm selection:bg-primary-container selection:text-white">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim border-b border-surface-container-highest dark:border-outline-variant flex justify-between items-center px-margin-mobile h-14">
+<div class="flex items-center gap-2">
+<button class="active:scale-95 transition-transform text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+</button>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary-container dark:text-primary-fixed">ShopVibe</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined text-[24px]">shopping_bag</span>
+</button>
+</div>
+</header>
+<main class="pt-14 pb-24 overflow-x-hidden">
+<!-- User Hero Section -->
+<section class="px-margin-mobile pt-6 pb-4 bg-gradient-to-b from-primary-fixed/30 to-surface transition-all duration-500 opacity-100 translate-y-0">
+<div class="flex items-center gap-4">
+<div class="relative group">
+<img alt="User Avatar" class="w-20 h-20 rounded-full object-cover border-4 border-surface shadow-sm" data-alt="A professional close-up studio portrait of a stylish young woman with a confident expression. She is set against a warm, soft-focus background that matches a high-end e-commerce aesthetic. The lighting is bright and flattering, emphasizing a modern light-mode feel with soft orange and peach undertones to align with the brand's vibrant identity. The overall mood is sophisticated and approachable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7ca6FC4T_Qwt7OvHK0ZyPmk_cjPO3V1Whvj-WIppdu9iqaSsZNVbu3bOHQc0DfBnccUY3QMfNGMxrJlLsSBqW9HsyNUt_Q0BzEWJAg1rdzmyYsbxWNtz64_1J8vvidZP_9RtpBpYWXL4ZLvGt8_Kge9MXZd8HEQYwPFLZ-_USiZwq8TPypRifn__-2-Dgw9alTpyarKKABsb7ugg0LzPkbRzNE6vU7FwSEO1wDmaekMhHL0dEDv0BdxAO0rdKvbhDzMnWc_WqmanP"/>
+<div class="absolute bottom-0 right-0 bg-primary-container text-on-primary p-1 rounded-full border-2 border-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">edit</span>
+</div>
+</div>
+<div class="flex-1">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Alex Rivera</h1>
+<div class="flex items-center gap-2 mt-1">
+<span class="bg-secondary-container text-white px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">VIP Member</span>
+<span class="text-on-surface-variant text-[12px] font-medium">Joined 2023</span>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant active:scale-90 transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</section>
+<!-- Order Status -->
+<section class="px-margin-mobile mt-4 transition-all duration-500 opacity-100 translate-y-0">
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-surface-container-highest">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-title-md text-title-md text-on-surface">My Orders</h2>
+<button class="text-primary font-label-bold text-label-bold flex items-center">
+            View All <span class="material-symbols-outlined text-[16px] ml-0.5">chevron_right</span>
+</button>
+</div>
+<div class="flex justify-between items-center">
+<button class="flex flex-col items-center gap-2 group">
+<div class="relative">
+<span class="material-symbols-outlined text-on-surface-variant group-active:text-primary transition-colors">account_balance_wallet</span>
+<span class="absolute -top-2 -right-2 bg-secondary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">2</span>
+</div>
+<span class="text-[11px] font-medium text-on-surface-variant">To Pay</span>
+</button>
+<button class="flex flex-col items-center gap-2 group">
+<span class="material-symbols-outlined text-on-surface-variant group-active:text-primary transition-colors">package_2</span>
+<span class="text-[11px] font-medium text-on-surface-variant">To Ship</span>
+</button>
+<button class="flex flex-col items-center gap-2 group">
+<div class="relative">
+<span class="material-symbols-outlined text-on-surface-variant group-active:text-primary transition-colors">local_shipping</span>
+<span class="absolute -top-2 -right-2 bg-secondary text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">1</span>
+</div>
+<span class="text-[11px] font-medium text-on-surface-variant">Shipped</span>
+</button>
+<button class="flex flex-col items-center gap-2 group">
+<span class="material-symbols-outlined text-on-surface-variant group-active:text-primary transition-colors">rate_review</span>
+<span class="text-[11px] font-medium text-on-surface-variant">To Review</span>
+</button>
+</div>
+</div>
+</section>
+<!-- My Services Bento Grid -->
+<section class="px-margin-mobile mt-4 transition-all duration-500 opacity-100 translate-y-0">
+<h2 class="font-title-md text-title-md text-on-surface mb-3">My Services</h2>
+<div class="grid grid-cols-2 gap-3">
+<!-- Coupons -->
+<div class="bg-primary-container text-on-primary p-4 rounded-xl flex flex-col justify-between h-32 active:scale-[0.98] transition-all shadow-sm">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">confirmation_number</span>
+<div>
+<div class="text-[20px] font-extrabold">12</div>
+<div class="text-label-bold font-label-bold opacity-90">Coupons</div>
+</div>
+</div>
+<!-- Points -->
+<div class="bg-surface-container-lowest border border-surface-container-highest p-4 rounded-xl flex flex-col justify-between h-32 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-tertiary text-[32px]" style="font-variation-settings: 'FILL' 1;">generating_tokens</span>
+<div>
+<div class="text-[20px] font-extrabold text-on-surface">2,450</div>
+<div class="text-label-bold font-label-bold text-on-surface-variant">Points</div>
+</div>
+</div>
+<!-- Wishlist -->
+<div class="bg-surface-container-lowest border border-surface-container-highest p-4 rounded-xl flex flex-col justify-between h-32 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-secondary text-[32px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<div>
+<div class="text-[20px] font-extrabold text-on-surface">48</div>
+<div class="text-label-bold font-label-bold text-on-surface-variant">Wishlist</div>
+</div>
+</div>
+<!-- Gift Cards -->
+<div class="bg-surface-container-lowest border border-surface-container-highest p-4 rounded-xl flex flex-col justify-between h-32 active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined text-primary text-[32px]" style="font-variation-settings: 'FILL' 1;">featured_seasonal_and_gifts</span>
+<div>
+<div class="text-[20px] font-extrabold text-on-surface">$50.00</div>
+<div class="text-label-bold font-label-bold text-on-surface-variant">Gift Cards</div>
+</div>
+</div>
+</div>
+</section><section class="px-margin-mobile mt-6 transition-all duration-500 opacity-100 translate-y-0">
+<h2 class="font-title-md text-title-md text-on-surface mb-3">Seller Tools</h2>
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-surface-container-highest">
+<button class="w-full bg-gradient-to-r from-tertiary to-tertiary-container text-on-tertiary py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-3 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[24px]">videocam</span>
+<span class="font-title-md text-title-md">Start Live Stream</span>
+</button>
+</div>
+</section><section class="px-margin-mobile mt-6 mb-2"><div class="bg-gradient-to-r from-primary-container to-[#ff8c33] p-5 rounded-xl text-on-primary shadow-lg flex items-center justify-between overflow-hidden relative"><div class="z-10 flex-1"><div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-[24px]">group</span><h3 class="font-title-md text-title-md">Invita y Gana</h3></div><p class="text-[13px] opacity-90 leading-tight mb-4 max-w-[180px]">Gana $10 por cada amigo que realice su primera compra</p><button class="bg-white text-primary-container font-label-bold py-2 px-6 rounded-full text-sm active:scale-95 transition-transform shadow-sm">Compartir</button></div><div class="absolute -right-4 -bottom-4 opacity-20 rotate-12"><span class="material-symbols-outlined text-[120px]">card_giftcard</span></div></div></section>
+<!-- Account Settings List -->
+<section class="px-margin-mobile mt-6 mb-8 transition-all duration-500 opacity-100 translate-y-0">
+<div class="bg-surface-container-lowest rounded-xl border border-surface-container-highest overflow-hidden">
+<button class="w-full flex items-center justify-between p-4 border-b border-surface-container hover:bg-surface-container-low active:bg-surface-container transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">location_on</span>
+<span class="text-on-surface font-medium">Address Book</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 border-b border-surface-container hover:bg-surface-container-low active:bg-surface-container transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">payments</span>
+<span class="text-on-surface font-medium">Payment Methods</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 border-b border-surface-container hover:bg-surface-container-low active:bg-surface-container transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">language</span>
+<span class="text-on-surface font-medium">Language</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="text-[12px]">English</span>
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</div>
+</button>
+<button class="w-full flex items-center justify-between p-4 border-b border-surface-container hover:bg-surface-container-low active:bg-surface-container transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">help_center</span>
+<span class="text-on-surface font-medium">Help Center</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 border-b border-surface-container hover:bg-surface-container-low active:bg-surface-container transition-colors"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-on-surface-variant">people</span><span class="text-on-surface font-medium">Programa de Referidos</span></div><span class="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span></button><button class="w-full flex items-center justify-between p-4 text-secondary hover:bg-secondary/5 active:bg-secondary/10 transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-bold">Log Out</span>
+</div>
+</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest dark:bg-inverse-surface shadow-[0_-2px_10px_rgba(0,0,0,0.05)] flex justify-around items-center py-2 px-2 pb-safe">
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</button><button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150"><span class="material-symbols-outlined">live_tv</span><span class="font-label-bold text-label-bold">Live</span></button><button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="font-label-bold text-label-bold">Categories</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">fiber_new</span>
+<span class="font-label-bold text-label-bold">New</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary-container dark:text-primary-fixed font-bold active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-bold text-label-bold">Me</span>
+</button>
+</nav>
+<script>
+    // Micro-interaction for list items
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('touchstart', () => {
+        btn.classList.add('opacity-70');
+      });
+      btn.addEventListener('touchend', () => {
+        btn.classList.remove('opacity-70');
+      });
+    });
+
+    // Simple scroll reveal effect for sections
+    const observerOptions = {
+      threshold: 0.1
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('opacity-100', 'translate-y-0');
+          entry.target.classList.remove('opacity-0', 'translate-y-4');
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('section').forEach(section => {
+      section.classList.add('transition-all', 'duration-500', 'opacity-0', 'translate-y-4');
+      observer.observe(section);
+    });
+  </script>
+</body></html>

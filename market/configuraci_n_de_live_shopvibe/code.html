@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Preparar Transmisión - ShopLive</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #a04100; border-radius: 10px; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#f0eded",
+                        "tertiary-fixed": "#6bff8f",
+                        "on-surface-variant": "#5a4136",
+                        "primary": "#a04100",
+                        "on-primary-container": "#572000",
+                        "on-secondary-fixed-variant": "#930009",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#ffdad5",
+                        "outline-variant": "#e2bfb0",
+                        "surface-tint": "#a04100",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#e5e2e1",
+                        "surface-container-highest": "#e5e2e1",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#ffdbcc",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#ff6b00",
+                        "on-tertiary-container": "#003a15",
+                        "surface-container-low": "#f6f3f2",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "tertiary": "#006e2f",
+                        "surface": "#fcf9f8",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#ffb693",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#1c1b1b",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-bright": "#fcf9f8",
+                        "secondary-container": "#e32322",
+                        "tertiary-container": "#00b050",
+                        "secondary": "#bb000f",
+                        "on-tertiary-fixed": "#002109",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-fixed": "#351000",
+                        "on-secondary-container": "#fffbff",
+                        "inverse-on-surface": "#f3f0ef",
+                        "background": "#fcf9f8",
+                        "on-surface": "#1c1b1b",
+                        "inverse-surface": "#313030",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "surface-dim": "#dcd9d9",
+                        "outline": "#8e7164",
+                        "on-secondary-fixed": "#410002",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "surface-container-high": "#eae7e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "12px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "xs": "4px",
+                        "sm": "8px",
+                        "base": "4px",
+                        "gutter": "12px",
+                        "margin-desktop": "24px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "price-lg": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "title-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-lg text-body-lg min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-14 bg-surface dark:bg-on-background">
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 transition-transform text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Preparar Transmisión</h1>
+</div>
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 transition-transform text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</header>
+<main class="mt-14 px-margin-mobile md:px-margin-desktop max-w-4xl mx-auto pt-md">
+<!-- Cover Image Section -->
+<section class="mb-lg">
+<div class="relative group cursor-pointer aspect-video rounded-xl overflow-hidden border-2 border-dashed border-outline-variant bg-surface-container-low flex items-center justify-center hover:bg-surface-variant/50 transition-colors">
+<img class="absolute inset-0 w-full h-full object-cover opacity-40" data-alt="A professional vertical live streaming setup in a bright, modern studio with soft cinematic lighting. The scene features a high-end camera, ring light, and a stylish background with aesthetic shelving and plants, following a corporate modern retail aesthetic. The palette is dominated by clean whites, soft grays, and energetic orange accents, creating an atmosphere of professional e-commerce readiness." id="cover-preview" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu-w8BLyjSaYJDX2XlwJPPMgWfItxMpXQqABzLhSWpoQsp4lBvQPp9hdRnbyrfPW37dX5k-apQ6rsQw4f8iV0kz68HkF0xm_QYaSZOI0Jc7s4DJn9wVUevG0L9u5B2dD51h0NDGfKW0KHuHePhx085B5bzqfOQKokVH5XzO-aqXTXvqN99jZSp4iZusE0nRwtbfORmWUOunRJRURLd_zMjhTMru7ZZ2ZVqXYLAEoGYdhWXTi7YosYx5o8jaQlLbS0OOWef-Q0c4wAH"/>
+<div class="relative z-10 flex flex-col items-center gap-xs">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">add_a_photo</span>
+<span class="font-label-bold text-label-bold uppercase text-primary">Agregar portada</span>
+<p class="text-[10px] text-on-surface-variant px-md text-center">JPG o PNG (Recomendado 16:9)</p>
+</div>
+</div>
+</section>
+<!-- Configuration Form -->
+<div class="flex flex-col gap-lg">
+<!-- Title Input -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-bold text-label-bold text-on-surface-variant px-1 uppercase tracking-wider">Título del Live</label>
+<input class="w-full h-12 bg-surface-container-lowest border border-outline-variant rounded-lg px-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all font-title-md text-title-md" placeholder="Ej: Summer Collection Launch" type="text"/>
+</div>
+<!-- Category Chips -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-bold text-label-bold text-on-surface-variant px-1 uppercase tracking-wider">Categoría</label>
+<div class="flex flex-wrap gap-sm pt-xs">
+<button class="px-md py-2 rounded-full border border-primary bg-primary text-on-primary font-label-bold text-label-bold transition-all">Fashion</button>
+<button class="px-md py-2 rounded-full border border-outline-variant bg-surface-container text-on-surface-variant font-label-bold text-label-bold hover:border-primary transition-all">Beauty</button>
+<button class="px-md py-2 rounded-full border border-outline-variant bg-surface-container text-on-surface-variant font-label-bold text-label-bold hover:border-primary transition-all">Tech</button>
+<button class="px-md py-2 rounded-full border border-outline-variant bg-surface-container text-on-surface-variant font-label-bold text-label-bold hover:border-primary transition-all">Home</button>
+<button class="px-md py-2 rounded-full border border-outline-variant bg-surface-container text-on-surface-variant font-label-bold text-label-bold hover:border-primary transition-all">Food</button>
+</div>
+</div>
+<!-- Product Selection Section -->
+<section class="flex flex-col gap-md">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-title-md text-title-md text-on-surface">Productos vinculados</h2>
+<p class="text-body-sm text-on-surface-variant">Selecciona hasta 20 productos para vender en vivo</p>
+</div>
+<button class="flex items-center gap-xs text-primary font-label-bold text-label-bold hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+                        Gestionar
+                    </button>
+</div>
+<!-- Product Grid (Asymmetric/Bento Style) -->
+<div class="grid grid-cols-2 md:grid-cols-3 gap-gutter">
+<!-- Product Card 1 -->
+<div class="bg-surface-container-lowest border border-[#EEEEEE] rounded-xl p-sm flex flex-col gap-xs group transition-all hover:shadow-lg">
+<div class="aspect-square rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Close-up of a premium designer silk summer dress in vibrant orange and white patterns. The lighting is high-contrast and bright, emphasizing the luxurious fabric texture. Set against a minimalist retail background, this product shot captures the essence of a high-energy fashion launch in a modern global marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGVtbr5m7Jxj8O139mXeC-olHwHnnvpY9gsqdwAVFpZTXu1YBKO1Ef06OFBt3TiUjWZQ5zbbfGTSp2WG46UczpwwGWIpdBYChnHT5fb2xIexzJtwZh1-B8tk_rkx4-oZwhZYjpe-oqL9gqmxSPIwfZK4zQKTSFg_TNO_S1GcPwjfNAnjMfyS2Z4LCCSOH3yF_w7Nh-EOKLT27lgplduZYdFj2vEYnuvX8xoNa50ybuDdsxyru3UbqGsuYho7KqGhzHLhbSDwihLg4B"/>
+<div class="absolute top-2 right-2 bg-secondary text-on-secondary text-[10px] px-2 py-0.5 rounded-full font-bold">12% OFF</div>
+</div>
+<h3 class="font-body-sm text-body-sm line-clamp-2 text-on-surface">Vestido de Seda Floral Summer 24</h3>
+<div class="flex items-baseline gap-xs">
+<span class="font-price-lg text-price-lg text-secondary">$89.00</span>
+</div>
+<div class="flex items-center gap-xs text-[10px] text-on-surface-variant">
+<span class="text-[#FFC107] material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+<span>4.8 (124 vendidos)</span>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-container-lowest border border-[#EEEEEE] rounded-xl p-sm flex flex-col gap-xs group transition-all hover:shadow-lg">
+<div class="aspect-square rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="High-tech minimalist noise-canceling headphones in matte black finish, presented on a clean white surface with sharp, professional studio lighting. The image emphasizes the sleek design and premium build quality, reflecting a high-contrast corporate modern style suitable for a tech launch event." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIAg06SbV4OEuVmefWVJ-Ctabj8l5U4spz9TADyJm3qBw098M2P_EUVlMRpJtBQ42ScH-yPwmLJJMZjjOrvXrEBhOuhfYgrZQBmG7QWQK1gurJclfNrHjcFE7SgesYfP_qV69TeAmPQKMjs32lfjksRlkFP1_EOVVqbWoVNbcs__XkHSa5pCxSEtz_f1mmv-VtlrPrMz0lMnzaz0m5HWixWfHQ0iYsaTYzOjBmJA7wiWyIwhAneI7pjAfo-yoiTYQsjUaMX7wWxFfe"/>
+</div>
+<h3 class="font-body-sm text-body-sm line-clamp-2 text-on-surface">Audífonos Pro Wireless Gen 2</h3>
+<div class="flex items-baseline gap-xs">
+<span class="font-price-lg text-price-lg text-secondary">$145.00</span>
+</div>
+<div class="flex items-center gap-xs text-[10px] text-on-surface-variant">
+<span class="text-[#FFC107] material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+<span>4.9 (48 vendidos)</span>
+</div>
+</div>
+<!-- Add More Card -->
+<button class="bg-surface-container-low border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center gap-sm aspect-square md:aspect-auto hover:bg-surface-variant/30 transition-colors">
+<span class="material-symbols-outlined text-primary text-3xl">add</span>
+<span class="font-label-bold text-label-bold text-primary uppercase">Agregar más</span>
+</button>
+</div>
+</section>
+<!-- Settings/Social Sharing -->
+<div class="bg-surface-container-high rounded-xl p-md flex flex-col gap-md">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant">share</span>
+<span class="font-body-lg text-body-lg">Compartir en redes sociales</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant">comment</span>
+<span class="font-body-lg text-body-lg">Permitir comentarios</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 w-full p-margin-mobile bg-surface/90 backdrop-blur-md z-50">
+<button class="w-full bg-primary-container text-on-primary-container py-4 rounded-xl font-headline-lg-mobile text-headline-lg-mobile flex items-center justify-center gap-sm active:scale-95 transition-all shadow-lg hover:opacity-90">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">live_tv</span>
+            Iniciar Transmisión Ahora
+        </button>
+</div>
+<!-- BottomNavBar (Hidden on this transactional page per instructions) -->
+<!-- Suppressing nav to prioritize content canvas -->
+<script>
+        // Micro-interactions
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Feedback for interaction
+            });
+        });
+
+        // Simple toggle logic for category chips
+        const chips = document.querySelectorAll('.flex.flex-wrap.gap-sm button');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => {
+                    c.classList.remove('bg-primary', 'text-on-primary', 'border-primary');
+                    c.classList.add('bg-surface-container', 'text-on-surface-variant', 'border-outline-variant');
+                });
+                chip.classList.remove('bg-surface-container', 'text-on-surface-variant', 'border-outline-variant');
+                chip.classList.add('bg-primary', 'text-on-primary', 'border-primary');
+            });
+        });
+    </script>
+</body></html>

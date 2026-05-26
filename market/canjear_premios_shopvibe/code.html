@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#1c1b1b",
+                    "error": "#ba1a1a",
+                    "primary-fixed-dim": "#ffb693",
+                    "inverse-on-surface": "#f3f0ef",
+                    "on-primary-fixed": "#351000",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "surface-variant": "#e5e2e1",
+                    "on-tertiary": "#ffffff",
+                    "on-surface": "#1c1b1b",
+                    "tertiary-container": "#00b050",
+                    "on-secondary-container": "#fffbff",
+                    "tertiary": "#006e2f",
+                    "surface-bright": "#fcf9f8",
+                    "on-tertiary-fixed": "#002109",
+                    "secondary-container": "#e32322",
+                    "primary": "#a04100",
+                    "outline": "#8e7164",
+                    "surface": "#fcf9f8",
+                    "surface-dim": "#dcd9d9",
+                    "surface-container": "#f0eded",
+                    "on-primary-container": "#572000",
+                    "inverse-surface": "#313030",
+                    "on-tertiary-container": "#003a15",
+                    "surface-container-low": "#f6f3f2",
+                    "secondary-fixed": "#ffdad5",
+                    "secondary": "#bb000f",
+                    "on-primary": "#ffffff",
+                    "outline-variant": "#e2bfb0",
+                    "surface-tint": "#a04100",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#ffb693",
+                    "on-error-container": "#93000a",
+                    "primary-container": "#ff6b00",
+                    "on-secondary-fixed": "#410002",
+                    "surface-container-highest": "#e5e2e1",
+                    "on-secondary-fixed-variant": "#930009",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#eae7e7",
+                    "on-surface-variant": "#5a4136",
+                    "background": "#fcf9f8",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "primary-fixed": "#ffdbcc",
+                    "tertiary-fixed": "#6bff8f",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-secondary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "md": "16px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "gutter": "12px",
+                    "xl": "40px",
+                    "margin-desktop": "24px",
+                    "margin-mobile": "12px",
+                    "base": "4px",
+                    "xs": "4px"
+            },
+            "fontFamily": {
+                    "price-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "title-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim w-full top-0 sticky z-50 flex items-center justify-between px-margin-mobile h-16 border-b border-outline-variant dark:border-outline">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary">arrow_back</span>
+</button>
+<h1 class="font-title-md text-title-md text-primary dark:text-inverse-primary">Canjear Premios</h1>
+</div>
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary dark:text-inverse-primary">notifications</span>
+</button>
+</header>
+<!-- Points Sticky Banner -->
+<div class="sticky top-16 z-40 bg-primary-container px-margin-mobile py-3 shadow-md flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-label-bold text-label-bold text-on-primary-container">TU SALDO</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-on-primary-container">1,250</span>
+<span class="font-body-sm text-body-sm text-on-primary-container opacity-80">vibe points</span>
+</div>
+</div>
+<main class="max-w-4xl mx-auto">
+<!-- Filter Tags -->
+<div class="px-margin-mobile py-4 flex gap-2 overflow-x-auto hide-scrollbar">
+<button class="whitespace-nowrap rounded-full bg-primary-container text-on-primary-container px-4 py-1.5 font-label-bold text-label-bold transition-all">Todos</button>
+<button class="whitespace-nowrap rounded-full bg-surface-container-highest text-on-surface-variant px-4 py-1.5 font-label-bold text-label-bold hover:bg-surface-variant transition-all">Cupones</button>
+<button class="whitespace-nowrap rounded-full bg-surface-container-highest text-on-surface-variant px-4 py-1.5 font-label-bold text-label-bold hover:bg-surface-variant transition-all">Regalos Físicos</button>
+<button class="whitespace-nowrap rounded-full bg-surface-container-highest text-on-surface-variant px-4 py-1.5 font-label-bold text-label-bold hover:bg-surface-variant transition-all">Envíos</button>
+</div>
+<!-- Reward Grid -->
+<section class="px-margin-mobile grid grid-cols-2 md:grid-cols-3 gap-gutter lg:gap-md">
+<!-- Reward Card: Coupon -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col group transition-all hover:shadow-lg active:scale-95 duration-150">
+<div class="relative aspect-square">
+<img class="w-full h-full object-cover" data-alt="A high-contrast graphic design of a 20% discount digital coupon with vibrant orange accents on a crisp white background. The image features modern typography and abstract geometric shapes, suggesting a premium retail experience. Professional lighting and high-end commercial aesthetic for a modern e-commerce platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCufnWC04ZcPess6VRhwKT-ubrOrM9v4Gkmvgv0CKUvfqOFqbKz3oswUYvncw0myj1h6xx-_JbIO5hdjAwS5ZDWkKgLJncKRIz3lZ0aoh5f24N_76BORm179J88yLuibL208xhV5AmPBx1ITMQ07AfIwGEYFuSMx1eW3ascSJrkQXtu26hnZUO4YWz6g-vwHhGEz9VJFyI0VSkG4lUz0iesFemsDZRcnuGNT_lkAE8CSaWUSqZX_VEL-ze6HC8UEt6Ef9TCuN1S1eiO"/>
+<div class="absolute top-2 right-2 bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full font-label-bold text-label-bold">POPULAR</div>
+</div>
+<div class="p-sm flex flex-col flex-grow">
+<h3 class="font-title-md text-title-md line-clamp-2 mb-1">Cupón 20% Descuento</h3>
+<div class="mt-auto">
+<div class="flex items-center gap-1 text-primary mb-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-price-lg text-price-lg">500</span>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container py-2 rounded-lg font-label-bold text-label-bold uppercase tracking-wider hover:opacity-90 transition-opacity">Canjear</button>
+</div>
+</div>
+</article>
+<!-- Reward Card: Locked -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col relative opacity-75 grayscale-[0.5]">
+<div class="absolute inset-0 z-10 bg-on-background/10 backdrop-blur-[1px] flex items-center justify-center">
+<div class="bg-inverse-surface/90 text-inverse-on-surface px-3 py-1.5 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">lock</span>
+<span class="font-label-bold text-label-bold">Puntos insuficientes</span>
+</div>
+</div>
+<div class="aspect-square">
+<img class="w-full h-full object-cover" data-alt="A stylish, high-quality photograph of a minimalist ShopVibe tote bag made from sustainable heavy canvas. The bag is placed in a bright, airy studio with soft shadows and warm, high-key lighting. The overall mood is eco-friendly, fashionable, and premium, aligned with a modern lifestyle brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJPUmIv9snW0L-vMOplBNPOue78hW-6DG7oVOltHXKVSALLrqFLy3dyTjvrkqGXETL5RCVjfz5hzd3jDL1jJY2CyeJPc_bnF9zW85deu7S62zSdYW-jKcgzjUb7eRo73-QbaI4PS3ldO76PqLmruGNbav2T3TJh2swYQp2GW37BgxvzcpqzXm4Y7CWB2XjIq8rZy1xHyLQG9miI-DFRR2Fp1bd4nRF2LdJZV_PZcLgW32kW7hfwLaKJaaPtuy6Lre2XPPUXe9ZXw33"/>
+</div>
+<div class="p-sm flex flex-col flex-grow">
+<h3 class="font-title-md text-title-md line-clamp-2 mb-1">Tote Bag Exclusiva</h3>
+<div class="mt-auto">
+<div class="flex items-center gap-1 text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-price-lg text-price-lg">2,500</span>
+</div>
+<button class="w-full bg-surface-container-highest text-on-surface-variant py-2 rounded-lg font-label-bold text-label-bold uppercase cursor-not-allowed" disabled="">Bloqueado</button>
+</div>
+</div>
+</article>
+<!-- Reward Card: Gift Card -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col group transition-all hover:shadow-lg active:scale-95 duration-150">
+<div class="aspect-square">
+<img class="w-full h-full object-cover" data-alt="A sleek digital gift card presentation with a $10 value clearly displayed in bold, modern font. The card features a gradient background of primary orange and soft white, accented by subtle light patterns. The image communicates value, digital convenience, and excitement within a clean, high-density UI layout." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAza1yRpgl-o8oOrcoK07S5Zr2exjHSvrI-F93UGjOUd1AQmSzXquBJJ7XfcFSd1XFQrHLuwlHH7lXlgyCJvFPMom4KLqykgSkZADyXpUcLVvw5ItKPitSzDwntVeOCMEZuszOJVXBBvWOTU6c188Vc2fdKTo1tyQzYv3e2yYFSMsfLjefTlUMrE4giSnB7U6BFp3Ojh6pl8M8a9hTRvueFdZUuL_Dz2_S_PgRAK9ywWXihpRtf-ciBawI6ExoIIx9PN4ul0TF0x0cp"/>
+</div>
+<div class="p-sm flex flex-col flex-grow">
+<h3 class="font-title-md text-title-md line-clamp-2 mb-1">Tarjeta Regalo $10</h3>
+<div class="mt-auto">
+<div class="flex items-center gap-1 text-primary mb-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-price-lg text-price-lg">1,000</span>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container py-2 rounded-lg font-label-bold text-label-bold uppercase hover:opacity-90 transition-opacity">Canjear</button>
+</div>
+</div>
+</article>
+<!-- Reward Card: Shipping -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col group transition-all hover:shadow-lg active:scale-95 duration-150">
+<div class="aspect-square bg-surface-container flex items-center justify-center p-md">
+<div class="text-center">
+<span class="material-symbols-outlined text-primary text-[64px]" style="font-variation-settings: 'wght' 300;">local_shipping</span>
+</div>
+</div>
+<div class="p-sm flex flex-col flex-grow">
+<h3 class="font-title-md text-title-md line-clamp-2 mb-1">Envío Gratis Ilimitado (1 Mes)</h3>
+<div class="mt-auto">
+<div class="flex items-center gap-1 text-primary mb-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-price-lg text-price-lg">800</span>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container py-2 rounded-lg font-label-bold text-label-bold uppercase hover:opacity-90 transition-opacity">Canjear</button>
+</div>
+</div>
+</article>
+<!-- Reward Card: Mystery Box -->
+<article class="bg-gradient-to-br from-primary-container to-secondary-container rounded-xl overflow-hidden flex flex-col group transition-all hover:shadow-lg active:scale-95 duration-150 p-[1px]">
+<div class="bg-surface-container-lowest rounded-[11px] h-full flex flex-col overflow-hidden">
+<div class="aspect-square">
+<img class="w-full h-full object-cover" data-alt="An intriguing mystery gift box wrapped in high-gloss orange paper with a large, elegant white ribbon. The lighting is dramatic, highlighting the texture of the ribbon and the sheen of the box. The background is a soft, out-of-focus retail environment with warm golden highlights, creating a sense of surprise and luxury." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7RHw61l14UcS6iPpR9IB3nEOhzs14T3k966imCMLeNr5eW8tZQfh-U443XJzHYAzCCPj041g_iA13hyyYIyky98XROxoKyh7aDtTHYWMXbjaSGKd3xRbfoKCpUx8cKDxei4n-0AZAYSYLLgWbSJoBNl2HZw991eFhwlr4ug9MUASJoXikPDwe9mNExs2-vrLYtk5ZMDBK8qSi1x3tTY5wYQYrAG-DYYaLiuzQSFF8JMdwkeoOHvPoCSkbqdFU4MOM90Pk1jha7FHj"/>
+</div>
+<div class="p-sm flex flex-col flex-grow">
+<h3 class="font-title-md text-title-md line-clamp-2 mb-1">Caja Sorpresa Premium</h3>
+<div class="mt-auto">
+<div class="flex items-center gap-1 text-primary mb-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-price-lg text-price-lg">1,200</span>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container py-2 rounded-lg font-label-bold text-label-bold uppercase hover:opacity-90 transition-opacity">Canjear</button>
+</div>
+</div>
+</div>
+</article>
+<!-- Reward Card: Locked Tech -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col relative opacity-75 grayscale">
+<div class="absolute inset-0 z-10 bg-on-background/10 backdrop-blur-[1px] flex items-center justify-center">
+<div class="bg-inverse-surface/90 text-inverse-on-surface px-3 py-1.5 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">lock</span>
+<span class="font-label-bold text-label-bold">Nivel 5 Requerido</span>
+</div>
+</div>
+<div class="aspect-square">
+<img class="w-full h-full object-cover" data-alt="A professional product shot of sleek wireless earbuds in a matte charcoal charging case. The image is set against a minimal, high-tech background with cool blue rim lighting. The style is ultra-modern, showcasing the precision and quality of the hardware, creating a highly desirable tech reward visual." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJ5J3vYAHWBepUpLB3YxBew0iAIFcNe2R0pMXqcuejFLv4MaMwOadarGhLrAcg1dopu3jShewuj__4M-1r4oudFM3bHWV2eq53VR4hbck0AVl_Xm1OBxpEv7QNQ_GPCntPL75qg0dyOoiN6-vdT2z2V3l7CqTnUZOesmYDmG0PeIkXPftZkI-GD3-EF0DcZWSyRrs-58sP7YmuhV8K-gtPm57a-F5t19n9LuQNI3dL_qm2YGtIl1_yKjopoFSdCOe_tsPLbqSqK_2G"/>
+</div>
+<div class="p-sm flex flex-col flex-grow">
+<h3 class="font-title-md text-title-md line-clamp-2 mb-1">Earbuds ShopVibe Pro</h3>
+<div class="mt-auto">
+<div class="flex items-center gap-1 text-on-surface-variant mb-2">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-price-lg text-price-lg">5,000</span>
+</div>
+<button class="w-full bg-surface-container-highest text-on-surface-variant py-2 rounded-lg font-label-bold text-label-bold uppercase cursor-not-allowed" disabled="">Bloqueado</button>
+</div>
+</div>
+</article>
+</section>
+<!-- Help Section -->
+<section class="mt-xl px-margin-mobile mb-md">
+<div class="bg-tertiary-container/10 border border-tertiary/20 rounded-xl p-md flex items-start gap-4">
+<span class="material-symbols-outlined text-tertiary">info</span>
+<div>
+<h4 class="font-title-md text-title-md text-tertiary mb-1">¿Cómo funciona?</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Gana puntos con cada compra y canjéalos por premios exclusivos. Los cupones se aplican automáticamente en el carrito.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-2 px-1 bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant px-4 py-1 rounded-full transition-transform duration-150 active:scale-90" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant px-4 py-1 rounded-full transition-transform duration-150 active:scale-90" href="#">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 transition-transform duration-150 active:scale-90" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-label-bold text-label-bold">Vibe</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant px-4 py-1 rounded-full transition-transform duration-150 active:scale-90" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant px-4 py-1 rounded-full transition-transform duration-150 active:scale-90" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction: Filter tag switching
+        const filterButtons = document.querySelectorAll('.hide-scrollbar button');
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterButtons.forEach(b => {
+                    b.classList.remove('bg-primary-container', 'text-on-primary-container');
+                    b.classList.add('bg-surface-container-highest', 'text-on-surface-variant');
+                });
+                btn.classList.add('bg-primary-container', 'text-on-primary-container');
+                btn.classList.remove('bg-surface-container-highest', 'text-on-surface-variant');
+            });
+        });
+
+        // Micro-interaction: Redemption toast simulation
+        const redeemButtons = document.querySelectorAll('button:not([disabled]):not(header button):not(nav a):not(.hide-scrollbar button)');
+        redeemButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const rewardName = btn.closest('article').querySelector('h3').innerText;
+                alert(`¡Canje iniciado! Has seleccionado: ${rewardName}. Procesando tus Vibe Points...`);
+            });
+        });
+    </script>
+</body></html>

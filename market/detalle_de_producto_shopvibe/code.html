@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Product Details - ShopVibe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "on-primary": "#ffffff",
+                "secondary-container": "#e32322",
+                "surface-container": "#f0eded",
+                "tertiary-fixed-dim": "#4ae176",
+                "tertiary-fixed": "#6bff8f",
+                "primary": "#a04100",
+                "on-tertiary-fixed-variant": "#005321",
+                "surface-container-low": "#f6f3f2",
+                "surface-bright": "#fcf9f8",
+                "inverse-surface": "#313030",
+                "on-surface-variant": "#5a4136",
+                "secondary-fixed-dim": "#ffb4aa",
+                "inverse-primary": "#ffb693",
+                "primary-fixed-dim": "#ffb693",
+                "outline-variant": "#e2bfb0",
+                "on-error": "#ffffff",
+                "tertiary": "#006e2f",
+                "primary-fixed": "#ffdbcc",
+                "surface-container-highest": "#e5e2e1",
+                "outline": "#8e7164",
+                "error": "#ba1a1a",
+                "surface-dim": "#dcd9d9",
+                "secondary": "#bb000f",
+                "on-error-container": "#93000a",
+                "on-surface": "#1c1b1b",
+                "on-secondary-fixed": "#410002",
+                "on-tertiary-container": "#003a15",
+                "on-background": "#1c1b1b",
+                "surface": "#fcf9f8",
+                "primary-container": "#ff6b00",
+                "on-secondary-fixed-variant": "#930009",
+                "on-secondary": "#ffffff",
+                "surface-container-lowest": "#ffffff",
+                "on-tertiary": "#ffffff",
+                "surface-variant": "#e5e2e1",
+                "on-secondary-container": "#fffbff",
+                "on-primary-fixed-variant": "#7a3000",
+                "on-primary-container": "#572000",
+                "on-primary-fixed": "#351000",
+                "surface-container-high": "#eae7e7",
+                "error-container": "#ffdad6",
+                "surface-tint": "#a04100",
+                "on-tertiary-fixed": "#002109",
+                "background": "#fcf9f8",
+                "tertiary-container": "#00b050",
+                "secondary-fixed": "#ffdad5",
+                "inverse-on-surface": "#f3f0ef"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "lg": "24px",
+                "margin-mobile": "12px",
+                "xl": "40px",
+                "margin-desktop": "24px",
+                "sm": "8px",
+                "gutter": "12px",
+                "xs": "4px",
+                "md": "16px",
+                "base": "4px"
+            },
+            "fontFamily": {
+                "price-lg": ["Inter"],
+                "body-lg": ["Inter"],
+                "headline-lg-mobile": ["Inter"],
+                "body-sm": ["Inter"],
+                "headline-lg": ["Inter"],
+                "display-lg": ["Inter"],
+                "title-md": ["Inter"],
+                "label-bold": ["Inter"]
+            },
+            "fontSize": {
+                "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .snap-x-mandatory { scroll-snap-type: x mandatory; }
+        .snap-start { scroll-snap-align: start; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background antialiased font-body-lg text-body-lg">
+<!-- Top Navigation -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim border-b border-surface-container-highest dark:border-outline-variant flex justify-between items-center px-margin-mobile h-14">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform text-primary dark:text-inverse-primary">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary-container dark:text-primary-fixed">ShopVibe</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="active:scale-95 transition-transform text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined">share</span>
+</button>
+<button class="active:scale-95 transition-transform text-on-surface-variant dark:text-outline">
+<span class="material-symbols-outlined">shopping_bag</span>
+</button>
+</div>
+</header>
+<main class="pt-14 pb-24">
+<!-- Image Carousel -->
+<section class="relative w-full aspect-square overflow-hidden bg-white">
+<div class="flex overflow-x-auto snap-x-mandatory no-scrollbar h-full" id="carousel">
+<div class="min-w-full h-full snap-start">
+<img class="w-full h-full object-cover" data-alt="A premium high-performance running shoe in vibrant neon orange and sleek black accents, showcased against a clean, minimalist white background. Professional studio lighting highlights the intricate mesh texture and aerodynamic silhouette of the footwear. The shot captures a dynamic, retail-ready perspective with crisp details and high-contrast shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPAimMNtQYwSSOkQn5ZtuixArq6ppMNwMqXj0xfaR2GUY6na-V1ViA6F_bmQuGeL0tLIqqEFpwXifJtFpMjD1Siljgrv2ptvqVq8uSk6JfC5pFL2Fi9dCFUeTn6ZkwFQRQd4CjcO8L57n1Dy9Eb9FSzz-4d1swcJbH7BCT_7iEf7x7plrAgNUliI3YQZFsqCoH0vlyXYN5D0cOu6iMzZkI86x2YhHN0kB-6WSazKyhxL3KwT5mC5i8uy6btRj4_-Ir8UGYNR_40kuz"/>
+</div>
+<div class="min-w-full h-full snap-start">
+<img class="w-full h-full object-cover" data-alt="A close-up shot of the cushioned sole and heel counter of a designer athletic sneaker. The vibrant primary orange color of the midsole contrasts beautifully with the dark charcoal gray upper. Soft ambient lighting creates a high-end corporate lifestyle aesthetic, focusing on the quality craftsmanship and ergonomic design of the trending product." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJIbpWS4PCUfIG9XZy4btcNihRCCWVWQWBj0b752zCIHRdGPpxsRjLFug38f0KCjT4P-wwW1UM2vlqjS-5cPzOKhXKS9OU15IDuE0EeAfEdhLVFKCe63bZxA19veYrUhw5HsnQYTkvAoCOtgrnsidLWbQGyLYugzPe9s7uZCkIPRcDwjNk9KwjMjwJ7VNYADJty9KyYefyJdObSfuAV-tswSu2HzkMeghVnYXWgtSwLUjs4lR1j8IWm_KhUlGX9k-LDNKurS7QEb85"/>
+</div>
+<div class="min-w-full h-full snap-start">
+<img class="w-full h-full object-cover" data-alt="Top-down view of a pair of high-fashion streetwear sneakers organized neatly on a light gray concrete surface. The shoes feature a bold orange and white colorway with reflective metallic accents. The lighting is bright and modern, evoking a sense of urban luxury and trending retail excitement in a corporate-clean environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbrx5qF_nz6ZfIMz5THO6bKJYAJJt-sz4GYVOXCZ_0fnEh5yGXGZLtu0ABRC8vOpqw7dt--Qcf43P--bLZkjI4pL9crhl4_6-D2yyyDA-1yTZhzvvBUqdYFN1gxftxLKOVZWeFFwCPFdgkOp_i4SmgqB5N_TTD0JJJ7HEdtBbcFg9QQkmAcDYMzKHmhLZS47Z4ZMg4uMZV-MR3TResG7bwX-ZTmdHxUE8y9dA87u2g0R7BA380c2m487C7d8vd_IfKEnUoqeGN2Tif"/>
+</div>
+</div>
+<!-- Indicators -->
+<div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+<div class="w-2 h-2 rounded-full bg-surface-container-highest"></div>
+<div class="w-2 h-2 rounded-full bg-surface-container-highest"></div>
+</div>
+</section>
+<!-- Product Details -->
+<section class="px-margin-mobile pt-md space-y-sm">
+<div class="flex justify-between items-start">
+<h2 class="font-title-md text-title-md text-on-surface max-w-[80%] leading-tight">Vibe Runner Pro: Next-Gen Ultra-Cushioned Athletic Sneaker</h2>
+<div class="text-tertiary-container bg-tertiary-container/10 px-2 py-1 rounded text-label-bold font-label-bold">
+                    HOT
+                </div>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-price-lg text-price-lg text-secondary-container">$124.99</span>
+<span class="text-body-sm text-outline line-through">$189.99</span>
+<span class="bg-secondary-container/10 text-secondary-container font-label-bold px-1.5 py-0.5 rounded">-35%</span>
+</div>
+<div class="flex items-center gap-1">
+<div class="flex text-[#FFC107]">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 0.5;">star_half</span>
+</div>
+<span class="text-body-sm text-outline">(4.8/5 • 2,492 sold)</span>
+</div>
+</section>
+<!-- Shipping & Badges -->
+<section class="mt-md bg-surface-container-low px-margin-mobile py-sm flex gap-4 overflow-x-auto no-scrollbar">
+<div class="flex items-center gap-1.5 shrink-0">
+<span class="material-symbols-outlined text-primary text-[20px]">local_shipping</span>
+<span class="text-body-sm font-label-bold">Ships in 24h</span>
+</div>
+<div class="flex items-center gap-1.5 shrink-0 border-l border-outline-variant pl-4">
+<span class="material-symbols-outlined text-tertiary text-[20px]">verified_user</span>
+<span class="text-body-sm font-label-bold">Free 30-Day Return</span>
+</div>
+<div class="flex items-center gap-1.5 shrink-0 border-l border-outline-variant pl-4">
+<span class="material-symbols-outlined text-primary text-[20px]">shield</span>
+<span class="text-body-sm font-label-bold">Warranty</span>
+</div>
+</section>
+<!-- Selectors -->
+<section class="px-margin-mobile mt-lg space-y-md">
+<div>
+<p class="text-label-bold font-label-bold uppercase text-outline mb-sm tracking-wider">Color: Fire Orange</p>
+<div class="flex gap-3">
+<button class="w-10 h-10 rounded-full bg-[#FF6B00] ring-2 ring-primary ring-offset-2"></button>
+<button class="w-10 h-10 rounded-full bg-[#1C1B1B]"></button>
+<button class="w-10 h-10 rounded-full bg-[#F0EDED] border border-outline-variant"></button>
+<button class="w-10 h-10 rounded-full bg-[#006E2F]"></button>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-center mb-sm">
+<p class="text-label-bold font-label-bold uppercase text-outline tracking-wider">Select Size (US)</p>
+<button class="text-primary text-body-sm font-label-bold underline">Size Chart</button>
+</div>
+<div class="grid grid-cols-4 gap-2">
+<button class="py-2.5 border border-outline-variant rounded-lg text-body-sm hover:border-primary">7.5</button>
+<button class="py-2.5 border-2 border-primary-container bg-primary-container/5 rounded-lg text-body-sm font-bold">8.0</button>
+<button class="py-2.5 border border-outline-variant rounded-lg text-body-sm hover:border-primary">8.5</button>
+<button class="py-2.5 border border-outline-variant rounded-lg text-body-sm hover:border-primary">9.0</button>
+<button class="py-2.5 border border-outline-variant rounded-lg text-body-sm hover:border-primary">9.5</button>
+<button class="py-2.5 border border-outline-variant rounded-lg text-body-sm hover:border-primary">10.0</button>
+<button class="py-2.5 border border-outline-variant rounded-lg text-body-sm hover:border-primary">10.5</button>
+<button class="py-2.5 border border-surface-container-highest text-surface-container-highest rounded-lg text-body-sm cursor-not-allowed" disabled="">11.0</button>
+</div>
+</div>
+</section>
+<!-- Reviews Section -->
+<section class="mt-xl px-margin-mobile">
+<div class="flex justify-between items-end mb-md">
+<div>
+<h3 class="font-title-md text-title-md">Customer Reviews</h3>
+<p class="text-body-sm text-outline">Verified buyer photos (428)</p>
+</div>
+<button class="text-primary font-label-bold text-label-bold uppercase">View All</button>
+</div>
+<div class="flex gap-2 overflow-x-auto no-scrollbar mb-lg">
+<img class="w-24 h-24 object-cover rounded-lg shrink-0 border border-outline-variant" data-alt="User-submitted photo of the orange sneakers sitting on a clean wooden floor with morning sunlight streaming in. The image captures the authentic texture and vibrant color in a realistic domestic setting, reinforcing trust and social proof for the high-conversion e-commerce platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDYF_kd_WhsXaSiBuLz44lXpUkUCIUCs-A2e-_yIvrM_T_rWi7da3et2Li0GJSSl7-8HGEtMmNlqWwkStpyp_2qOYQjVbnJFY9kYf9Lg633cY9PXSM0TXYnFprafHDSjhTkVuEnK5sKeuf8ykAnsT3uOHt0MqxIFbnXEisEcOXUH_m9emZWM8dOP3d_LyihhXx5Mo-8NzCrylkP4_MNcZhowRzKZEdI2yN9XpO5CbVvKyCX-HvsUuME9mXsiuyOLN1CQxH3d4pM7irP"/>
+<img class="w-24 h-24 object-cover rounded-lg shrink-0 border border-outline-variant" data-alt="Close-up lifestyle photograph of someone wearing the trending athletic shoes while walking on an urban sidewalk. The focus is on the comfort and fit of the product in a real-world environment, with soft natural lighting and a slightly blurred city background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKH6d-wS3SwMkAsn2ykCUxJCX8JOJ2GuDiFXFiH0pBBaCjiimk9ZuhgYqWqMw7pxH8FYV6pQpN5n2b05kbDmaFn-C_ITVM0kpeIVHwLOSFBm8xzIRAbzawhyJgFOMDTNt85IS8VHiezcVpfcswu5rhEs0LXP8l4efeFKeB3yrqbWSpXweLd_9Y7BCUc_U2nzW1Yce2_Oq8fSHfi9I09xeSXK-_vZhx42crgGkGyvHIXCJwfF-J7LsVV_INEVpabYK4IKx-ebHf_-2W"/>
+<img class="w-24 h-24 object-cover rounded-lg shrink-0 border border-outline-variant" data-alt="A user review photo showcasing the unboxing experience of the product. The sneakers are neatly packed in a high-quality retail box with branded tissue paper, highlighting the attention to detail and premium presentation of the brand ShopVibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAKCOya1luYipAoVJEfy9irP2UKelm4nBGfLfsbEqwSlRdVTXILpjUQnumkj2hd5uqRm1uN6_if7bb3hoZfD3oT97B8Aq_AuVQ8RMSEzQ6tO-7H4YlC_ZAXFxNl-5ZInm_lYXz4wb15WZw_pEMbrVyO6Gn02R_tlvindJBGoNM0oc-OaAJSfsJd_HXhHxwAaZ-DFf8mwDQC0ZwXV5rb7FePGQ8iUZ52voXI6ormYfJlFAYcC0rh6FuIMn84CByclefwFt1cTjdXjeE"/>
+</div>
+<div class="space-y-lg">
+<div class="border-b border-surface-container-highest pb-md">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center font-bold text-primary">JD</div>
+<div>
+<p class="text-body-sm font-label-bold">James D.</p>
+<div class="flex text-[#FFC107]">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+</div>
+<span class="text-body-sm text-outline">2 days ago</span>
+</div>
+<p class="text-body-sm text-on-surface-variant leading-snug">The cushioning is unbelievable! Best running shoes I've owned in years. Color is exactly as pictured. Shipping was super fast!</p>
+</div>
+</div>
+</section>
+<!-- Similar Products -->
+<section class="mt-xl pb-margin-mobile">
+<h3 class="px-margin-mobile font-title-md text-title-md mb-md">Similar Products</h3>
+<div class="flex gap-gutter overflow-x-auto no-scrollbar px-margin-mobile">
+<!-- Card 1 -->
+<div class="min-w-[160px] w-[160px] space-y-xs group">
+<div class="aspect-square bg-white rounded-lg overflow-hidden border border-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="A minimalist white athletic shoe with soft blue accents, displayed in a high-density retail grid style. The image is clean and bright, emphasizing the sleek modern silhouette and lightweight materials used in the design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAThGS6GlRUTDsT1djDC_lA8a_2Rm0-g8a7sA1R5xn_t6p6gzrSf3u-R7x5n5uDMVj_F-_7jn71uv2oPGqbIwoZN_9upGTe2D8n5qtSAww0swzsxevpaQu_4SUb-dQqooks2no2nIMYj-9rZD0LgYDDFhYboXjYf-Xr6f56HkD4W1_U7dJKCtzqQyau1itZvDCm0ZRikCR9VCgJCWdIvPKG_sHSLWf0o22dG3eRTHVyAD14SIbpKgfxX9dN1S3g8_6hwmO4-UbUxahb"/>
+</div>
+<p class="text-body-sm line-clamp-2">Elite Glide V2 Running Sneaker</p>
+<p class="font-label-bold text-secondary-container">$98.00</p>
+</div>
+<!-- Card 2 -->
+<div class="min-w-[160px] w-[160px] space-y-xs group">
+<div class="aspect-square bg-white rounded-lg overflow-hidden border border-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="A classic black and white versatile trainer sneaker, presented with high-contrast studio lighting to highlight the premium leather and suede textures. The style is professional and corporate-modern, perfect for a diverse retail marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBv3agg1jqb2VlshzNfoWQYegLmRjYX6TogMsxBnH1AtNZkyM1ZSDwssWcoUQgQgODd0HSzAFEbTmO_TquCgK_pG_bm00mPj8qeiGG54Oz4bmk3-n1RvaxQa2cDbSb76Xcka_CVpJ4IfFYABwxXRXsej7TLAFJaEYSPlZx1hoLrpprCSPQZIbjkXrMxHmNc-I-PPe8L455KpfgdaYxQ_Pw_hx1IHN8bTIFqXihcjWbl19H4vNVQDGtLpY79dtZ1OtxJYS3wXGmW2XY-"/>
+</div>
+<p class="text-body-sm line-clamp-2">Urban Versatile Trainer - Midnight</p>
+<p class="font-label-bold text-secondary-container">$112.50</p>
+</div>
+<!-- Card 3 -->
+<div class="min-w-[160px] w-[160px] space-y-xs group">
+<div class="aspect-square bg-white rounded-lg overflow-hidden border border-surface-container-highest">
+<img class="w-full h-full object-cover" data-alt="Contemporary light gray tech-mesh sneakers with vibrant lime green accents. The footwear is shown in a sharp, detailed studio shot that captures the technological innovation and trending style of the product." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwQ6DhyeYl-gvHU89tQGjhm2advZ9XomQumS9J1PP41YWrGgrsWHrYBFyBbrPxrdJ7aKXjEWrQSob_B99SYFeiEmxaGsexsBNRk18r327eSIgg3oY4zTPTYu-NN-9IRc_fIYoSLBtsRyurq54JAg2y82zWFhBtfgod6oJV2J9xfXOjB8EIPkFLABcVNyYHm-mymgjxSTXj2bUBwuqZ_XrkRk-iWyJoV4B-adIRAlFBUqqX9sX7nYY42ZMFIJ35A7QeQb3fvfrDeOOw"/>
+</div>
+<p class="text-body-sm line-clamp-2">Tech-Mesh 360 Stability Shoe</p>
+<p class="font-label-bold text-secondary-container">$135.00</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Fixed Bottom Actions -->
+<div class="fixed bottom-0 w-full z-50 bg-surface-container-lowest dark:bg-inverse-surface shadow-[0_-4px_20px_rgba(0,0,0,0.1)] px-margin-mobile py-4 flex gap-3">
+<button class="flex-1 border-2 border-primary-container text-primary-container font-label-bold text-headline-lg-mobile py-3.5 rounded-xl active:scale-95 transition-all">
+            Add to Cart
+        </button>
+<button class="flex-1 bg-primary-container text-on-primary font-label-bold text-headline-lg-mobile py-3.5 rounded-xl active:scale-95 transition-all">
+            Buy Now
+        </button>
+</div>
+<!-- Floating Back to Top (Contextual Suppression Logic applied, only shown if scrolled) -->
+<button class="hidden fixed bottom-24 right-4 w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center text-primary-container active:scale-90 transition-all border border-surface-container-highest" id="backToTop">
+<span class="material-symbols-outlined">expand_less</span>
+</button>
+<script>
+        // Micro-interactions & Carousel logic
+        const carousel = document.getElementById('carousel');
+        const indicators = document.querySelectorAll('#carousel + div > div');
+        
+        carousel.addEventListener('scroll', () => {
+            const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+            indicators.forEach((dot, i) => {
+                dot.className = `w-2 h-2 rounded-full transition-all duration-300 ${i === index ? 'bg-primary-container w-6' : 'bg-surface-container-highest'}`;
+            });
+        });
+
+        // Show Back to Top on scroll
+        const btt = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 500) {
+                btt.classList.remove('hidden');
+                btt.classList.add('flex');
+            } else {
+                btt.classList.add('hidden');
+                btt.classList.remove('flex');
+            }
+        });
+
+        btt.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Simple size selector interaction
+        const sizeButtons = document.querySelectorAll('section:nth-of-type(4) button:not([disabled]):not(.underline)');
+        sizeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                sizeButtons.forEach(b => {
+                    b.className = 'py-2.5 border border-outline-variant rounded-lg text-body-sm hover:border-primary';
+                });
+                btn.className = 'py-2.5 border-2 border-primary-container bg-primary-container/5 rounded-lg text-body-sm font-bold';
+            });
+        });
+    </script>
+</body></html>

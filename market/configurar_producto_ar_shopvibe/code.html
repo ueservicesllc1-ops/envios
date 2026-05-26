@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed": "#351000",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-secondary-fixed": "#410002",
+                    "error-container": "#ffdad6",
+                    "primary-container": "#ff6b00",
+                    "on-tertiary": "#ffffff",
+                    "background": "#fcf9f8",
+                    "surface-container-high": "#eae7e7",
+                    "primary": "#a04100",
+                    "surface": "#fcf9f8",
+                    "on-tertiary-fixed": "#002109",
+                    "error": "#ba1a1a",
+                    "surface-variant": "#e5e2e1",
+                    "outline": "#8e7164",
+                    "on-background": "#1c1b1b",
+                    "on-secondary-container": "#fffbff",
+                    "tertiary-fixed": "#6bff8f",
+                    "on-primary-container": "#572000",
+                    "tertiary": "#006e2f",
+                    "surface-tint": "#a04100",
+                    "surface-container-highest": "#e5e2e1",
+                    "secondary-container": "#e32322",
+                    "on-surface-variant": "#5a4136",
+                    "inverse-primary": "#ffb693",
+                    "outline-variant": "#e2bfb0",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-dim": "#dcd9d9",
+                    "on-tertiary-container": "#003a15",
+                    "on-secondary": "#ffffff",
+                    "inverse-surface": "#313030",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-surface": "#1c1b1b",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "surface-container-low": "#f6f3f2",
+                    "secondary": "#bb000f",
+                    "inverse-on-surface": "#f3f0ef",
+                    "on-error": "#ffffff",
+                    "surface-bright": "#fcf9f8",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#f0eded",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "secondary-fixed": "#ffdad5",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-variant": "#005321"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xl": "40px",
+                    "md": "16px",
+                    "margin-mobile": "12px",
+                    "xs": "4px",
+                    "margin-desktop": "24px",
+                    "lg": "24px",
+                    "base": "4px",
+                    "sm": "8px",
+                    "gutter": "12px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-ar-mode {
+            outline: 2px solid #ff6b00;
+            background-color: #ffdbcc;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #a04100;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-lg overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="sticky top-0 w-full z-50 bg-surface border-b border-surface-variant flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-sm">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Configurar Producto AR</h1>
+</div>
+<div class="flex items-center gap-xs">
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">search</span>
+</button>
+</div>
+</header>
+<main class="max-w-2xl mx-auto pb-32 px-margin-mobile pt-lg">
+<!-- Step 1: Upload Model -->
+<section class="mb-lg">
+<div class="flex items-center gap-sm mb-sm">
+<span class="bg-primary text-on-primary w-6 h-6 rounded-full flex items-center justify-center text-label-bold font-label-bold">1</span>
+<h2 class="font-title-md text-title-md">Upload 3D Model</h2>
+</div>
+<div class="border-2 border-dashed border-outline-variant bg-surface-container-low rounded-xl p-xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-primary transition-all group" id="dropzone">
+<div class="bg-primary-fixed rounded-full p-md mb-md group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'opsz' 48;">cloud_upload</span>
+</div>
+<p class="font-title-md text-title-md mb-xs">Drag and drop model here</p>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Supports .GLB or .USDZ files (Max 50MB)</p>
+<button class="mt-md bg-primary text-on-primary font-label-bold text-label-bold px-lg py-sm rounded-lg hover:opacity-90 active:scale-95 transition-all">
+                    Select File
+                </button>
+</div>
+</section>
+<!-- Step 2: Product Details -->
+<section class="mb-lg">
+<div class="flex items-center gap-sm mb-sm">
+<span class="bg-primary text-on-primary w-6 h-6 rounded-full flex items-center justify-center text-label-bold font-label-bold">2</span>
+<h2 class="font-title-md text-title-md">Product Details</h2>
+</div>
+<div class="bg-white border border-surface-variant rounded-xl p-md flex items-center gap-md">
+<img class="w-20 h-20 object-cover rounded-lg" data-alt="A premium white minimalist watch on a soft grey studio background. The watch features a clean face and silver-toned hardware, lit with soft diffused lighting to emphasize its sleek lines and modern luxury appeal within a clean e-commerce interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFHeYDR75qBW9_VnQtFfk3HPfb7xRSL2y35LrX9HdS405C-_-vAd7kCm8ZRBDcV6iH62cRuabyiMUccyI0JEuonQTx-EnSWz4qCVSRMjgLSO9RMvJFO3bvAm2YbCHsYZqNIl8CjuWQbgx0ZbNx8uC4SK2MhwuvSCOVrId5nu3p6SonyYWIyx75ATh31-xMM57fcD1VoGnh-Y79vmVqwnHsw2Mpgrx2ErySlC6Sc7xf04r_h7VwcBrOCmsvnJPd8kVPFJi9vK2PI8qY"/>
+<div class="flex-1">
+<h3 class="font-title-md text-title-md leading-tight">Minimalist Premium Watch v2</h3>
+<p class="text-on-surface-variant font-body-sm text-body-sm">SKU: VIBE-WCH-092-B</p>
+<button class="text-primary font-label-bold text-label-bold mt-xs hover:underline">Change Product</button>
+</div>
+<span class="material-symbols-outlined text-outline">link</span>
+</div>
+</section>
+<!-- Step 3: Configuration -->
+<section class="mb-lg">
+<div class="flex items-center gap-sm mb-sm">
+<span class="bg-primary text-on-primary w-6 h-6 rounded-full flex items-center justify-center text-label-bold font-label-bold">3</span>
+<h2 class="font-title-md text-title-md">Configuration</h2>
+</div>
+<div class="space-y-lg bg-surface-container-low p-lg rounded-xl">
+<!-- Placement Mode -->
+<div>
+<label class="font-label-bold text-label-bold block mb-sm text-on-surface-variant">Placement Type</label>
+<div class="grid grid-cols-3 gap-sm">
+<button class="active-ar-mode flex flex-col items-center gap-xs py-sm border border-outline-variant rounded-lg transition-all" onclick="selectPlacement(this)">
+<span class="material-symbols-outlined">layers</span>
+<span class="text-label-bold font-label-bold">Floor</span>
+</button>
+<button class="bg-white flex flex-col items-center gap-xs py-sm border border-outline-variant rounded-lg hover:bg-surface-variant transition-all" onclick="selectPlacement(this)">
+<span class="material-symbols-outlined">table_restaurant</span>
+<span class="text-label-bold font-label-bold">Table</span>
+</button>
+<button class="bg-white flex flex-col items-center gap-xs py-sm border border-outline-variant rounded-lg hover:bg-surface-variant transition-all" onclick="selectPlacement(this)">
+<span class="material-symbols-outlined">face</span>
+<span class="text-label-bold font-label-bold">Face</span>
+</button>
+</div>
+</div>
+<!-- Sliders -->
+<div class="space-y-md">
+<div>
+<div class="flex justify-between mb-xs">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Scale</label>
+<span class="text-primary font-label-bold text-label-bold" id="scale-val">100%</span>
+</div>
+<input class="w-full h-2 bg-surface-variant rounded-lg appearance-none cursor-pointer" max="300" min="10" oninput="document.getElementById('scale-val').innerText = this.value + '%'" type="range" value="100"/>
+</div>
+<div>
+<div class="flex justify-between mb-xs">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Default Rotation</label>
+<span class="text-primary font-label-bold text-label-bold" id="rot-val">0°</span>
+</div>
+<input class="w-full h-2 bg-surface-variant rounded-lg appearance-none cursor-pointer" max="360" min="0" oninput="document.getElementById('rot-val').innerText = this.value + '°'" type="range" value="0"/>
+</div>
+</div>
+<!-- Toggle -->
+<div class="flex items-center justify-between">
+<div>
+<p class="font-title-md text-title-md leading-none">Enable Shadow Casting</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant">Adds realistic depth on surfaces</p>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Preview & Save Buttons -->
+<div class="mt-xl space-y-md">
+<button class="w-full flex items-center justify-center gap-sm bg-white border-2 border-primary text-primary font-title-md text-title-md py-md rounded-xl hover:bg-primary-fixed transition-colors active:scale-95">
+<span class="material-symbols-outlined">view_in_ar</span>
+                Preview AR Sandbox
+            </button>
+<button class="w-full bg-primary-container text-on-primary-container font-headline-lg-mobile text-headline-lg-mobile py-md rounded-xl shadow-lg hover:opacity-90 active:scale-95 transition-all">
+                Save &amp; Activate
+            </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-2 px-1 bg-surface border-t border-surface-variant z-50">
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1 hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">view_in_ar</span>
+<span class="font-label-bold text-label-bold">AR Try</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1 hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">style</span>
+<span class="font-label-bold text-label-bold">Feed</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1 hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">redeem</span>
+<span class="font-label-bold text-label-bold">Earn</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1 hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</div>
+</nav>
+<script>
+        function selectPlacement(btn) {
+            // Remove active class from all buttons in the same parent
+            const buttons = btn.parentElement.querySelectorAll('button');
+            buttons.forEach(b => {
+                b.classList.remove('active-ar-mode');
+                b.classList.add('bg-white');
+            });
+            // Add active class to clicked button
+            btn.classList.add('active-ar-mode');
+            btn.classList.remove('bg-white');
+        }
+
+        // Drag and drop interaction
+        const dropzone = document.getElementById('dropzone');
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('border-primary', 'bg-primary-fixed');
+        });
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('border-primary', 'bg-primary-fixed');
+        });
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('border-primary', 'bg-primary-fixed');
+            alert('File recognized! Initializing 3D processing...');
+        });
+    </script>
+</body></html>

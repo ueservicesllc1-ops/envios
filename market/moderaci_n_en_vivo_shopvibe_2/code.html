@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShopVibe Moderator - Live Feed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#fcf9f8",
+                        "surface-container-high": "#eae7e7",
+                        "primary": "#a04100",
+                        "surface-variant": "#e5e2e1",
+                        "outline": "#8e7164",
+                        "on-background": "#1c1b1b",
+                        "on-tertiary-fixed": "#002109",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed": "#410002",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed": "#351000",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "background": "#fcf9f8",
+                        "primary-container": "#ff6b00",
+                        "outline-variant": "#e2bfb0",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "inverse-primary": "#ffb693",
+                        "on-tertiary-container": "#003a15",
+                        "surface-dim": "#dcd9d9",
+                        "on-secondary-container": "#fffbff",
+                        "tertiary-fixed": "#6bff8f",
+                        "surface-tint": "#a04100",
+                        "surface-container-highest": "#e5e2e1",
+                        "secondary-container": "#e32322",
+                        "on-surface-variant": "#5a4136",
+                        "on-primary-container": "#572000",
+                        "tertiary": "#006e2f",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "surface-container-low": "#f6f3f2",
+                        "secondary": "#bb000f",
+                        "inverse-on-surface": "#f3f0ef",
+                        "primary-fixed": "#ffdbcc",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fcf9f8",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "on-surface": "#1c1b1b",
+                        "inverse-surface": "#313030",
+                        "secondary-fixed": "#ffdad5",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#930009",
+                        "tertiary-container": "#00b050",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "surface-container": "#f0eded"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "margin-desktop": "24px",
+                        "lg": "24px",
+                        "xl": "40px",
+                        "md": "16px",
+                        "margin-mobile": "12px",
+                        "gutter": "12px",
+                        "sm": "8px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "price-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "title-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-background font-body-lg min-h-screen pb-20">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-surface dark:bg-background z-50 flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 transition-transform hover:bg-surface-variant p-sm rounded-full">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">ShopVibe Moderator</h1>
+</div>
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 transition-transform hover:bg-surface-variant p-sm rounded-full">
+<span class="material-symbols-outlined text-primary">settings</span>
+</button>
+</div>
+</header>
+<main class="px-margin-mobile pt-sm space-y-md">
+<!-- Summary Section (Stats) -->
+<section class="grid grid-cols-3 gap-sm">
+<div class="bg-surface-container-low p-md rounded-xl border border-outline-variant flex flex-col items-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">visibility</span>
+<span class="font-label-bold text-label-bold mt-xs text-on-surface-variant">Active</span>
+<span class="font-title-md text-title-md text-primary">1.2k</span>
+</div>
+<div class="bg-surface-container-low p-md rounded-xl border border-outline-variant flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">report</span>
+<span class="font-label-bold text-label-bold mt-xs text-on-surface-variant">Reports</span>
+<span class="font-title-md text-title-md text-secondary">24</span>
+</div>
+<div class="bg-surface-container-low p-md rounded-xl border border-outline-variant flex flex-col items-center">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">shield_person</span>
+<span class="font-label-bold text-label-bold mt-xs text-on-surface-variant">Mods</span>
+<span class="font-title-md text-title-md text-tertiary">8</span>
+</div>
+</section>
+<!-- Quick Actions -->
+<section class="flex gap-sm overflow-x-auto hide-scrollbar py-xs">
+<button class="flex items-center gap-xs px-md py-sm bg-primary-container text-on-primary-container rounded-full font-label-bold text-label-bold active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">block</span>
+                Mute All
+            </button>
+<button class="flex items-center gap-xs px-md py-sm bg-surface-container-highest text-on-surface rounded-full font-label-bold text-label-bold border border-outline-variant active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">timer</span>
+                Slow Mode
+            </button>
+<button class="flex items-center gap-xs px-md py-sm bg-surface-container-highest text-on-surface rounded-full font-label-bold text-label-bold border border-outline-variant active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[18px]">cleaning_services</span>
+                Clear Chat
+            </button>
+</section>
+<!-- Tabs -->
+<nav class="flex w-full bg-surface-container-high rounded-xl p-xs">
+<button class="flex-1 py-sm px-md text-center rounded-lg bg-primary-container text-on-primary-container font-label-bold text-label-bold transition-all">
+                Live Feed
+            </button>
+<button class="flex-1 py-sm px-md text-center rounded-lg text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant transition-all">
+                Flagged
+            </button>
+<button class="flex-1 py-sm px-md text-center rounded-lg text-on-surface-variant font-label-bold text-label-bold hover:bg-surface-variant transition-all">
+                Blocked
+            </button>
+</nav>
+<!-- Real-time Chat Stream -->
+<section class="space-y-sm">
+<!-- Message 1 -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-sm">
+<div class="flex justify-between items-start">
+<div class="flex gap-sm items-center">
+<img alt="User" class="w-8 h-8 rounded-full bg-surface-variant" data-alt="A close-up professional profile avatar of a diverse young man with short dark hair, wearing a casual modern t-shirt against a clean, soft-lit neutral studio background. The lighting is bright and airy, consistent with a high-end corporate modern interface design, featuring a warm and inviting professional mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoEooYIPzD2M_c4Rc-T0Awo71HTQVxVI1VMiO-pkWjtnPnmtI-ywx_9Wc6G_wfifyHgWbHWikBtPVnn4RQN6sG-LDxVEhD2ErHaVtrn6Z7Hu3vIYA_Jtmemo4tlREZeywcW673i4HveYAZAyvPCzeo9DV8xh5iHCOa_mtNvAwPl3seDg_UXbM6vGnA1-znlOufAN-wxC35QbwajTwPqjF2kxMnMKaakP2o_UtNSOXd2PgCUUvGYxKNr2g4isH2GN3nymg3yKZUF6zh"/>
+<div>
+<p class="font-label-bold text-label-bold text-primary">Santi_Vibes</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Subscriber</p>
+</div>
+</div>
+<span class="text-[10px] text-outline">12:45:02</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">¿Cuándo llega el nuevo stock de las zapatillas naranjas? 🔥 ¡Las necesito ya!</p>
+<div class="flex gap-xs mt-xs pt-sm border-t border-surface-variant">
+<button class="flex-1 py-xs rounded-lg border border-outline-variant text-on-surface-variant font-label-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 transition-all hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[14px]">warning</span> Warn
+                    </button>
+<button class="flex-1 py-xs rounded-lg border border-outline-variant text-on-surface-variant font-label-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 transition-all hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[14px]">mic_off</span> Mute
+                    </button>
+<button class="flex-1 py-xs rounded-lg bg-secondary text-on-secondary font-label-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[14px]">delete</span> Delete
+                    </button>
+</div>
+</div>
+<!-- Message 2 (Flagged Style) -->
+<div class="bg-error-container p-md rounded-xl border border-error shadow-sm flex flex-col gap-sm">
+<div class="flex justify-between items-start">
+<div class="flex gap-sm items-center">
+<div class="w-8 h-8 rounded-full bg-error flex items-center justify-center text-white font-bold">T</div>
+<div>
+<p class="font-label-bold text-label-bold text-on-error-container">TrollMaster99</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-error" style="font-variation-settings: 'FILL' 1;">flag</span>
+<p class="text-[10px] text-error font-bold uppercase tracking-wider">Flagged by System</p>
+</div>
+</div>
+</div>
+<span class="text-[10px] text-outline">12:44:58</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-error-container italic">"This shop is a scam don't buy anything here guys follow my link instead [LINK REMOVED]"</p>
+<div class="flex gap-xs mt-xs pt-sm border-t border-error/20">
+<button class="flex-1 py-xs rounded-lg bg-error text-on-error font-label-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[14px]">block</span> Ban User
+                    </button>
+<button class="flex-1 py-xs rounded-lg border border-error text-error font-label-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 transition-all hover:bg-white/50">
+<span class="material-symbols-outlined text-[14px]">delete</span> Dismiss
+                    </button>
+</div>
+</div>
+<!-- Message 3 -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-sm">
+<div class="flex justify-between items-start">
+<div class="flex gap-sm items-center">
+<img alt="User" class="w-8 h-8 rounded-full bg-surface-variant" data-alt="A candid profile photo of a stylish woman with glasses, smiling and holding a smartphone. The scene is brightly lit with natural light in a contemporary cafe setting, featuring soft bokeh and warm tones. The aesthetic is clean and modern, fitting into a vibrant social retail mobile application interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXyTSOMdxecsC9xDfs-SEGTAZgiBDEQhZAJA7f2Rb09CEl9bm93VPJycD03L8ijCA1BfhgjQIfU7kfXE4gIOZZRA-_oHaiOPrlMvikvPSycdrBNOQ_wZYJX-RDuExGHOzDEtELqNA7PmA6KSgN4k5fWGQiMQdht1zFiHMQamKm0U-yjjrxptLnx7UP3ar_96JK7EHSGqFu8xbaieRw98b8K_WVAd2HwG0qiHCoJRVYU0NS272dhKbyuNjiYP7J_fPOmAydQS2NwVvE"/>
+<div>
+<p class="font-label-bold text-label-bold text-primary">Maria_Shopper</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Viewer</p>
+</div>
+</div>
+<span class="text-[10px] text-outline">12:44:50</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">¿Hay descuentos para primera compra? 💸</p>
+<div class="flex gap-xs mt-xs pt-sm border-t border-surface-variant">
+<button class="flex-1 py-xs rounded-lg border border-outline-variant text-on-surface-variant font-label-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 transition-all hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[14px]">warning</span> Warn
+                    </button>
+<button class="flex-1 py-xs rounded-lg border border-outline-variant text-on-surface-variant font-label-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 transition-all hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[14px]">mic_off</span> Mute
+                    </button>
+<button class="flex-1 py-xs rounded-lg bg-secondary text-on-secondary font-label-bold text-[10px] flex items-center justify-center gap-1 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[14px]">delete</span> Delete
+                    </button>
+</div>
+</div>
+<!-- Message 4 -->
+<div class="bg-surface-container-lowest p-md rounded-xl border border-outline-variant shadow-sm flex flex-col gap-sm opacity-60">
+<div class="flex justify-between items-start">
+<div class="flex gap-sm items-center">
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant">J</div>
+<div>
+<p class="font-label-bold text-label-bold text-on-surface-variant">Juanito01</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider italic">Message Deleted</p>
+</div>
+</div>
+<span class="text-[10px] text-outline">12:44:30</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline italic">Content removed by Moderator Team</p>
+</div>
+</section>
+<!-- Placeholder for stream content visualization -->
+<section class="mt-xl pt-lg border-t border-outline-variant">
+<h3 class="font-title-md text-title-md text-on-surface mb-sm">Live Preview</h3>
+<div class="relative aspect-video rounded-xl overflow-hidden bg-on-background">
+<img alt="Stream Preview" class="w-full h-full object-cover" data-alt="A dynamic live stream frame showing a charismatic host showcasing trendy sneakers in a bright, modern studio with vibrant orange neon accents and professional studio lighting. The scene is energetic and colorful, reflecting a high-conversion retail environment with floating social interaction emojis and real-time sales counters on the sides." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoyuRfi3UIqUtYSWBLx9VuiUyTBWkbXuNSogWpYIjvLFHpuG2gZR4xV-Qzl3E5LL29UaE3RO99zd7uwrIQZqTjeoQjjv_laaN8qaZVW20ilgVM7cMRzWLMMQuFw1K-SfewgVmhKAKaxiI8AQe67uc7AY_DWfy6KI4-miLQF9TLy5ACWWPx8gVfPlmTmdZhbObZW7eQAU0iGdY-MaBGmQTDWIUjOb9aJUniLI1e9ywHAD0bYJcF0c2zCZu98evveoCeU79k8xkVybuc"/>
+<div class="absolute top-sm left-sm bg-secondary px-sm py-xs rounded text-[10px] font-bold text-white flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> LIVE
+                </div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-margin-mobile py-xs bg-surface dark:bg-surface-container border-t border-outline-variant dark:border-outline shadow-md">
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container dark:bg-secondary-fixed-dim dark:text-on-secondary-fixed rounded-full px-4 py-1 active:scale-90 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">videocam</span>
+<span class="font-label-bold text-label-bold">Stream</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:bg-surface-variant dark:hover:bg-surface-dim active:scale-90 transition-all p-1">
+<span class="material-symbols-outlined">forum</span>
+<span class="font-label-bold text-label-bold">Chat</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:bg-surface-variant dark:hover:bg-surface-dim active:scale-90 transition-all p-1">
+<span class="material-symbols-outlined">flag</span>
+<span class="font-label-bold text-label-bold">Reports</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant hover:bg-surface-variant dark:hover:bg-surface-dim active:scale-90 transition-all p-1">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span class="font-label-bold text-label-bold">Admin</span>
+</button>
+</nav>
+<script>
+        // Simple micro-interaction for moderation actions
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const text = this.innerText.trim();
+                if (text === 'Delete') {
+                    const card = this.closest('.bg-surface-container-lowest, .bg-error-container');
+                    card.style.opacity = '0.3';
+                    card.style.pointerEvents = 'none';
+                    setTimeout(() => {
+                        card.style.display = 'none';
+                    }, 500);
+                }
+            });
+        });
+
+        // Simulating live feed update
+        setInterval(() => {
+            const liveDot = document.querySelector('.animate-pulse');
+            if (liveDot) {
+                liveDot.classList.toggle('bg-white');
+                liveDot.classList.toggle('bg-red-200');
+            }
+        }, 1000);
+    </script>
+</body></html>

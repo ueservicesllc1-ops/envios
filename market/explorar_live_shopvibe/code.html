@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-container": "#e32322",
+                        "inverse-on-surface": "#f3f0ef",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "surface-bright": "#fcf9f8",
+                        "secondary-fixed": "#ffdad5",
+                        "surface": "#fcf9f8",
+                        "on-surface": "#1c1b1b",
+                        "tertiary-fixed": "#6bff8f",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "on-surface-variant": "#5a4136",
+                        "on-secondary-fixed-variant": "#930009",
+                        "primary": "#a04100",
+                        "outline-variant": "#e2bfb0",
+                        "on-secondary-container": "#fffbff",
+                        "outline": "#8e7164",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#e5e2e1",
+                        "secondary": "#bb000f",
+                        "primary-container": "#ff6b00",
+                        "surface-tint": "#a04100",
+                        "surface-container-highest": "#e5e2e1",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed": "#410002",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#003a15",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "tertiary": "#006e2f",
+                        "primary-fixed": "#ffdbcc",
+                        "on-background": "#1c1b1b",
+                        "inverse-surface": "#313030",
+                        "on-primary-container": "#572000",
+                        "surface-dim": "#dcd9d9",
+                        "tertiary-container": "#00b050",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#ffb693",
+                        "error": "#ba1a1a",
+                        "surface-container": "#f0eded",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#f6f3f2",
+                        "on-primary-fixed": "#351000",
+                        "surface-container-high": "#eae7e7",
+                        "background": "#fcf9f8",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "on-tertiary-fixed": "#002109"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "margin-mobile": "12px",
+                        "gutter": "12px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "margin-desktop": "24px",
+                        "xl": "40px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "price-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-lg text-body-lg min-h-screen pb-20">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-md">
+<button class="text-primary hover:bg-surface-variant/50 p-2 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<h1 class="font-display-lg text-display-lg text-primary italic font-black">ShopVibe Live</h1>
+</div>
+<div class="flex items-center gap-sm">
+<button class="text-primary hover:bg-surface-variant/50 p-2 rounded-full transition-colors duration-200">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<main class="pt-20 px-margin-mobile max-w-7xl mx-auto">
+<!-- Category Chips -->
+<div class="flex gap-sm overflow-x-auto hide-scrollbar pb-md">
+<button class="whitespace-nowrap px-md py-sm bg-primary-container text-on-primary-container font-label-bold text-label-bold rounded-full transition-all">All Live</button>
+<button class="whitespace-nowrap px-md py-sm bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold rounded-full hover:bg-surface-variant transition-all">Fashion</button>
+<button class="whitespace-nowrap px-md py-sm bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold rounded-full hover:bg-surface-variant transition-all">Beauty</button>
+<button class="whitespace-nowrap px-md py-sm bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold rounded-full hover:bg-surface-variant transition-all">Tech</button>
+<button class="whitespace-nowrap px-md py-sm bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold rounded-full hover:bg-surface-variant transition-all">Home</button>
+<button class="whitespace-nowrap px-md py-sm bg-surface-container-high text-on-surface-variant font-label-bold text-label-bold rounded-full hover:bg-surface-variant transition-all">Gaming</button>
+</div>
+<!-- Featured Flash Sale Banner -->
+<section class="mb-lg">
+<div class="relative w-full h-32 rounded-xl overflow-hidden bg-secondary-container flex items-center justify-between px-md">
+<div class="z-10 text-white">
+<p class="font-label-bold text-label-bold uppercase tracking-wider mb-xs">Flash Sale</p>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile mb-xs">Live Drop 70% Off</h2>
+<div class="flex gap-xs items-center">
+<span class="bg-white/20 px-2 py-1 rounded font-mono text-sm">02</span>:
+                        <span class="bg-white/20 px-2 py-1 rounded font-mono text-sm">45</span>:
+                        <span class="bg-white/20 px-2 py-1 rounded font-mono text-sm">12</span>
+</div>
+</div>
+<div class="absolute inset-0 bg-gradient-to-r from-secondary-container to-transparent z-0"></div>
+<img alt="Flash Sale" class="absolute right-0 top-0 h-full w-1/2 object-cover mix-blend-overlay" data-alt="A high-contrast retail advertisement background featuring abstract glowing orange and red light streaks. The visual style is energetic and fast-paced, mirroring a high-density global marketplace. Soft focus shopping bags and luxury items are visible in the far background to evoke a premium e-commerce mood. Cinematic lighting with vibrant orange accents highlights the sense of urgency." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4BRmwfrek0WydY_Ln-MwP34EUocpb85HoD8UYyzKsQ4YkKBuBbufBpJ4lUCIoq97grvjWL0lnVPDeEqsw9B425KIZe6-qy2mzzpv1jRcG0mgyGAbsstdqJz2RZJUAIkUP5VBACjpq8IwT-Ak7oYjfSoR8r5rTvmctsjA5JPiJIhcO4h7C6EQODY7DlrfcRPXQM6InzHdQeZzTcgo723nbOzhq3-0su4TDNLxukHF9xIYtJFn718wnrVtvjG9Ga3ujyNeiRwRGpH69"/>
+</div>
+</section>
+<!-- Live Streams Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-gutter mb-xl">
+<!-- Live Card 1 -->
+<div class="group relative flex flex-col gap-xs cursor-pointer">
+<div class="relative aspect-[3/4] rounded-xl overflow-hidden bg-surface-container border border-outline-variant">
+<img alt="Fashion Streamer" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A stylish female fashion influencer standing in a high-end minimalist studio with warm sunlit lighting. She is showcasing a vibrant summer collection with colorful textiles and modern accessories. The image has a clean, high-resolution aesthetic with professional studio lighting and a cheerful, social commerce atmosphere. Bright orange and white tones dominate the scene." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyOScN1UBNcHlQh0b24SSG3jfKpoW_hFany_ofox_d3sEsDx6Xejm-HAGt46UbC1zE8K4MuXiSFUCu3dbuccIN6t9o0C97Ql5LSeRyqa-M_7iiArLWOhBlOLBt4K8Xm6OcsbV4TC59J2EqqGh_nehIhFOkMEljFWDvcKLoOKLNXToSmnTRfwmPDf30pyLJ_G-hjvraXhtIvtzf59EYn1mtQJAI-DoT0W8ICF9mSRhGlv7evE8-SqSHNTSrWH8Mtxfo9p4ZLmQ4w4Xd"/>
+<div class="absolute top-sm left-sm bg-secondary px-2 py-1 rounded flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+<span class="text-white font-label-bold text-[10px] uppercase">Live</span>
+</div>
+<div class="absolute top-sm right-sm bg-black/40 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-white !text-sm" data-icon="visibility">visibility</span>
+<span class="text-white font-label-bold text-[10px]">1.2k</span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-sm bg-gradient-to-t from-black/80 to-transparent">
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full border border-white overflow-hidden bg-white">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkr9Rh_swMTTF8Yi9WBIPdkqvMWvh4aEeS2DHKMTmXjWqCFlPIcV91zA_PvxUfd8UedJN_SMAT7BLFXaGeVcFOUy-Lym1JB8RkxmwHc3BD6zQD5I-ov89zBt4-rrIBigsIdLjzc25mIsjZ4UzLgi9W8fVCluzONjB5cd_RPer3p6rSZ6nVvXIQQ70jjAoCIdnQhwWqx_2sUBlgdYm4K5KmoSoyUjWiFIhkYITcYh_LLa0mElcMhmKGSHSpYoeo8fkrYRaQiH-_RL7P"/>
+</div>
+<span class="text-white font-label-bold text-[10px] truncate">@StyleByMia</span>
+</div>
+</div>
+</div>
+<h3 class="font-title-md text-title-md line-clamp-2 px-1">Summer Wardrobe Refresh: Part 1</h3>
+</div>
+<!-- Live Card 2 -->
+<div class="group relative flex flex-col gap-xs cursor-pointer">
+<div class="relative aspect-[3/4] rounded-xl overflow-hidden bg-surface-container border border-outline-variant">
+<img alt="Tech Review" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A charismatic tech reviewer demonstrating the latest sleek gadgets in a modern, neon-accented home office. The lighting is high-key with cool blue and vibrant orange highlights. The scene is densely packed with high-tech peripherals and creative lighting. The mood is professional, energetic, and highly engaging, characteristic of a live tech unboxing event." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBeMm5fsaQdv70-yM3ZG_oZthAHB1F6RUF7p4Me6MQkMUH3kERrdCzEo77-9kM2nGWCDTXRkbIi67j8YQ8cTiUWXaoJVzoXH5tbodpCJeE0zi-gNyxDgnox5F3_zVZx3FD5JBoJjtUSpVld96vubGUG5LUs7_YDHqSClh1yqRQUuRpJCwXPboaI8Wb2gjRkiBoPsGUoPWDbRFjaivW_b6YXlX4zun094XVDhDW0Sz8y-zR2pzLosE2-GRu_p_yc-6pdLqr6VXeGPS2I"/>
+<div class="absolute top-sm left-sm bg-secondary px-2 py-1 rounded flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+<span class="text-white font-label-bold text-[10px] uppercase">Live</span>
+</div>
+<div class="absolute top-sm right-sm bg-black/40 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-white !text-sm" data-icon="visibility">visibility</span>
+<span class="text-white font-label-bold text-[10px]">4.8k</span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-sm bg-gradient-to-t from-black/80 to-transparent">
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full border border-white overflow-hidden bg-white">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATfW0AhVJzUC7LJne2EuUp0c76vf6zZL1UCMWccltM4aIGaRRDEd8D_2F3pIM9qTepDdIf0NtEZAqEfWHRNfkG6CfgCyBcFFWC8HLQZUquQlfM7CbjHeIkwU7ucHTigZ5qLBfHJ1VxKTAcnxbEa5yeFhoIEZrFCwUrGDKLZ_20n1BW7igpV2R5xyWSmSL0Z7IP4uxqs-zCGhwJWaex_MquXpsLdWR5g6BQOrhdSlV9-yi57j5Khavf27BAjE7u5MI1eAGLfLxQAfjv"/>
+</div>
+<span class="text-white font-label-bold text-[10px] truncate">@TechUnboxX</span>
+</div>
+</div>
+</div>
+<h3 class="font-title-md text-title-md line-clamp-2 px-1">New Gen-Pro Tablet Unboxing!</h3>
+</div>
+<!-- Live Card 3 -->
+<div class="group relative flex flex-col gap-xs cursor-pointer">
+<div class="relative aspect-[3/4] rounded-xl overflow-hidden bg-surface-container border border-outline-variant">
+<img alt="Beauty Tutorial" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="A close-up of a professional makeup artist applying vibrant cosmetic products in a bright, airy vanity setting. Large ring lights create a flawless, soft lighting effect. The scene is filled with elegant glass bottles and high-end makeup palettes. The style is clean, corporate modern with high-contrast details and a focus on luxurious product textures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQzLiVVTS4_EeH25V0KDdHcdQVkJdfNxS8bqazjBYEDciDYh10DHYL9UgvH2RrIa4TxBp41P6TAJnc5Cr9zBwHSvNnT3hJ9CWdosAQg_rlVVRXZTJDgD5M9-KbCK-f5GbBrP2aU79SBPKoxlt10MKqmQEGIGUYPJniQ4sjmstyx8q9Kx_PFvrMJbo5CHGtdhw0XOo2V80BzFuSjWuFmO27mivqNq9yT5cfLWQe_oSkkl0RG7bcsZChPcKu56ctwalasSh1ydJHl7hb"/>
+<div class="absolute top-sm left-sm bg-secondary px-2 py-1 rounded flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+<span class="text-white font-label-bold text-[10px] uppercase">Live</span>
+</div>
+<div class="absolute top-sm right-sm bg-black/40 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-white !text-sm" data-icon="visibility">visibility</span>
+<span class="text-white font-label-bold text-[10px]">852</span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-sm bg-gradient-to-t from-black/80 to-transparent">
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full border border-white overflow-hidden bg-white">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfHOdLWujUUXLdZP0-B-N5EJ6TGuUL-yrPGcp5iVLYqnAeGU3nqBQIUS6nwnGr0F7bSBclFPaDYeaLD1ECjQR6A5Og4UpaEMoPAAUtqNtAMVMPhFMplFLo7NfFhzpcqnrFEtMOPCoMDUt38iwzfPO8TeT5lm6wXNI8B7-tI_7kzSQzLMBFgyAP-gd1Z-184ZGJOmW2YKhBYLpImSNpWl7dc_C3zSxJZZLv9CyLK4fx6RACvMOBPS4kIiXKZ0LJK2PpWfmjeIcSOBm0"/>
+</div>
+<span class="text-white font-label-bold text-[10px] truncate">@GlowWithGrace</span>
+</div>
+</div>
+</div>
+<h3 class="font-title-md text-title-md line-clamp-2 px-1">Golden Hour Glow Routine ✨</h3>
+</div>
+<!-- Live Card 4 -->
+<div class="group relative flex flex-col gap-xs cursor-pointer">
+<div class="relative aspect-[3/4] rounded-xl overflow-hidden bg-surface-container border border-outline-variant">
+<img alt="Home Decor" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" data-alt="An interior designer showcasing elegant home decor and smart appliances in a contemporary sun-drenched living room. The aesthetic is sophisticated and accessible, featuring warm wood textures, indoor plants, and soft neutral fabrics. The lighting is natural and bright, emphasizing a premium retail atmosphere with subtle orange accent pillows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvlnQcszonJOsLKs_JGo99ZuEUjSX66HOsiDBxp40ZlUiZVaJ128zUcH0Eun1DgVKcx9BK1xsGbpJBthSy18IxVRNlRDMRWrHE0ViSLkWPSgOZLS6wvesPpkrUU5bMd4sDFzkDESrPnOfVqLfRlVWeawDOomT67aFUqgX1I11B_ixX8mM7bxdmWEPUQUAZ0GdDohkzQ6s5cL1OXYlJwIdoGT8iGZ7iia3qjZTRjtyOTw_uKNj3gxgA4ikzSZefcsBMCstdseUu4FHK"/>
+<div class="absolute top-sm left-sm bg-secondary px-2 py-1 rounded flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></div>
+<span class="text-white font-label-bold text-[10px] uppercase">Live</span>
+</div>
+<div class="absolute top-sm right-sm bg-black/40 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-white !text-sm" data-icon="visibility">visibility</span>
+<span class="text-white font-label-bold text-[10px]">2.3k</span>
+</div>
+<div class="absolute bottom-0 left-0 right-0 p-sm bg-gradient-to-t from-black/80 to-transparent">
+<div class="flex items-center gap-xs">
+<div class="w-6 h-6 rounded-full border border-white overflow-hidden bg-white">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuArvqKgcSKXee6wj_FKRyswsRkYjgDXfPiRLdkTMZ4FJctG9-OJENdjAdXeBx1hAItGH5T31PD5oeUNmkemY0hh24pAG2dFM91xTJZuoexEx1ymSLhyn1jXcSjWypmteHLL9GwvSP6cJQghCTGI3j0jxtV6eYgYpovXBZHRhTIusHA9byaTtrcPBgY1pn0Ezt1K89wacIGR6vqybdTubVK0QcjjQZyFbvAO7SzwBGQclR0sO8qHcb7FXRcp2CxQlXyaTwsHJJiZB2fW"/>
+</div>
+<span class="text-white font-label-bold text-[10px] truncate">@ModernSpace</span>
+</div>
+</div>
+</div>
+<h3 class="font-title-md text-title-md line-clamp-2 px-1">Scandi-Design Furniture Drop</h3>
+</div>
+</div>
+<!-- Section Headline -->
+<div class="flex justify-between items-center mb-md">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile">Trending Replays</h2>
+<button class="text-primary font-label-bold text-label-bold">View All</button>
+</div>
+<!-- Horizontal Scroll Section -->
+<div class="flex gap-gutter overflow-x-auto hide-scrollbar pb-lg">
+<div class="min-w-[160px] flex flex-col gap-xs">
+<div class="aspect-square rounded-xl bg-surface-variant overflow-hidden border border-outline-variant relative">
+<img alt="Product" class="w-full h-full object-cover" data-alt="A studio product shot of a minimalist white wristwatch against a soft orange background. The lighting is crisp and even, highlighting the clean lines and high-quality materials. Professional commercial photography style with extreme clarity and a modern retail feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAx41idrMl0HlCguQ9h3QlO660sJTST4iq5IWamAMbiPetzeDMxp7r7ame-4C4tng2q-77G6F5UlZ6mPYi85mFBKYBukaFxIAOTPPmR_7rdsTZQaIz2AXEJyEc37On8C_Ib2YXgqbK1nEA-XpX4aSFWblsqei8cmAi8GCkE-xuSU7YQaclek_5wWE0xhcR5s7ubQGTpHiw9PVUpc931zQGuShfdXJoUnKQN3VOpVlfAJLXTPTjwKHgTABgKsDTWR0FPmGqSYt0PsQ9X"/>
+<div class="absolute bottom-xs right-xs bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold">14:20</div>
+</div>
+<p class="font-label-bold text-label-bold text-secondary">#SmartWatch</p>
+<p class="font-body-sm text-body-sm line-clamp-1">Pro Wear Series 5</p>
+</div>
+<div class="min-w-[160px] flex flex-col gap-xs">
+<div class="aspect-square rounded-xl bg-surface-variant overflow-hidden border border-outline-variant relative">
+<img alt="Product" class="w-full h-full object-cover" data-alt="A vibrant red athletic sneaker displayed in a high-contrast studio setting with dynamic shadows. The lighting is sharp, creating a sense of action and excitement. The background features a subtle gradient of deep gray to light gray, making the orange and red tones of the product pop." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7QHZRPcsMd_ozHYNDewYLak4tfeTA6q_2ZQQfi-FAtLWa1MASqoLl8jqTOZTT5lYlkxmtqZkBPnhH9_eEZ6aCBDQCYwpue1LSL_Wd-vy7q5O80A8NwuqYUs83189Xes0YENxBZjgOMStclrtbcRPGVxApBRiJmK7IwquJQsqzdAzvqMsh7WNFh7Jo-OMzMMwbmPpUMYMBY3v9W6f3RKJNUJ3DRRYR-9YQszMDzsYftH8U5rpLC9H18MLXFkQ7RUyxMyT7w6VAr9oL"/>
+<div class="absolute bottom-xs right-xs bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold">08:45</div>
+</div>
+<p class="font-label-bold text-label-bold text-secondary">#Footwear</p>
+<p class="font-body-sm text-body-sm line-clamp-1">MaxSpeed Runners</p>
+</div>
+<div class="min-w-[160px] flex flex-col gap-xs">
+<div class="aspect-square rounded-xl bg-surface-variant overflow-hidden border border-outline-variant relative">
+<img alt="Product" class="w-full h-full object-cover" data-alt="High-end black sneakers on a minimalist white pedestal. The lighting is sophisticated, with soft directional light creating elegant highlights on the textures. The mood is premium and contemporary, reflecting a high-end boutique e-commerce experience." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6TE7ncq7eyFYd74HfA6jC_Cjw1oTWHDuS-TDCahAV1W1XOHobHLyYSTVmajDtI9-lkoC2H8ID-aehOAYbw42FTesvxxZ2rwLPF3COXZ2_22HXaW-kQ-coJLzaG9FbfXJ0-05keSyM2JuzycIOEBv5AVeHmT9ftDaO1ux7QElPKs6loUo5oMhQiwycwBBPgF8yvF_ESElR0lWHMDq-POzT3kg6NZ6cWC_lTbo8A8WTRznpAb0K4Y5M_kAcQm_gN9DlHXTO25SLqG78"/>
+<div class="absolute bottom-xs right-xs bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-bold">22:15</div>
+</div>
+<p class="font-label-bold text-label-bold text-secondary">#Lifestyle</p>
+<p class="font-body-sm text-body-sm line-clamp-1">Urban Core Collection</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface border-t border-outline-variant shadow-lg flex justify-around items-center w-full px-2 py-1">
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="live_tv" style="font-variation-settings: 'FILL' 1;">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+<span class="font-label-bold text-label-bold">Create</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-label-bold text-label-bold">Cart</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant p-2 hover:opacity-80 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for chips
+        const chips = document.querySelectorAll('button.rounded-full');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => {
+                    c.classList.remove('bg-primary-container', 'text-on-primary-container');
+                    c.classList.add('bg-surface-container-high', 'text-on-surface-variant');
+                });
+                chip.classList.add('bg-primary-container', 'text-on-primary-container');
+                chip.classList.remove('bg-surface-container-high', 'text-on-surface-variant');
+            });
+        });
+
+        // Floating Action Button interaction (if we had one)
+        // Scroll behavior for TopAppBar
+        let lastScrollTop = 0;
+        const header = document.querySelector('header');
+        window.addEventListener('scroll', () => {
+            let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            if (scrollTop > lastScrollTop && scrollTop > 100) {
+                header.style.transform = 'translateY(-100%)';
+            } else {
+                header.style.transform = 'translateY(0)';
+            }
+            lastScrollTop = scrollTop;
+            header.style.transition = 'transform 0.3s ease-in-out';
+        });
+    </script>
+</body></html>

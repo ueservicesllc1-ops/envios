@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShopVibe - Post Video</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#572000",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f3f0ef",
+                        "background": "#fcf9f8",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-fixed": "#351000",
+                        "on-tertiary-fixed": "#002109",
+                        "secondary": "#bb000f",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "tertiary": "#006e2f",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#6bff8f",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#410002",
+                        "inverse-surface": "#313030",
+                        "on-secondary-container": "#fffbff",
+                        "tertiary-container": "#00b050",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#dcd9d9",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container": "#f0eded",
+                        "primary-fixed": "#ffdbcc",
+                        "secondary-container": "#e32322",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e5e2e1",
+                        "surface-tint": "#a04100",
+                        "surface-container-high": "#eae7e7",
+                        "surface-bright": "#fcf9f8",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#930009",
+                        "surface": "#fcf9f8",
+                        "outline": "#8e7164",
+                        "surface-container-highest": "#e5e2e1",
+                        "primary-container": "#ff6b00",
+                        "on-surface": "#1c1b1b",
+                        "secondary-fixed": "#ffdad5",
+                        "inverse-primary": "#ffb693",
+                        "primary": "#a04100",
+                        "outline-variant": "#e2bfb0",
+                        "surface-container-low": "#f6f3f2",
+                        "on-tertiary-container": "#003a15",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "on-background": "#1c1b1b",
+                        "on-surface-variant": "#5a4136",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "xl": "40px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "margin-mobile": "12px",
+                        "xs": "4px",
+                        "margin-desktop": "24px",
+                        "gutter": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "price-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .video-overlay-gradient {
+            background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body-lg text-on-background selection:bg-primary-container selection:text-on-primary-container overflow-hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-gradient-to-b from-black/40 to-transparent flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-sm">
+<button class="text-white hover:opacity-80 active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-white">Post Video</span>
+</div>
+<div class="flex items-center gap-md">
+<span class="font-label-bold text-label-bold text-white/80">Draft saved 12:04 PM</span>
+</div>
+</header>
+<main class="h-screen w-full relative flex flex-col md:flex-row bg-black">
+<!-- Video Preview Area -->
+<section class="relative flex-grow h-full w-full bg-black flex items-center justify-center">
+<img alt="Video Preview" class="h-full w-full object-cover" data-alt="A cinematic, high-definition close-up of a vibrant street fashion model walking through a neon-lit urban alleyway at dusk. The camera focus is sharp on the high-quality textures of her designer jacket, while the background bokeh displays soft, circular lights in shades of orange and red. The atmosphere is energetic and commercial, designed for a modern retail platform with high contrast and sharp visual hooks." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCifNONbV4ib-tmR8uBYuu01CO9zEewVIYyHqYatQgnMgfEiH4fVjpQp9HP-dPVZol8qsUgrFgrRK2Z6llH3U__l5jRY_O-1iWmmVC85VTzjDKCV7gnmQCCAwoyV8Bu_l96wbZz1M8EruTubdnOCvkwmKvHr_PLJHpum5LD1PAgAb_pASPN1vglAyLR2UpxIcD21T_wXYtTkgZTpgtSXKcKxU9PgRlA-DPIio9aqnCXj7nA60FXJvHr4441dTPj1qgE903GmL8F_bix"/>
+<div class="absolute inset-0 video-overlay-gradient pointer-events-none"></div>
+<!-- Video Controls Floating -->
+<div class="absolute bottom-32 left-1/2 -translate-x-1/2 flex items-center gap-lg px-lg py-sm bg-black/40 backdrop-blur-md rounded-full border border-white/10">
+<button class="text-white flex flex-col items-center gap-xs active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="music_note">music_note</span>
+<span class="text-[10px] font-label-bold">Add Music</span>
+</button>
+<button class="text-white flex flex-col items-center gap-xs active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="auto_fix_high">auto_fix_high</span>
+<span class="text-[10px] font-label-bold">Filters</span>
+</button>
+<button class="text-white flex flex-col items-center gap-xs active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="title">title</span>
+<span class="text-[10px] font-label-bold">Text</span>
+</button>
+<button class="text-white flex flex-col items-center gap-xs active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="content_cut">content_cut</span>
+<span class="text-[10px] font-label-bold">Edit</span>
+</button>
+</div>
+</section>
+<!-- Sidebar / Overlay Controls -->
+<aside class="absolute bottom-0 md:relative md:bottom-auto w-full md:w-[400px] h-3/4 md:h-full bg-inverse-surface/90 md:bg-inverse-surface backdrop-blur-xl rounded-t-xl md:rounded-none z-40 p-lg overflow-y-auto hide-scrollbar flex flex-col gap-lg border-t md:border-t-0 md:border-l border-white/10">
+<!-- Handle for mobile slide-up -->
+<div class="w-12 h-1 bg-white/20 rounded-full self-center mb-sm md:hidden"></div>
+<!-- Video Info Section -->
+<div class="space-y-sm">
+<div class="flex justify-between items-center">
+<label class="font-label-bold text-label-bold text-white/60 uppercase tracking-wider">Description</label>
+<span class="font-label-bold text-label-bold text-white/40" id="char-count">0/150</span>
+</div>
+<div class="relative">
+<textarea class="w-full bg-white/5 border border-white/10 rounded-lg p-md text-white font-body-lg text-body-lg focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all resize-none h-24" maxlength="150" oninput="document.getElementById('char-count').innerText = this.value.length + '/150'" placeholder="Add a catchy caption for your video..."></textarea>
+</div>
+</div>
+<!-- Product Tagging -->
+<div class="space-y-sm">
+<label class="font-label-bold text-label-bold text-white/60 uppercase tracking-wider">Tag Products</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-white/40" data-icon="search">search</span>
+<input class="w-full bg-white/5 border border-white/10 rounded-lg pl-xl pr-md py-md text-white font-body-lg text-body-lg focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all" placeholder="Search your store products..." type="text"/>
+</div>
+<!-- Suggested Products Horizontal Scroll -->
+<div class="flex gap-sm overflow-x-auto hide-scrollbar py-sm">
+<div class="flex-shrink-0 w-24 space-y-xs group cursor-pointer">
+<div class="h-24 w-24 rounded-lg bg-white/10 overflow-hidden relative border border-white/10 group-hover:border-primary-container transition-colors">
+<img alt="Product" class="h-full w-full object-cover" data-alt="A clean, minimalist studio product shot of a luxury watch resting on a textured gray surface. The lighting is soft and professional, highlighting the metallic sheen and fine craftsmanship. The aesthetic is corporate and high-end, using a neutral color palette with crisp details suitable for a premium retail gallery." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXNPqHvJSFb_DRHRObzr8rdXEAUN6MV07kjLgQ99CNgHHhEvUEauPprQbL9qQ6QCpVeWuAjbKSwBT2rT0nRubk_v-OXnTexZ9emu-ppT1u8bdMjwBbvDFAqST6KtX-BIX7WgAL445g3ohpI3orbdEuHP2dMpIkp-dpk2HXQhpJuSFm9gtM61GLYegwVL8m6qeHBWKHFCN_o5ahcGwRHZ52M070--GC4TLfbVTA4SAMAtuc0pGwjDtfX6lUVn_V5hdLrK9iRPM8vlfq"/>
+<div class="absolute inset-0 bg-primary-container/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+<span class="material-symbols-outlined text-white" data-icon="add">add</span>
+</div>
+</div>
+<p class="text-[10px] text-white/60 truncate font-label-bold">Silver Chrono</p>
+</div>
+<div class="flex-shrink-0 w-24 space-y-xs group cursor-pointer">
+<div class="h-24 w-24 rounded-lg bg-white/10 overflow-hidden relative border border-white/10 group-hover:border-primary-container transition-colors">
+<img alt="Product" class="h-full w-full object-cover" data-alt="A high-contrast, energetic product shot of a bright red running shoe suspended against a solid dark gray background. Sharp lighting creates dramatic highlights on the sneaker's fabric and sole, emphasizing speed and athletic performance. The style is modern retail-focused with a bold, vibrant aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5bV1OYH1m2FPpDWF9Z76h84FHi4ScZv_z1TKf4a8SD7GXWM3kiRu5eZQdP2e20TDsK371eyEEOR7gAsWtf3vR5VEhIAFAu5W8CZf7P0dFPOJgExKY6oJ_x_U_bwH5Ky1rUmXGR7SZ1ownjcGxbSm1N30grrXYf4sqV2K5W2AnPtDT1cx8GESOgbVTnbASXqN6vises-ghkRNJH5LvgeN3xysOq5pO4J6YgNY9Wt37dHmqWENF0ubklFy3VriHrrEIvofRHpEMqoWn"/>
+<div class="absolute inset-0 bg-primary-container/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+<span class="material-symbols-outlined text-white" data-icon="add">add</span>
+</div>
+</div>
+<p class="text-[10px] text-white/60 truncate font-label-bold">Ultra Boost R</p>
+</div>
+<div class="flex-shrink-0 w-24 space-y-xs group cursor-pointer">
+<div class="h-24 w-24 rounded-lg bg-white/10 overflow-hidden relative border border-white/10 group-hover:border-primary-container transition-colors">
+<img alt="Product" class="h-full w-full object-cover" data-alt="Professional product photography of premium black wireless headphones sitting on a wooden desk. Soft ambient lighting creates a warm, cozy yet technologically advanced mood. The background is slightly blurred to keep focus on the elegant curves and high-quality material of the electronic device." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2BM7IoG3JI7nSr3uBsSBmU7JllM_RiukC_wO7lvOns0GGer8NdnrxLUx44EA868L0t7FbftOUsX2HpJlK7P9w25mS2mJ3nG4Z8dLm0D5fY6bguWZwVfd--EELAsH3tdqe2pjS6Qn-b1p6APywdqt51dy1SparAGJNXkV-sumyx1udmy9-Nrnl4ivpexYLF7C9T3Sv_zJq-vExLT-kId0jV70e7k98Qy_H4sALPatStS8U15VmQpy5iNzAwRWNxaJ-r3kRugwHPVYW"/>
+<div class="absolute inset-0 bg-primary-container/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+<span class="material-symbols-outlined text-white" data-icon="add">add</span>
+</div>
+</div>
+<p class="text-[10px] text-white/60 truncate font-label-bold">QuietMax Pro</p>
+</div>
+</div>
+</div>
+<!-- Privacy Settings -->
+<div class="space-y-sm">
+<label class="font-label-bold text-label-bold text-white/60 uppercase tracking-wider">Privacy &amp; Comments</label>
+<div class="bg-white/5 rounded-xl border border-white/10 divide-y divide-white/5">
+<button class="w-full px-md py-md flex items-center justify-between hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-md text-white">
+<span class="material-symbols-outlined text-white/60" data-icon="public">public</span>
+<span class="font-body-lg text-body-lg">Who can see this video</span>
+</div>
+<div class="flex items-center gap-xs text-primary-container font-label-bold">
+<span>Everyone</span>
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</div>
+</button>
+<div class="px-md py-md flex items-center justify-between">
+<div class="flex items-center gap-md text-white">
+<span class="material-symbols-outlined text-white/60" data-icon="chat_bubble">chat_bubble</span>
+<span class="font-body-lg text-body-lg">Allow comments</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="px-md py-md flex items-center justify-between">
+<div class="flex items-center gap-md text-white">
+<span class="material-symbols-outlined text-white/60" data-icon="share">share</span>
+<span class="font-body-lg text-body-lg">Allow Duet / Stitch</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+</div>
+<!-- Footer Buttons -->
+<div class="mt-auto grid grid-cols-2 gap-md pt-lg">
+<button class="h-12 border border-white/20 text-white font-label-bold text-label-bold rounded-lg hover:bg-white/5 active:scale-95 transition-all uppercase tracking-wider">
+                    Drafts
+                </button>
+<button class="h-12 bg-primary-container text-white font-label-bold text-label-bold rounded-lg hover:opacity-90 active:scale-95 shadow-lg shadow-primary-container/20 transition-all uppercase tracking-wider">
+                    Post Video
+                </button>
+</div>
+</aside>
+</main>
+<!-- Bottom Nav Bar (Suppressed on this transactional screen as per instructions, but placeholder logic if needed) -->
+<!-- The Navigation Shell is hidden to prioritize the upload focus -->
+<script>
+        // Micro-interactions for tag selection
+        document.querySelectorAll('.flex-shrink-0.w-24').forEach(item => {
+            item.addEventListener('click', function() {
+                const icon = this.querySelector('.material-symbols-outlined');
+                if (icon.textContent === 'add') {
+                    icon.textContent = 'check';
+                    this.querySelector('.h-24').classList.add('border-primary-container');
+                    this.querySelector('.bg-primary-container\\/20').classList.replace('opacity-0', 'opacity-100');
+                } else {
+                    icon.textContent = 'add';
+                    this.querySelector('.h-24').classList.remove('border-primary-container');
+                    this.querySelector('.bg-primary-container\\/20').classList.replace('opacity-100', 'opacity-0');
+                }
+            });
+        });
+
+        // Simple haptic-like feedback on post button
+        const postBtn = document.querySelector('button.bg-primary-container');
+        postBtn.addEventListener('click', () => {
+            postBtn.innerHTML = '<span class="material-symbols-outlined animate-spin" data-icon="sync">sync</span> Posting...';
+            setTimeout(() => {
+                postBtn.innerHTML = 'Post Video';
+                alert('ShopVibe: Video posted successfully!');
+            }, 1500);
+        });
+    </script>
+</body></html>

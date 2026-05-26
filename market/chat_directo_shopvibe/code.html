@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#a04100",
+                    "primary": "#a04100",
+                    "secondary-container": "#e32322",
+                    "surface-dim": "#dcd9d9",
+                    "tertiary-fixed": "#6bff8f",
+                    "surface-container-highest": "#e5e2e1",
+                    "inverse-on-surface": "#f3f0ef",
+                    "surface-container-low": "#f6f3f2",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "on-primary-container": "#572000",
+                    "background": "#fcf9f8",
+                    "on-background": "#1c1b1b",
+                    "inverse-primary": "#ffb693",
+                    "tertiary": "#006e2f",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#e5e2e1",
+                    "inverse-surface": "#313030",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#eae7e7",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "on-secondary-fixed": "#410002",
+                    "outline": "#8e7164",
+                    "on-secondary-container": "#fffbff",
+                    "error": "#ba1a1a",
+                    "surface-bright": "#fcf9f8",
+                    "secondary-fixed": "#ffdad5",
+                    "on-primary-fixed": "#351000",
+                    "on-tertiary-fixed": "#002109",
+                    "surface-container": "#f0eded",
+                    "secondary": "#bb000f",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed-variant": "#930009",
+                    "primary-container": "#ff6b00",
+                    "tertiary-container": "#00b050",
+                    "on-surface-variant": "#5a4136",
+                    "on-surface": "#1c1b1b",
+                    "surface": "#fcf9f8",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-tertiary-container": "#003a15",
+                    "primary-fixed": "#ffdbcc",
+                    "outline-variant": "#e2bfb0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "4px",
+                    "xl": "40px",
+                    "gutter": "12px",
+                    "lg": "24px",
+                    "md": "16px",
+                    "margin-mobile": "12px",
+                    "sm": "8px",
+                    "margin-desktop": "24px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "title-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .chat-container {
+            height: calc(100vh - 120px);
+        }
+        .message-bubble-sent {
+            border-radius: 18px 18px 2px 18px;
+        }
+        .message-bubble-received {
+            border-radius: 18px 18px 18px 2px;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e2bfb0;
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg overflow-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface flex justify-between items-center px-margin-mobile h-14 border-b border-outline-variant/30">
+<div class="flex items-center gap-sm">
+<button class="transition-transform active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<div class="flex items-center gap-sm">
+<div class="relative">
+<img alt="Sofía R." class="w-10 h-10 rounded-full object-cover border border-outline-variant/50" data-alt="A professional studio portrait of a young woman named Sofía with a friendly smile, set against a clean, warm-toned minimalist background. The lighting is soft and high-key, aligning with a premium corporate modern aesthetic. She has dark hair and wears subtle, modern accessories, embodying a trustworthy and vibrant customer support persona for a high-end retail brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKASLfk3ddk_xwdiZhQpnsY0gw7SE8LWsVUplPOWHt_Ed926_FumxPq2Mdf6ICCauAmT0Snss2V8jKyFgvWNJf9ZHN5ttElB6sRl7saiLPvnoK7wt2dorp0dByRTQuPBrfrTsPP9wvrqn-UGpcXOXcvJdVr8jT6a_GiKMLlohOScVlL2EsCDYTKdf7LY5cVdwPLUqYm8s6PqJS4PdHkkxihAwdBeOr9EhJMUqbCJLFY1oOMiA8f4THCGDhJcyRFlTPILbC0cIQoaR0"/>
+<span class="absolute bottom-0 right-0 w-3 h-3 bg-tertiary-container border-2 border-surface rounded-full"></span>
+</div>
+<div class="flex flex-col">
+<span class="font-title-md text-on-surface leading-tight">Sofía R.</span>
+<span class="font-label-bold text-tertiary text-[10px]">Online</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="transition-transform active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined">videocam</span>
+</button>
+<button class="transition-transform active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined">call</span>
+</button>
+<button class="transition-transform active:scale-95 text-on-surface-variant">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</header>
+<!-- Chat Canvas -->
+<main class="chat-container mt-14 overflow-y-auto px-margin-mobile py-lg flex flex-col gap-lg">
+<!-- Date Divider -->
+<div class="flex justify-center">
+<span class="bg-surface-container-high px-md py-xs rounded-full text-on-surface-variant font-label-bold">Today</span>
+</div>
+<!-- Received Message -->
+<div class="flex items-end gap-sm max-w-[85%] self-start">
+<div class="bg-surface-container-highest text-on-surface p-md message-bubble-received shadow-sm">
+<p class="font-body-sm">Hi there! I saw you were looking at the new collection. Do you have any questions about the sizing for the Urban Velocity series?</p>
+<span class="block text-right text-[10px] text-on-surface-variant mt-xs">09:41 AM</span>
+</div>
+</div>
+<!-- Sent Message -->
+<div class="flex items-end gap-sm max-w-[85%] self-end">
+<div class="bg-primary-container text-white p-md message-bubble-sent shadow-md">
+<p class="font-body-sm">Hey Sofía! Yes, I was wondering if they run true to size or if I should go half a size up?</p>
+<span class="block text-right text-[10px] opacity-80 mt-xs">09:42 AM</span>
+</div>
+</div>
+<!-- Product Card within Chat -->
+<div class="flex items-end gap-sm max-w-[85%] self-start">
+<div class="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col">
+<img alt="Urban Velocity Sneakers" class="w-full aspect-square object-cover" data-alt="A professional product photograph of a sleek, vibrant orange and black high-performance running sneaker. The shoe is positioned dynamically against a clean, neutral gray background with sharp, clear lighting that highlights the textures of the mesh and the glossy finish of the sole. The image style is commercial and high-contrast, designed for a modern e-commerce interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwZufaWEWpfZbyQ3AY3JKy3pYfYbH0mPGMqe3kNY7b5zlXrmJh5M9TCWqrBDEJFFWgYu81lyIwVtC9vSqHg-SLwTbDQIPpPFNh4dhgeQwct-sjBUtzCdt3mq3CatqIQdyfmdnmtKCSbQlH_r6gdtBkztHD5UD-6R7ghwkpn4SZ8PVFB-xTxDgHfFrXDT8l2ViRwVBKLMAA0aa1Ei08JSZSehdoZzZa1Hnd6xeC7aIfpBE-Kiuk9PDim2GJEAK29EVikHWufjtO1lXs"/>
+<div class="p-md flex flex-col gap-xs">
+<h3 class="font-title-md text-on-surface line-clamp-1">Urban Velocity Elite X1</h3>
+<div class="flex items-center gap-xs">
+<span class="text-secondary font-price-lg">129.00</span>
+<span class="text-on-surface-variant font-label-bold text-[10px] line-through">$159.00</span>
+</div>
+<div class="flex items-center gap-xs mt-xs">
+<span class="material-symbols-outlined text-[14px] text-[#FFC107]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-bold text-on-surface-variant">4.9 (2.4k sold)</span>
+</div>
+<button class="mt-sm w-full bg-primary-container text-white font-label-bold py-sm rounded-lg transition-all active:scale-95 hover:opacity-90">
+                        View Product
+                    </button>
+</div>
+</div>
+</div>
+<!-- Received Message Response -->
+<div class="flex items-end gap-sm max-w-[85%] self-start">
+<div class="bg-surface-container-highest text-on-surface p-md message-bubble-received shadow-sm">
+<p class="font-body-sm">These specifically have a slightly wider toe box. Most customers find their regular size fits perfectly!</p>
+<span class="block text-right text-[10px] text-on-surface-variant mt-xs">09:44 AM</span>
+</div>
+</div>
+<!-- Sent Message -->
+<div class="flex items-end gap-sm max-w-[85%] self-end">
+<div class="bg-primary-container text-white p-md message-bubble-sent shadow-md">
+<p class="font-body-sm">Perfect, thanks! I'll add them to my cart now.</p>
+<div class="flex justify-end items-center gap-xs mt-xs">
+<span class="text-[10px] opacity-80">09:45 AM</span>
+<span class="material-symbols-outlined text-[14px]">done_all</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Input Area -->
+<footer class="fixed bottom-0 left-0 w-full bg-surface border-t border-outline-variant/30 px-margin-mobile py-sm pb-safe z-50">
+<div class="flex items-center gap-sm">
+<button class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<div class="flex-1 relative">
+<input class="w-full bg-surface-container-low border-none rounded-full px-lg py-sm text-body-sm focus:ring-2 focus:ring-primary-container/50 placeholder:text-on-surface-variant/50" placeholder="Type a message..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">mood</span>
+</button>
+</div>
+<button class="w-12 h-12 bg-primary-container text-white rounded-full flex items-center justify-center shadow-lg transition-all active:scale-90 hover:brightness-110" id="sendBtn">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</footer>
+<script>
+        // Micro-interaction for the send button
+        const sendBtn = document.getElementById('sendBtn');
+        sendBtn.addEventListener('click', () => {
+            const input = document.querySelector('input');
+            if (input.value.trim() !== '') {
+                // Simulate sending logic
+                console.log('Message sent:', input.value);
+                input.value = '';
+                
+                // Add a little haptic feedback feel
+                sendBtn.style.transform = 'scale(0.8)';
+                setTimeout(() => {
+                    sendBtn.style.transform = 'scale(1)';
+                }, 100);
+            }
+        });
+
+        // Simple enter key listener
+        document.querySelector('input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendBtn.click();
+            }
+        });
+    </script>
+</body></html>

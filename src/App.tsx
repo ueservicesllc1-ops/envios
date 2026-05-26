@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import AuthWrapper from './components/Auth/AuthWrapper';
 import Layout from './components/Layout/Layout';
@@ -62,6 +62,18 @@ import UserAddresses from './pages/UserAddresses';
 import UserProfile from './pages/UserProfile';
 import TestEmail from './pages/TestEmail';
 import Cata from './pages/Cata';
+import MarketplaceV2 from './pages/MarketplaceV2';
+import VibeLayout from './components/vibe/VibeLayout';
+import VibeMarketplace from './pages/VibeMarketplace';
+import VibeLiveShopping from './pages/VibeLiveShopping';
+import VibeFeedPage from './pages/VibeFeedPage';
+import VibeRewards from './pages/VibeRewards';
+import VibeReferrals from './pages/VibeReferrals';
+import VibeProductDetail from './pages/VibeProductDetail';
+import VibeMessages from './pages/VibeMessages';
+import VibeCreator from './pages/VibeCreator';
+import VibeSeller from './pages/VibeSeller';
+import VibeVideoUpload from './pages/VibeVideoUpload';
 
 import OnlineTracker from './components/Layout/OnlineTracker';
 import SplashScreen from './components/Layout/SplashScreen';
@@ -109,11 +121,10 @@ function App() {
           <PWAPrompt />
           <div className="App">
             <Routes>
-              {/* Ruta pública para la página de inicio (tienda en línea) */}
-              <Route path="/" element={<Home />} />
+              {/* Ruta pública para la página de inicio (Feed de Videos) */}
+              <Route path="/" element={<Navigate to="/feed" replace />} />
 
               {/* Ruta del Carrito */}
-              <Route path="/cart" element={<CartPage />} />
               <Route path="/order-success" element={<OrderSuccess />} />
               <Route path="/terminos" element={<TermsPage />} />
               <Route path="/politica" element={<PrivacyPage />} />
@@ -132,6 +143,25 @@ function App() {
 
               {/* Catálogo público */}
               <Route path="/cata" element={<Cata />} />
+              
+              {/* Vibe Marketplace Experience */}
+              <Route element={<VibeLayout />}>
+                <Route path="/vibe-market" element={<MarketplaceV2 />} />
+                <Route path="/marketplace" element={<VibeMarketplace />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/messages" element={<VibeMessages />} />
+                <Route path="/creator" element={<VibeCreator />} />
+                <Route path="/rewards" element={<VibeRewards />} />
+                <Route path="/referrals" element={<VibeReferrals />} />
+                <Route path="/product/:id" element={<VibeProductDetail />} />
+                {/* Seller Affiliate Routes */}
+                <Route path="/seller" element={<VibeSeller />} />
+                <Route path="/seller/upload-video" element={<VibeVideoUpload />} />
+              </Route>
+              
+              <Route path="/feed" element={<VibeFeedPage />} />
+              <Route path="/live" element={<VibeLiveShopping />} />
+              <Route path="/vibe" element={<VibeFeedPage />} />
 
               {/* Ruta para App Mobile - sin Layout ni AuthWrapper */}
               <Route path="/app" element={<AppMobile />} />

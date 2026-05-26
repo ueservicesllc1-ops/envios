@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Calificar Producto | ShopVibe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-on-surface": "#f3f0ef",
+                      "background": "#fcf9f8",
+                      "on-secondary-container": "#fffbff",
+                      "secondary-fixed-dim": "#ffb4aa",
+                      "on-surface": "#1c1b1b",
+                      "inverse-surface": "#313030",
+                      "surface-dim": "#dcd9d9",
+                      "outline": "#8e7164",
+                      "on-secondary-fixed": "#410002",
+                      "surface-container-high": "#eae7e7",
+                      "tertiary-fixed-dim": "#4ae176",
+                      "on-background": "#1c1b1b",
+                      "on-secondary": "#ffffff",
+                      "surface-bright": "#fcf9f8",
+                      "primary-fixed-dim": "#ffb693",
+                      "secondary-container": "#e32322",
+                      "secondary": "#bb000f",
+                      "tertiary-container": "#00b050",
+                      "on-primary-fixed": "#351000",
+                      "on-tertiary-fixed": "#002109",
+                      "on-primary-fixed-variant": "#7a3000",
+                      "surface-container-highest": "#e5e2e1",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#ffdbcc",
+                      "on-error-container": "#93000a",
+                      "primary-container": "#ff6b00",
+                      "surface-container-low": "#f6f3f2",
+                      "on-tertiary-fixed-variant": "#005321",
+                      "on-tertiary-container": "#003a15",
+                      "tertiary": "#006e2f",
+                      "surface": "#fcf9f8",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "inverse-primary": "#ffb693",
+                      "error": "#ba1a1a",
+                      "surface-container": "#f0eded",
+                      "tertiary-fixed": "#6bff8f",
+                      "on-surface-variant": "#5a4136",
+                      "primary": "#a04100",
+                      "on-secondary-fixed-variant": "#930009",
+                      "on-error": "#ffffff",
+                      "on-primary-container": "#572000",
+                      "secondary-fixed": "#ffdad5",
+                      "outline-variant": "#e2bfb0",
+                      "surface-tint": "#a04100",
+                      "error-container": "#ffdad6",
+                      "surface-variant": "#e5e2e1"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "24px",
+                      "xl": "40px",
+                      "margin-mobile": "12px",
+                      "md": "16px",
+                      "lg": "24px",
+                      "xs": "4px",
+                      "sm": "8px",
+                      "base": "4px",
+                      "gutter": "12px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "price-lg": ["Inter"],
+                      "label-bold": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "title-md": ["Inter"],
+                      "display-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                      "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                      "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .star-active { font-variation-settings: 'FILL' 1 !important; color: #FFC107 !important; }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-lg overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-container-highest flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-sm">
+<button class="active:scale-95 transition-transform duration-150 p-sm rounded-full hover:bg-surface-container-low" onclick="window.history.back()">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-black text-primary">Calificar Producto</h1>
+</div>
+<button class="active:scale-95 transition-transform duration-150 p-sm rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-on-surface-variant">more_vert</span>
+</button>
+</header>
+<main class="pt-20 pb-32 px-margin-mobile max-w-md mx-auto">
+<!-- Product Summary -->
+<section class="bg-surface-container-lowest rounded-xl p-md mb-lg flex gap-md items-center border border-surface-variant">
+<div class="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container">
+<img alt="Producto" class="w-full h-full object-cover" data-alt="A premium close-up of a vibrant red performance running shoe with sleek white detailing, set against a soft, clean studio background. The lighting is high-key and professional, emphasizing the shoe's technical mesh texture and modern design. The image aesthetic is energetic, high-contrast, and retail-focused, fitting a premium e-commerce marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfvPa5z5ZL6MHRXe3h84Cc0HYMya0laLJw536z9BcTabcr1GwP-OamCUUS8a7eHTa9oWuTZew303HPbIVPt_CxA6Oz6tPhnyFKRSg-HRKPbL-sNRjyRFaYcXShPmxKFPoo2cR8Tswnyc7NL1VYEIAAxspNxrGmnbHWzeP7jEgx3Vy4pHnnKCdM98YJrA5KRcimL6COIpgFR6npcNi7KMZ0FsgaLWp1VEVdkuv7BxZBMojHmwesO-zBZV7W9yucGXyPWZyO3RJ9FDUH"/>
+</div>
+<div class="flex flex-col gap-xs">
+<h2 class="font-title-md text-title-md text-on-surface line-clamp-1">Nike Air Max Speedster</h2>
+<p class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider">Orden: #SHV-882910</p>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[14px] text-tertiary" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="font-label-bold text-label-bold text-tertiary">Compra Verificada</span>
+</div>
+</div>
+</section>
+<!-- Rating Section -->
+<section class="bg-surface-container-lowest rounded-xl p-md mb-lg border border-surface-variant text-center">
+<p class="font-title-md text-title-md text-on-surface mb-sm">¿Qué te pareció el producto?</p>
+<div class="flex justify-center gap-sm mb-xs" id="star-rating">
+<button class="active:scale-90 transition-transform" onclick="setRating(1)"><span class="material-symbols-outlined text-4xl text-outline-variant">star</span></button>
+<button class="active:scale-90 transition-transform" onclick="setRating(2)"><span class="material-symbols-outlined text-4xl text-outline-variant">star</span></button>
+<button class="active:scale-90 transition-transform" onclick="setRating(3)"><span class="material-symbols-outlined text-4xl text-outline-variant">star</span></button>
+<button class="active:scale-90 transition-transform" onclick="setRating(4)"><span class="material-symbols-outlined text-4xl text-outline-variant">star</span></button>
+<button class="active:scale-90 transition-transform" onclick="setRating(5)"><span class="material-symbols-outlined text-4xl text-outline-variant">star</span></button>
+</div>
+<p class="font-label-bold text-label-bold text-on-surface-variant h-4" id="rating-label">Toca para calificar</p>
+</section>
+<!-- Attributes Feedback -->
+<section class="mb-lg">
+<h3 class="font-label-bold text-label-bold text-on-surface-variant mb-md uppercase px-xs">Detalles del pedido</h3>
+<div class="grid grid-cols-1 gap-sm">
+<div class="flex items-center justify-between p-md bg-surface-container-lowest rounded-xl border border-surface-variant">
+<span class="font-body-lg text-body-lg">Calidad del producto</span>
+<div class="flex gap-xs">
+<button class="px-md py-xs rounded-full border border-outline-variant text-label-bold hover:bg-primary-container hover:text-white transition-colors">Baja</button>
+<button class="px-md py-xs rounded-full bg-primary-container text-white text-label-bold">Alta</button>
+</div>
+</div>
+<div class="flex items-center justify-between p-md bg-surface-container-lowest rounded-xl border border-surface-variant">
+<span class="font-body-lg text-body-lg">Tiempo de entrega</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-md bg-surface-container-lowest rounded-xl border border-surface-variant">
+<span class="font-body-lg text-body-lg">Comunicación</span>
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">sentiment_satisfied</span>
+</div>
+</div>
+</section>
+<!-- Review Text -->
+<section class="mb-lg">
+<label class="font-label-bold text-label-bold text-on-surface-variant mb-sm uppercase px-xs block">Tu reseña</label>
+<textarea class="w-full min-h-[120px] bg-white border border-surface-variant rounded-xl p-md font-body-lg focus:ring-2 focus:ring-primary-container focus:border-transparent outline-none transition-all resize-none" placeholder="Cuéntanos más sobre tu experiencia..."></textarea>
+</section>
+<!-- Media Upload -->
+<section class="mb-lg">
+<div class="flex justify-between items-center mb-sm px-xs">
+<label class="font-label-bold text-label-bold text-on-surface-variant uppercase">Fotos y Videos</label>
+<span class="font-label-bold text-label-bold text-primary">+50 ShopVibe Points</span>
+</div>
+<div class="flex gap-sm overflow-x-auto pb-xs">
+<button class="w-24 h-24 flex-shrink-0 bg-surface-container-low border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center gap-xs hover:bg-surface-container-high transition-colors group">
+<span class="material-symbols-outlined text-primary text-3xl group-active:scale-90">add_a_photo</span>
+<span class="text-[10px] font-bold text-on-surface-variant">AÑADIR</span>
+</button>
+<div class="w-24 h-24 flex-shrink-0 bg-surface-container rounded-xl overflow-hidden relative group">
+<img class="w-full h-full object-cover" data-alt="Close up lifestyle photograph of the sole of a bright lime green sneaker, showcasing the intricate traction pattern and material details. The shot is taken with a shallow depth of field, highlighting the quality of the footwear against a blurred urban concrete background. Vibrant and commercial visual style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAf6L0bskT0kk1fqTLR4wkpnr39AY4RYwygo_QDewKd5h9jHecoz9GpyktZzwWf2c-8ckBixdxOFTNKPH0UJkN-2QVniMxM2c71CLWIN4fnM9f5GqEO7kqR5JLP36OLyZb7bGZ6v2GMQ70nhpI9Ml-LmQFXFGuzPmZSMC-FT_v31NxyoWP5KNVRd-vxVmufLrF5cJDTfUega_hx6xTxJkeRLN9TMPGmtnDruVJE1yg6D0TQpJMCZR0iMzWLleUlFAA3fzc9-yRxwNzU"/>
+<button class="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1"><span class="material-symbols-outlined text-sm">close</span></button>
+</div>
+</div>
+</section>
+<!-- Submit Button -->
+<div class="fixed bottom-20 left-0 w-full px-margin-mobile py-md bg-background/80 backdrop-blur-md z-40">
+<button class="w-full bg-primary-container text-white font-label-bold text-title-md py-md rounded-xl shadow-lg active:scale-95 transition-all duration-150 uppercase tracking-widest flex items-center justify-center gap-sm">
+                Enviar Calificación
+                <span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface dark:bg-surface-container-lowest flex justify-around items-center w-full h-20 pb-safe px-2 shadow-md dark:shadow-none">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-3 py-1 hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-3 py-1 hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-3 py-1 hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-bold text-label-bold">Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary text-on-primary-container dark:text-on-primary rounded-xl px-3 py-1 active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_mall</span>
+<span class="font-label-bold text-label-bold">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant px-3 py-1 hover:opacity-80 transition-opacity" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        const ratingLabels = ["Malo", "Regular", "Bueno", "Muy bueno", "¡Excelente!"];
+        function setRating(rating) {
+            const stars = document.querySelectorAll('#star-rating .material-symbols-outlined');
+            const label = document.getElementById('rating-label');
+            
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('star-active');
+                    star.innerText = 'star';
+                } else {
+                    star.classList.remove('star-active');
+                    star.innerText = 'star';
+                }
+            });
+            
+            label.innerText = ratingLabels[rating - 1];
+            label.classList.add('text-primary', 'scale-110');
+            setTimeout(() => label.classList.remove('scale-110'), 200);
+        }
+
+        // Haptic feedback simulation
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.navigator.vibrate) window.navigator.vibrate(10);
+            });
+        });
+    </script>
+</body></html>

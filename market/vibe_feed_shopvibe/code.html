@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShopVibe - Discover Shopable Trends</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .video-container {
+            height: 100vh;
+            height: -webkit-fill-available;
+        }
+        .scrolling-feed {
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            height: 100vh;
+        }
+        .video-slide {
+            scroll-snap-align: start;
+            height: 100vh;
+            position: relative;
+        }
+        .blur-backdrop {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#572000",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f3f0ef",
+                        "background": "#fcf9f8",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "on-primary-fixed": "#351000",
+                        "on-tertiary-fixed": "#002109",
+                        "secondary": "#bb000f",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "tertiary": "#006e2f",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#6bff8f",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#410002",
+                        "inverse-surface": "#313030",
+                        "on-secondary-container": "#fffbff",
+                        "tertiary-container": "#00b050",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#dcd9d9",
+                        "primary-fixed-dim": "#ffb693",
+                        "surface-container": "#f0eded",
+                        "primary-fixed": "#ffdbcc",
+                        "secondary-container": "#e32322",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e5e2e1",
+                        "surface-tint": "#a04100",
+                        "surface-container-high": "#eae7e7",
+                        "surface-bright": "#fcf9f8",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed-variant": "#930009",
+                        "surface": "#fcf9f8",
+                        "outline": "#8e7164",
+                        "surface-container-highest": "#e5e2e1",
+                        "primary-container": "#ff6b00",
+                        "on-surface": "#1c1b1b",
+                        "secondary-fixed": "#ffdad5",
+                        "inverse-primary": "#ffb693",
+                        "primary": "#a04100",
+                        "outline-variant": "#e2bfb0",
+                        "surface-container-low": "#f6f3f2",
+                        "on-tertiary-container": "#003a15",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "on-background": "#1c1b1b",
+                        "on-surface-variant": "#5a4136",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "xl": "40px",
+                        "md": "16px",
+                        "lg": "24px",
+                        "base": "4px",
+                        "margin-mobile": "12px",
+                        "xs": "4px",
+                        "margin-desktop": "24px",
+                        "gutter": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "price-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-black text-white selection:bg-primary-container overflow-hidden">
+<!-- TopAppBar Section -->
+<header class="fixed top-0 w-full z-50 bg-gradient-to-b from-black/60 to-transparent flex justify-between items-center px-margin-mobile h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-white text-2xl">movie_edit</span>
+<span class="font-display-lg text-display-lg text-primary-fixed-dim tracking-tighter">ShopVibe</span>
+</div>
+<nav class="absolute left-1/2 -translate-x-1/2 flex items-center gap-6">
+<button class="font-label-bold text-label-bold text-on-surface-variant hover:opacity-80 transition-opacity">Following</button>
+<button class="font-label-bold text-label-bold text-primary font-bold hover:opacity-80 transition-opacity relative after:content-[''] after:absolute after:-bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-4 after:h-0.5 after:bg-primary">For You</button>
+</nav>
+<button class="text-white hover:opacity-80 transition-opacity active:scale-95 duration-150">
+<span class="material-symbols-outlined text-3xl">shopping_cart</span>
+</button>
+</header>
+<!-- Full Screen Vertical Feed -->
+<main class="scrolling-feed h-screen w-full">
+<!-- Video Slide 1 -->
+<section class="video-slide w-full relative">
+<!-- Background Video/Image Container -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover" data-alt="A high-fashion vertical portrait of a model walking down a sun-drenched minimalist city street wearing a vibrant orange designer trench coat. The lighting is bright and high-contrast, casting sharp cinematic shadows that emphasize the architectural textures of the background. The overall aesthetic is upscale and modern, utilizing a color palette of warm terracotta, crisp white, and deep shadows to create a high-energy shopping atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCR9xm86BpEe92ZMj7KOwUc-GjW18mSifIcQYydttbqK9tyxmNlnz-yXP19S29UXjec4h0cprthrihgH63Jy5oTFQnQzsK_afbo7dYmvZ86yGGjf99D6-4bN2-QnSRIViTLSn2VjNEmofx-XLJr4XQYTQdmsr-DWvg0pwwNd9E4PmpzJrnqNtWGjHxxJ0AMZM-RL9TUdIKP0y1w_v4mGvmy6adPrmzk7z7zKQcftx6EYcmIwX0Bj0F2V2XyukoAEeFsGQqMitS3ndO1"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
+</div>
+<!-- Right Overlay Actions -->
+<aside class="absolute right-4 bottom-32 flex flex-col items-center gap-6 z-20">
+<div class="relative">
+<div class="w-12 h-12 rounded-full border-2 border-white overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A close-up professional headshot of a stylish female fashion influencer with a friendly expression. She has sleek hair and soft makeup that glows under warm studio lighting. The background is a clean, neutral tone that fits a premium brand identity. The image quality is sharp, emphasizing her approachable yet authoritative fashion sense." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWoZ-3e5i9Q_dU9Wo5qlnMsWf7IgOynUmzkZ1bTAG9GNsQBIaYICauJwGAZ7Geim660oa1-CZH-6OjjfSSrzOEKhOiosbiyXzVuiREnnWSHIWoDynxCNdyLF4RCMKXVAqn4EaTYt8xJPnEdLlpOYD77kYfA9rW7xZh-CdVY9qWRXOKQxYtakRS8xVyYdLX-ap31V8dszfDRLxyJKcOn6biNba5nNs3Jkk_d_6otD2NcYwXpsxQz9BVEMPj5KkepjgF3zay6UQzQaDH"/>
+</div>
+<button class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary-container text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-black">
+<span class="material-symbols-outlined text-[12px] font-bold">add</span>
+</button>
+</div>
+<div class="flex flex-col items-center gap-1">
+<button class="active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+<span class="font-label-bold text-label-bold">1.2M</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<button class="active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl">chat_bubble</span>
+</button>
+<span class="font-label-bold text-label-bold">8.4K</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<button class="active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl">share</span>
+</button>
+<span class="font-label-bold text-label-bold">45K</span>
+</div>
+</aside>
+<!-- Bottom Information & Product Card -->
+<div class="absolute bottom-20 left-0 w-full px-margin-mobile z-20 space-y-4">
+<!-- Creator Handle & Description -->
+<div class="max-w-[80%]">
+<h3 class="font-title-md text-title-md mb-1">@creator_handle</h3>
+<p class="font-body-sm text-body-sm text-white/90 line-clamp-2">The only trench coat you need this autumn. Styling it 3 ways for a casual day out! #fashion #autumnstyle #ShopVibe</p>
+</div>
+<!-- Product Overlay Card -->
+<div class="bg-white/10 blur-backdrop p-3 rounded-xl border border-white/20 flex items-center gap-3 max-w-sm">
+<div class="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-white">
+<img class="w-full h-full object-cover" data-alt="A clean studio product shot of a premium burnt orange trench coat on a white background. The fabric texture is clearly visible, showing high-quality stitching and a smooth finish. The lighting is soft and even, highlighting the vibrant color which matches the brand's primary accent palette. The coat is presented in a way that emphasizes its professional and modern silhouette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDA4g3JbgxoLCULKzPmD1Q93gQrDpbbu3xDWd_zIw9wPjFBYrYiUY400mmIHbbdmm5ee9gO5p4aq3Yr712xCmrTgt83e5D9sR08SC4BszRTbD8FHePV1RddrOqR9tMP5BjpPdX67rsrIeDVqi3JgWzgS8261No6RgbyDwZVazXSKdD4zD6nhsX9ytEOsNiNUnfWuMyyCbY3Isz1MHy6qTclMfPfkrAd2_AvZLZV49m3nEv6Xu08INo1mhDsLVhBvJvpFDpihZWieaNQ"/>
+</div>
+<div class="flex-grow min-w-0">
+<h4 class="font-label-bold text-label-bold text-white truncate">Premium Autumn Trench Coat</h4>
+<div class="flex items-baseline gap-2 mt-0.5">
+<span class="font-price-lg text-primary-fixed-dim">$129.99</span>
+<span class="text-[10px] text-white/60 line-through">$189.99</span>
+</div>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px] text-yellow-400" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-[11px] text-white/80">4.8 (2.3k sold)</span>
+</div>
+</div>
+<button class="bg-primary-container text-on-primary-container font-label-bold text-label-bold px-4 py-2 rounded-lg active:scale-95 transition-transform whitespace-nowrap">
+                        Buy Now
+                    </button>
+</div>
+</div>
+</section>
+<!-- Video Slide 2 (Placeholder for scroll) -->
+<section class="video-slide w-full relative">
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover" data-alt="A high-energy urban fashion shot featuring a diverse group of friends laughing and walking in a vibrant shopping district. The scene is filled with bright neon signs and modern glass storefronts. The lighting is late afternoon golden hour, creating a warm and energetic mood. The visual style is fast-paced and youthful, focusing on movement and the excitement of a group shopping experience." src="https://lh3.googleusercontent.com/aida-public/AB6AXuChC5SLZkHNnX_xl6vI6zgjxeNlvC4gNd5DPE8ioXTeb7s6x-J4wI2tLCUMsg3h4_9G-hitqtwtz6PHACn5u1K3ES2vqY6QVFtfPlsN1gP5_xXmnyDUSXpcuDUr6KXyLPu1SnkHI5DDOv2_sB1-CwtEKGFBApW1U1dfaIJg3LLX35XL7anCuN7Cu9JTW_n1tZQ7O0Iop7J-e9B_j8jW3At30LxRAQxEHKnvW5-3qAqIckL70nu2Oe0EPWCIPZUf4Dkjcfe1nUhB3ORs"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
+</div>
+<!-- Same UI Overlays would be repeated here for content -->
+<div class="absolute bottom-20 left-0 w-full px-margin-mobile z-20">
+<h3 class="font-title-md text-title-md mb-1">@style_maven</h3>
+<p class="font-body-sm text-body-sm text-white/90">New arrivals just dropped! Check out these party looks. 🥂</p>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-inverse-surface/90 backdrop-blur-md">
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary hover:text-primary-fixed-dim active:scale-90 transition-transform">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-bold text-label-bold">Discover</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary hover:text-primary-fixed-dim active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-4xl">add_box</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary hover:text-primary-fixed-dim active:scale-90 transition-transform">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="font-label-bold text-label-bold">Inbox</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary hover:text-primary-fixed-dim active:scale-90 transition-transform">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Me</span>
+</button>
+</nav>
+<!-- Micro-interaction: Hearts on double tap (Visual only logic) -->
+<div class="pointer-events-none fixed inset-0 z-40" id="heart-burst"></div>
+<script>
+        document.querySelector('.scrolling-feed').addEventListener('dblclick', function(e) {
+            const heart = document.createElement('span');
+            heart.className = 'material-symbols-outlined absolute text-primary-container text-7xl transition-all duration-700 pointer-events-none';
+            heart.style.left = (e.clientX - 35) + 'px';
+            heart.style.top = (e.clientY - 35) + 'px';
+            heart.style.fontVariationSettings = "'FILL' 1";
+            heart.innerText = 'favorite';
+            
+            document.getElementById('heart-burst').appendChild(heart);
+            
+            requestAnimationFrame(() => {
+                heart.style.transform = 'translateY(-100px) scale(1.5) rotate(' + (Math.random() * 40 - 20) + 'deg)';
+                heart.style.opacity = '0';
+            });
+            
+            setTimeout(() => heart.remove(), 700);
+        });
+
+        // Hide browser UI elements if possible for PWA feel
+        window.addEventListener('load', () => {
+            document.body.style.height = window.innerHeight + 'px';
+        });
+    </script>
+</body></html>

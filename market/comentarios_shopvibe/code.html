@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#930009",
+                        "tertiary-container": "#00b050",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#ffdad5",
+                        "tertiary-fixed-dim": "#4ae176",
+                        "surface-container": "#f0eded",
+                        "primary-fixed": "#ffdbcc",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#fcf9f8",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#f6f3f2",
+                        "secondary": "#bb000f",
+                        "inverse-on-surface": "#f3f0ef",
+                        "on-tertiary-fixed-variant": "#005321",
+                        "secondary-fixed-dim": "#ffb4aa",
+                        "on-surface": "#1c1b1b",
+                        "inverse-surface": "#313030",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#003a15",
+                        "surface-dim": "#dcd9d9",
+                        "on-primary-fixed-variant": "#7a3000",
+                        "outline-variant": "#e2bfb0",
+                        "inverse-primary": "#ffb693",
+                        "surface-tint": "#a04100",
+                        "surface-container-highest": "#e5e2e1",
+                        "on-surface-variant": "#5a4136",
+                        "tertiary": "#006e2f",
+                        "on-primary-container": "#572000",
+                        "tertiary-fixed": "#6bff8f",
+                        "on-secondary-container": "#fffbff",
+                        "on-background": "#1c1b1b",
+                        "surface-variant": "#e5e2e1",
+                        "outline": "#8e7164",
+                        "on-tertiary-fixed": "#002109",
+                        "error": "#ba1a1a",
+                        "surface": "#fcf9f8",
+                        "surface-container-high": "#eae7e7",
+                        "primary": "#a04100",
+                        "on-tertiary": "#ffffff",
+                        "background": "#fcf9f8",
+                        "primary-container": "#ff6b00",
+                        "primary-fixed-dim": "#ffb693",
+                        "on-secondary-fixed": "#410002",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed": "#351000"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "margin-desktop": "24px",
+                        "lg": "24px",
+                        "xl": "40px",
+                        "md": "16px",
+                        "margin-mobile": "12px",
+                        "gutter": "12px",
+                        "sm": "8px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "price-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "title-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-bold": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            user-select: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+        
+        .glass-effect {
+            background: rgba(252, 249, 248, 0.85);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg overflow-hidden">
+<!-- SCREEN_20 Background Simulation (Vibe Feed) -->
+<div class="fixed inset-0 z-0">
+<img class="w-full h-full object-cover" data-alt="A high-fashion vertical video still featuring a model in vibrant orange streetwear posing against a brutalist concrete background. The lighting is dramatic with high contrast shadows, reflecting a modern retail aesthetic. The scene is full of energy and movement, with a shallow depth of field focusing on the texture of the clothing. Professional studio lighting enhances the rich orange tones of the garment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCABJLUps3kckyaqyvqExIiXqIXygTmsaxI1FIoxSi5Xh0Oa-e-kdv7ZaRd9wTipSsRu0kQX3avAJtKvbt2Hg7i3IFegb5PASEuxYzxzJf94EwUcSyN8lrfnTOm4_HgIGi5JhrHxP1e2lfOg0ffwSsiawLY4vBzyGN05l7R0bG7Z6bQOo-bOJT9ouJkzAfBCgy1-STSQWYl7nCV_OG_MIcgMOqYPlku4-AQKdhd052uADW8CLrkhdJmvZY-yLr7D-OeXL9yF4qxvtVD"/>
+<div class="absolute inset-0 bg-black/20"></div>
+</div>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"></div>
+<!-- Comments Modal Shell -->
+<div class="fixed inset-x-0 bottom-0 z-50 flex flex-col h-[663px] glass-effect rounded-t-[2rem] animate-slide-up shadow-2xl">
+<!-- Header Section -->
+<header class="flex items-center justify-between px-margin-mobile py-md border-b border-outline-variant/30">
+<div class="w-10"></div> <!-- Spacer for centering -->
+<div class="flex flex-col items-center">
+<div class="w-12 h-1 bg-outline-variant/50 rounded-full mb-4"></div>
+<h2 class="font-title-md text-title-md text-on-surface">1,248 Comments</h2>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-variant transition-colors active:scale-95" onclick="window.history.back()">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+</header>
+<!-- Comments List -->
+<div class="flex-1 overflow-y-auto hide-scrollbar px-margin-mobile py-md space-y-lg">
+<!-- Individual Comment -->
+<div class="flex gap-md">
+<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="Close up portrait of a young woman with a trendy aesthetic, wearing minimalist jewelry and a soft orange tinted makeup look. The lighting is soft and flattering, creating a high-end fashion profile image. The background is a clean, neutral studio setting that emphasizes the subject's clear skin and stylish expression." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3v2zj8yGzcDcf_3mXccLFQGvesWWbAgekadC9ClWYYGrgALbzGUGtfWicODNiAzWbh6rRvd0NBUqk6MYgkB1Ch8YNZqWem1LtxtsPrsHMVWbVFxNL4P97Aa7751HAR5zjW5NqjpPQVwgzWVyWaOEvRWs8-BeEx6i7HRIeR-loM6ZdHar9YvPA3kinlK9sS-LaAs6CQqlyhrOzbsm4U0IuAVGCkqy3FgK-DyXXRDrYKGGyBBFXw2GhjKzsPVpA_WBS9aZRvHXGtB-z"/>
+<div class="flex-1 space-y-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-bold text-label-bold text-on-surface">alexa_vibes</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant/60">2h</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface leading-relaxed">
+                        The texture on that jacket is incredible! Where can I find the link for the orange drop? 🔥
+                    </p>
+<div class="flex items-center gap-md pt-xs">
+<button class="flex items-center gap-base text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="font-label-bold text-label-bold">142</span>
+</button>
+<button class="font-label-bold text-label-bold text-on-surface-variant hover:text-on-surface">Reply</button>
+</div>
+</div>
+</div>
+<!-- Individual Comment -->
+<div class="flex gap-md">
+<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="A stylish man with a modern haircut, looking away from the camera with a confident expression. He is wearing a crisp white designer t-shirt. The image has a clean, high-contrast urban feel, with bright natural light coming from the side. The overall mood is cool, contemporary, and perfectly aligned with a premium e-commerce platform's social feed." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNI4p-3llIwHNINoz_G2ByjJpuQw73waKJscm9aRn3_8TFmZjHIWgs5sJzdQGbxW6t2zl3YCOm6Ai6RhF0hziQ2VXI8AE6WF2p_aP8FuAGjtT9caUshZ3NjzrUuP6T4IKIByqdxKxcjbU1EyBRmHlCcFVgH9kRflKQqNzBTs08WO4EMltsJfp09JYxO3UmJJ7ADZLY62Ogj-gwsVXvjgU7xoQBNdT4-NEV3v56ctMfA9AkTmCgzfB0qvMNNNYJaCtr3d20KTNFjRCF"/>
+<div class="flex-1 space-y-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-bold text-label-bold text-on-surface">urban_curator</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant/60">5h</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface leading-relaxed">
+                        Corporate modern styling at its best. The high-contrast edit really makes the colors pop. Great work on the transition!
+                    </p>
+<div class="flex items-center gap-md pt-xs">
+<button class="flex items-center gap-base text-primary transition-colors" style="font-variation-settings: 'FILL' 1;">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="font-label-bold text-label-bold">89</span>
+</button>
+<button class="font-label-bold text-label-bold text-on-surface-variant hover:text-on-surface">Reply</button>
+</div>
+</div>
+</div>
+<!-- Individual Comment -->
+<div class="flex gap-md">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="text-on-secondary-container font-label-bold">M</span>
+</div>
+<div class="flex-1 space-y-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-bold text-label-bold text-on-surface">mika_fits</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant/60">8h</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface leading-relaxed">
+                        Need this for my spring wardrobe collection. Is there a flash sale happening soon? 🛍️
+                    </p>
+<div class="flex items-center gap-md pt-xs">
+<button class="flex items-center gap-base text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="font-label-bold text-label-bold">12</span>
+</button>
+<button class="font-label-bold text-label-bold text-on-surface-variant hover:text-on-surface">Reply</button>
+</div>
+</div>
+</div>
+<!-- Individual Comment -->
+<div class="flex gap-md">
+<img class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10" data-alt="A portrait of a male fashion influencer with a sharp jawline and groomed beard, wearing a high-neck black sweater. The lighting is cinematic, with a single light source creating depth and highlighting the sophisticated retail mood. The style is professional and polished, fitting for a modern digital marketplace interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxyls0iP3FbzXCDGpSra4JQED4DNMRSkv3QFCFsfTk2vVKCpBd-H-H1awJYT_AnQPLk0SaVs1UCP9gIkmCzOSKjm28PIfJ5M7ccRAjiyMm3I7EUbB1GMvp7tGZHVS_Mq2nOXFngZyR-nB50FpA838mn17W_oys7AamATRQfJT3el7kslrgolas18VdKzynxcFvPHaNiTAB0FRkr79VivJfpc0HX3uX5cmYHtq19sqRxx34w0CsbbH8AY7Ne7t5tHQUTN_USbR9efo0"/>
+<div class="flex-1 space-y-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-bold text-label-bold text-on-surface">style_ninja</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant/60">12h</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface leading-relaxed">
+                        The color palette is so energetic. Love how the orange accent dominates the screen without being overwhelming.
+                    </p>
+<div class="flex items-center gap-md pt-xs">
+<button class="flex items-center gap-base text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="font-label-bold text-label-bold">54</span>
+</button>
+<button class="font-label-bold text-label-bold text-on-surface-variant hover:text-on-surface">Reply</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Input Bar -->
+<div class="p-md bg-surface-container-lowest border-t border-outline-variant/20 shadow-[0_-8px_24px_rgba(0,0,0,0.05)]">
+<div class="flex items-center gap-sm mb-md overflow-x-auto hide-scrollbar whitespace-nowrap">
+<button class="px-sm py-xs bg-surface-variant rounded-full text-lg hover:bg-primary/10 transition-colors">😍</button>
+<button class="px-sm py-xs bg-surface-variant rounded-full text-lg hover:bg-primary/10 transition-colors">🔥</button>
+<button class="px-sm py-xs bg-surface-variant rounded-full text-lg hover:bg-primary/10 transition-colors">👏</button>
+<button class="px-sm py-xs bg-surface-variant rounded-full text-lg hover:bg-primary/10 transition-colors">❤️</button>
+<button class="px-sm py-xs bg-surface-variant rounded-full text-lg hover:bg-primary/10 transition-colors">✨</button>
+<button class="px-sm py-xs bg-surface-variant rounded-full text-lg hover:bg-primary/10 transition-colors">💯</button>
+<button class="px-sm py-xs bg-surface-variant rounded-full text-lg hover:bg-primary/10 transition-colors">🙌</button>
+</div>
+<div class="flex items-center gap-md">
+<div class="flex-1 relative">
+<input class="w-full bg-surface-variant/50 border-transparent focus:border-primary focus:ring-0 rounded-full px-md py-sm font-body-sm text-on-surface placeholder:text-on-surface-variant/50 transition-all" placeholder="Add a comment..." type="text"/>
+<button class="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[20px]">alternate_email</span>
+</button>
+</div>
+<button class="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Top App Bar (Shared Component Reference) -->
+<nav class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 w-full bg-gradient-to-b from-black/40 to-transparent">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-white">movie_edit</span>
+<span class="font-display-lg text-[24px] font-extrabold text-white">ShopVibe</span>
+</div>
+<button class="text-white hover:opacity-80 transition-opacity active:scale-95 duration-150">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</nav>
+<!-- Bottom Navigation Bar (Shared Component Reference) -->
+<nav class="fixed bottom-0 left-0 w-full z-[60] flex justify-around items-center px-2 py-3 bg-inverse-surface/90 backdrop-blur-md">
+<div class="flex flex-col items-center justify-center text-on-secondary hover:text-primary-fixed-dim active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-bold text-label-bold">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary hover:text-primary-fixed-dim active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-bold text-label-bold">Discover</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1 active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">add_box</span>
+<span class="font-label-bold text-label-bold">Upload</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary hover:text-primary-fixed-dim active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span class="font-label-bold text-label-bold">Inbox</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary hover:text-primary-fixed-dim active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Me</span>
+</div>
+</nav>
+<script>
+        // Simple Interaction logic
+        const commentInput = document.querySelector('input[type="text"]');
+        const sendBtn = document.querySelector('button .material-symbols-outlined[textContent="send"]')?.parentElement;
+        
+        if(commentInput && sendBtn) {
+            commentInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && commentInput.value.trim() !== '') {
+                    alert('Comment shared! (Demo Mode)');
+                    commentInput.value = '';
+                }
+            });
+        }
+
+        // Like button interaction
+        document.querySelectorAll('.material-symbols-outlined').forEach(icon => {
+            if(icon.textContent === 'favorite') {
+                icon.parentElement.addEventListener('click', function() {
+                    const isFilled = this.querySelector('span').style.fontVariationSettings.includes("'FILL' 1");
+                    const countSpan = this.querySelector('span:last-child');
+                    let currentCount = parseInt(countSpan.textContent);
+                    
+                    if(isFilled) {
+                        this.querySelector('span').style.fontVariationSettings = "'FILL' 0";
+                        this.classList.remove('text-primary');
+                        this.classList.add('text-on-surface-variant');
+                        countSpan.textContent = currentCount - 1;
+                    } else {
+                        this.querySelector('span').style.fontVariationSettings = "'FILL' 1";
+                        this.classList.remove('text-on-surface-variant');
+                        this.classList.add('text-primary');
+                        countSpan.textContent = currentCount + 1;
+                    }
+                });
+            }
+        });
+    </script>
+</body></html>

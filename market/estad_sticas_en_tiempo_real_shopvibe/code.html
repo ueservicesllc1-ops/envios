@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShopVibe - Panel Live</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#fffbff",
+                    "surface-variant": "#e5e2e1",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed-variant": "#930009",
+                    "surface": "#fcf9f8",
+                    "primary-container": "#ff6b00",
+                    "inverse-on-surface": "#f3f0ef",
+                    "tertiary-container": "#00b050",
+                    "secondary-fixed": "#ffdad5",
+                    "surface-tint": "#a04100",
+                    "on-tertiary-fixed": "#002109",
+                    "background": "#fcf9f8",
+                    "surface-container-high": "#eae7e7",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed": "#351000",
+                    "on-primary-container": "#572000",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "inverse-surface": "#313030",
+                    "tertiary-fixed": "#6bff8f",
+                    "primary": "#a04100",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "surface-bright": "#fcf9f8",
+                    "surface-container-low": "#f6f3f2",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#f0eded",
+                    "secondary-container": "#e32322",
+                    "on-surface": "#1c1b1b",
+                    "on-secondary-fixed": "#410002",
+                    "on-tertiary-container": "#003a15",
+                    "on-background": "#1c1b1b",
+                    "error": "#ba1a1a",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#dcd9d9",
+                    "secondary": "#bb000f",
+                    "surface-container-highest": "#e5e2e1",
+                    "primary-fixed": "#ffdbcc",
+                    "outline": "#8e7164",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-surface-variant": "#5a4136",
+                    "inverse-primary": "#ffb693",
+                    "tertiary": "#006e2f",
+                    "on-error": "#ffffff",
+                    "primary-fixed-dim": "#ffb693",
+                    "outline-variant": "#e2bfb0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "4px",
+                    "md": "16px",
+                    "xs": "4px",
+                    "xl": "40px",
+                    "margin-mobile": "12px",
+                    "lg": "24px",
+                    "sm": "8px",
+                    "margin-desktop": "24px",
+                    "gutter": "12px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "title-md": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .animate-blink {
+            animation: blink 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-sm overflow-x-hidden">
+<!-- Top Navigation Anchor -->
+<header class="w-full top-0 sticky flex justify-between items-center px-margin-mobile py-sm w-full z-50 bg-surface border-b border-surface-variant">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="live_tv">live_tv</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary-container tracking-tighter">Estadísticas del Live</h1>
+</div>
+<div class="flex items-center bg-secondary-container px-sm py-xs rounded-lg animate-blink">
+<span class="material-symbols-outlined text-on-secondary text-sm mr-1" data-icon="circle" style="font-variation-settings: 'FILL' 1;">circle</span>
+<span class="text-on-secondary font-label-bold text-label-bold uppercase">EN VIVO</span>
+</div>
+</header>
+<main class="p-margin-mobile pb-32 space-y-lg max-w-5xl mx-auto">
+<!-- Metrics Grid (Bento Style) -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-gutter">
+<div class="bg-surface-container-low p-md rounded-xl border border-outline-variant flex flex-col justify-between aspect-square md:aspect-auto">
+<span class="material-symbols-outlined text-primary-container text-2xl" data-icon="visibility">visibility</span>
+<div>
+<p class="text-on-surface-variant font-label-bold text-label-bold">Espectadores</p>
+<p class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">12.4k</p>
+</div>
+</div>
+<div class="bg-surface-container-low p-md rounded-xl border border-outline-variant flex flex-col justify-between aspect-square md:aspect-auto">
+<span class="material-symbols-outlined text-secondary text-2xl" data-icon="favorite" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<div>
+<p class="text-on-surface-variant font-label-bold text-label-bold">Likes Totales</p>
+<p class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">85.2k</p>
+</div>
+</div>
+<div class="bg-primary-container p-md rounded-xl shadow-lg flex flex-col justify-between aspect-square md:aspect-auto">
+<span class="material-symbols-outlined text-on-primary text-2xl" data-icon="shopping_bag">shopping_bag</span>
+<div>
+<p class="text-on-primary-container font-label-bold text-label-bold">Ventas (USD)</p>
+<p class="font-headline-lg-mobile text-headline-lg-mobile text-white">$4,250.00</p>
+</div>
+</div>
+<div class="bg-surface-container-low p-md rounded-xl border border-outline-variant flex flex-col justify-between aspect-square md:aspect-auto">
+<span class="material-symbols-outlined text-tertiary text-2xl" data-icon="receipt_long">receipt_long</span>
+<div>
+<p class="text-on-surface-variant font-label-bold text-label-bold">Pedidos</p>
+<p class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">142</p>
+</div>
+</div>
+</section>
+<!-- Chart Section -->
+<section class="bg-surface-container-lowest p-lg rounded-xl border border-outline-variant">
+<div class="flex justify-between items-center mb-md">
+<h2 class="font-title-md text-title-md text-on-surface">Audiencia en el Tiempo</h2>
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="w-3 h-3 rounded-full bg-primary-container"></span>
+<span class="text-label-bold font-label-bold">Actual</span>
+</div>
+</div>
+<div class="h-48 w-full relative overflow-hidden flex items-end gap-1">
+<!-- Mockup Chart Bars -->
+<div class="bg-primary-fixed-dim w-full h-[20%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[35%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[30%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[55%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[70%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-container w-full h-[85%] rounded-t-sm"></div>
+<div class="bg-primary-fixed-dim w-full h-[60%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[45%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[75%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[95%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[40%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+<div class="bg-primary-fixed-dim w-full h-[30%] rounded-t-sm transition-all hover:bg-primary-container"></div>
+</div>
+<div class="flex justify-between mt-sm text-on-surface-variant font-label-bold text-label-bold">
+<span>00:00</span>
+<span>05:00</span>
+<span>10:00</span>
+<span>15:00</span>
+<span>Ahora</span>
+</div>
+</section>
+<!-- Two Column Layout for Products and Engagement -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<!-- Best Selling Products -->
+<section class="space-y-md">
+<h2 class="font-title-md text-title-md text-on-surface">Productos Más Vendidos</h2>
+<div class="space-y-sm">
+<!-- Product Item 1 -->
+<div class="flex items-center gap-md bg-white p-sm rounded-xl border border-surface-variant hover:shadow-md transition-shadow">
+<img class="w-16 h-16 object-cover rounded-lg border border-outline-variant" data-alt="A high-end crimson athletic sneaker positioned dynamically in a professional studio setting with sharp directional lighting. The product reflects a vibrant retail energy with clean surfaces and subtle orange accents in the background. High-contrast photography highlights the sleek textures and premium design of the footwear." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjCI6FUyr48rnYqRQSQ2zH1SgCJbxOjVDHDzVDPi8xkJUiaK-8iNSBw2FF0il1YeNSp8rLnOnk4NMZt4aklAYAQQW2ZgApeolsdrzMrgE_MNt6Ax7b7flaCZX1o0eNXf2To0_lX50iwvdFH0uXWw_zgmaKOl7ukqEL0Y6AUAPAe9pBcCdG1igIi0UUAA2kp1u00EbCKbcIGlnXwz5MBCnZ6WdN9bJ17zlpFKMLm-VqxrEJirU2jBOmJo9Tfd_heTVd_pqrjW1bQh6g"/>
+<div class="flex-1">
+<h3 class="font-label-bold text-label-bold text-on-surface truncate">Vibe Speed Runner X</h3>
+<p class="text-on-surface-variant text-body-sm font-body-sm">48 unidades vendidas</p>
+</div>
+<div class="text-right">
+<p class="text-tertiary font-label-bold text-label-bold">12.5%</p>
+<p class="text-on-surface-variant text-[10px] uppercase">Conv.</p>
+</div>
+</div>
+<!-- Product Item 2 -->
+<div class="flex items-center gap-md bg-white p-sm rounded-xl border border-surface-variant hover:shadow-md transition-shadow">
+<img class="w-16 h-16 object-cover rounded-lg border border-outline-variant" data-alt="Modern tech accessory gadget in a clean aesthetic environment with warm orange glow and sharp focus. The scene represents a high-density ecommerce product shot with professional studio lighting and minimalist composition to draw attention to the sleek industrial design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDk4mfftje_-RJI-MggPnGuGxjZHwCTHI4cXHojk32LonEXRXhg3_JITm7WGizzcTgmp1IRX4luRbguYrgaoLXqu4SAFTW1d2Xx-CpuGkVtqa8opPODVcip58L-TCzMZUuy-KnUWOpuZLGhStbxN7mg4BavhU77L_qB44qVxjrzYObRd5OW5Yv7uQpBsBFLLtoD3sYxehduC5YE39Uz0Ri18_l-UWbaUQS4B3EzduixIeDTCcVfaPLlSR1fDr69YqFnzB1rIQGYr3bF"/>
+<div class="flex-1">
+<h3 class="font-label-bold text-label-bold text-on-surface truncate">GlowCase Pro Max</h3>
+<p class="text-on-surface-variant text-body-sm font-body-sm">35 unidades vendidas</p>
+</div>
+<div class="text-right">
+<p class="text-tertiary font-label-bold text-label-bold">9.2%</p>
+<p class="text-on-surface-variant text-[10px] uppercase">Conv.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Engagement Section -->
+<section class="space-y-md">
+<h2 class="font-title-md text-title-md text-on-surface">Engagement</h2>
+<div class="grid grid-cols-1 gap-sm">
+<div class="bg-surface-container p-md rounded-xl flex items-center justify-between border-l-4 border-primary-container">
+<div class="flex items-center gap-sm">
+<div class="bg-primary-fixed p-xs rounded-lg">
+<span class="material-symbols-outlined text-on-primary-fixed-variant" data-icon="person_add">person_add</span>
+</div>
+<div>
+<p class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-wider">Nuevos Seguidores</p>
+<p class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">+1,420</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-tertiary" data-icon="trending_up">trending_up</span>
+</div>
+<div class="bg-surface-container p-md rounded-xl flex items-center justify-between border-l-4 border-secondary-container">
+<div class="flex items-center gap-sm">
+<div class="bg-secondary-fixed p-xs rounded-lg">
+<span class="material-symbols-outlined text-on-secondary-fixed-variant" data-icon="ads_click">ads_click</span>
+</div>
+<div>
+<p class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-wider">Clics en Tienda</p>
+<p class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">3,892</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-tertiary" data-icon="trending_up">trending_up</span>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Action Shell -->
+<div class="fixed bottom-0 w-full bg-surface/95 backdrop-blur-md border-t border-surface-variant p-md z-50 flex flex-col gap-sm">
+<div class="flex justify-between items-center px-xs">
+<div class="flex -space-x-2">
+<img class="w-8 h-8 rounded-full border-2 border-surface" data-alt="Close-up portrait of a diverse male influencer with a professional lighting setup in the background. The mood is energetic and modern, consistent with a high-end social commerce platform. The lighting is bright and warm." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIJP4HmXQGT2epYloYW_kD7hK9XVkRoi_cFtg0Zijw4MOuiZAXaJCaLGlJ_BYRUQb6ZPw1wldA-rsOlVCPzizBGKyhSIBpUyG80nQ4HvibJZ1bzS54SPuPVY8apOqMLgCc3kpfh-FNy5D4pLhr7oha3xG4jvaaGU_XgnytedxxjftjzuR6BU-9xy2oPRccuk5afu7IWX9aMYEvpSbpriND9ZxAdfO3R8hwepDRsF3BmODVubSDtqcozXV0hovKHMdNhLttdgMJYIrf"/>
+<img class="w-8 h-8 rounded-full border-2 border-surface" data-alt="Portrait of a fashionable female influencer in a bright, modern indoor setting. High-key lighting highlights her professional appearance for a retail livestream event. The aesthetic is clean and vibrant." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_jDsggc5tzLUbofz7FxHzjzMAewXhjfpW9XehgyxWJuBC8LMn1ItX5Hv8Qn1l9AwgHVvBNinhH3bLFhijA52wKgW3H6w4qmRC2gAyo3JrBOxF1OtyvfCwE1yQ2x0jt4S7sBv_7cGjzfFSug5tFrGiD791lgObAfzjGawdIs4UVD1CFh7bkBkHvXmTbvEI-Uoma2apqYTDh2yXtP5XXjVblwrRO9N-tDhGjNWyzLKtjHelcXh9bzIXq2KiJJY1AajPkNC56_UUzp6J"/>
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary flex items-center justify-center text-[10px] font-bold border-2 border-surface">+12k</div>
+</div>
+<div class="text-right">
+<p class="text-on-surface font-label-bold text-label-bold">Tiempo transcurrido</p>
+<p class="text-primary font-bold">00:45:12</p>
+</div>
+</div>
+<div class="flex gap-md">
+<button class="flex-1 py-lg rounded-xl font-label-bold text-label-bold border border-outline text-on-surface hover:bg-surface-container-high active:scale-95 transition-all">
+                Cerrar Panel
+            </button>
+<button class="flex-[2] py-lg rounded-xl font-label-bold text-label-bold bg-secondary text-on-secondary shadow-lg active:scale-95 transition-all flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-sm" data-icon="stop_circle">stop_circle</span>
+                Finalizar Transmisión
+            </button>
+</div>
+</div>
+<!-- Live Event Interactions Micro-Interactions -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Simulated live updates for some metrics
+            const counters = {
+                spectators: 12400,
+                likes: 85200
+            };
+
+            setInterval(() => {
+                counters.spectators += Math.floor(Math.random() * 20) - 5;
+                counters.likes += Math.floor(Math.random() * 50);
+                
+                // Update text content with formatting
+                const specsEl = document.querySelectorAll('p')[1];
+                const likesEl = document.querySelectorAll('p')[3];
+                
+                if (specsEl) specsEl.textContent = (counters.spectators / 1000).toFixed(1) + 'k';
+                if (likesEl) likesEl.textContent = (counters.likes / 1000).toFixed(1) + 'k';
+            }, 3000);
+
+            // Add hover effects for product items
+            const products = document.querySelectorAll('.hover\\:shadow-md');
+            products.forEach(p => {
+                p.addEventListener('mouseenter', () => {
+                    p.style.transform = 'translateY(-2px)';
+                });
+                p.addEventListener('mouseleave', () => {
+                    p.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+</body></html>

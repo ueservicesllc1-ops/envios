@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Inventario AR - ShopVibe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "background": "#fcf9f8",
+                    "surface-container": "#f0eded",
+                    "secondary": "#bb000f",
+                    "secondary-fixed": "#ffdad5",
+                    "surface": "#fcf9f8",
+                    "tertiary": "#006e2f",
+                    "surface-dim": "#dcd9d9",
+                    "on-secondary-container": "#fffbff",
+                    "inverse-surface": "#313030",
+                    "error": "#ba1a1a",
+                    "primary-container": "#ff6b00",
+                    "outline": "#8e7164",
+                    "surface-variant": "#e5e2e1",
+                    "on-background": "#1c1b1b",
+                    "on-error-container": "#93000a",
+                    "primary-fixed-dim": "#ffb693",
+                    "on-primary-fixed": "#351000",
+                    "surface-container-low": "#f6f3f2",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-container": "#00b050",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "error-container": "#ffdad6",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "on-error": "#ffffff",
+                    "on-surface-variant": "#5a4136",
+                    "on-secondary-fixed": "#410002",
+                    "on-secondary-fixed-variant": "#930009",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-container": "#572000",
+                    "on-surface": "#1c1b1b",
+                    "outline-variant": "#e2bfb0",
+                    "primary": "#a04100",
+                    "on-tertiary-container": "#003a15",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "surface-tint": "#a04100",
+                    "surface-container-highest": "#e5e2e1",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "on-tertiary-fixed": "#002109",
+                    "inverse-on-surface": "#f3f0ef",
+                    "surface-container-high": "#eae7e7",
+                    "surface-bright": "#fcf9f8",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed": "#6bff8f",
+                    "on-secondary": "#ffffff",
+                    "inverse-primary": "#ffb693",
+                    "secondary-container": "#e32322"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "8px",
+                    "base": "4px",
+                    "xl": "40px",
+                    "gutter": "12px",
+                    "margin-mobile": "12px",
+                    "margin-desktop": "24px",
+                    "lg": "24px",
+                    "xs": "4px",
+                    "md": "16px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "title-md": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e2bfb0; border-radius: 10px; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-sm min-h-screen pb-24">
+<!-- TopAppBar Execution -->
+<header class="sticky top-0 w-full z-50 bg-surface border-b border-surface-variant flex justify-between items-center px-margin-mobile h-16 w-full">
+<div class="flex items-center gap-2">
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-high transition-colors rounded-full">menu</button>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Inventario AR</h1>
+</div>
+<div class="flex items-center gap-1">
+<button class="material-symbols-outlined text-primary p-2 hover:bg-surface-container-high transition-colors rounded-full">search</button>
+</div>
+</header>
+<main class="px-margin-mobile pt-lg flex flex-col gap-lg">
+<!-- Search Bar Section -->
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-surface-container-lowest border border-surface-variant rounded-xl focus:ring-2 focus:ring-primary-container focus:border-transparent outline-none transition-all font-body-sm" placeholder="Buscar productos por nombre o SKU..." type="text"/>
+</div>
+<!-- Metric Bento Grid -->
+<div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
+<div class="col-span-2 lg:col-span-1 glass-card p-4 rounded-xl flex flex-col justify-between border-l-4 border-primary-container">
+<span class="text-label-bold font-label-bold text-on-surface-variant">Total Productos AR</span>
+<div class="flex items-end justify-between mt-2">
+<span class="text-headline-lg-mobile font-headline-lg-mobile">1,284</span>
+<span class="text-tertiary font-label-bold flex items-center bg-tertiary/10 px-2 py-1 rounded-full text-[10px]">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +12%
+                    </span>
+</div>
+</div>
+<div class="glass-card p-4 rounded-xl flex flex-col justify-between border-l-4 border-secondary">
+<span class="text-label-bold font-label-bold text-on-surface-variant">Vistas AR hoy</span>
+<div class="flex items-end justify-between mt-2">
+<span class="text-headline-lg-mobile font-headline-lg-mobile">4.2k</span>
+<span class="text-tertiary font-label-bold flex items-center bg-tertiary/10 px-2 py-1 rounded-full text-[10px]">
+<span class="material-symbols-outlined text-[14px]">arrow_drop_up</span> 24%
+                    </span>
+</div>
+</div>
+<div class="glass-card p-4 rounded-xl flex flex-col justify-between border-l-4 border-tertiary-container">
+<span class="text-label-bold font-label-bold text-on-surface-variant">Conversión AR</span>
+<div class="flex items-end justify-between mt-2">
+<span class="text-headline-lg-mobile font-headline-lg-mobile">8.4%</span>
+<span class="text-on-surface-variant font-label-bold text-[10px]">+0.5% vs avg</span>
+</div>
+</div>
+</div>
+<!-- Inventory List -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h2 class="font-title-md text-title-md text-on-surface">Mis Productos</h2>
+<button class="text-primary font-label-bold flex items-center gap-1 hover:underline">
+                    Ver todos <span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+<!-- Product Card 1: Active -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 flex gap-4 hover:shadow-md transition-shadow">
+<div class="relative h-20 w-20 rounded-lg overflow-hidden bg-surface-variant flex-shrink-0">
+<img class="h-full w-full object-cover" data-alt="A high-end red athletic running shoe displayed in a studio setting with clean, minimalist white background and professional lighting that highlights its sleek curves and textures. The mood is modern and premium, fitting the ShopVibe corporate retail aesthetic with vibrant colors and sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSPu_QWhmuF8gQ-6yB6k_gBmm2gps3OTdjWH5zBXy3dfa3qUw1YMXpJ5r2dn7KoD3tPNuwHulxV_OBbVODOm1hPbTr9EGC0JtoAfupTZyWWzaxDVFt3_i36kLcLf7AgjZeZrrgM2FlOTdsyjzYwbf6stjLA9mKkm5hLlJsq_o05AFCOZfO7KH5ZoJAmsLe_C-8XnAIPncPsaB3z1SE78EVMrtyOIc4sLrpx_sXSNMbrSDw7H2nRjxwJZAN4r31eMKrYsKUog3mREyp"/>
+<div class="absolute top-1 left-1 bg-tertiary-container text-white text-[8px] font-bold px-1.5 py-0.5 rounded uppercase">AR OK</div>
+</div>
+<div class="flex-grow flex flex-col justify-between py-0.5">
+<div>
+<h3 class="font-title-md text-title-md leading-tight text-on-surface">Vapor Max Elite</h3>
+<p class="text-label-bold font-label-bold text-on-surface-variant">SKU: SH-VM-001</p>
+</div>
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1 text-label-bold text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">visibility</span> 1.2k
+                        </span>
+<span class="flex items-center gap-1 text-label-bold text-tertiary">
+<span class="material-symbols-outlined text-[16px]">check_circle</span> Activo
+                        </span>
+</div>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant self-start">more_vert</button>
+</div>
+<!-- Product Card 2: Missing AR -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 flex gap-4 hover:shadow-md transition-shadow relative overflow-hidden">
+<div class="absolute top-0 right-0">
+<div class="bg-secondary text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">SIN MODELO</div>
+</div>
+<div class="h-20 w-20 rounded-lg overflow-hidden bg-surface-variant flex-shrink-0">
+<img class="h-full w-full object-cover opacity-60" data-alt="A minimalist white smartwatch with a clean circular display resting on a soft gray surface under soft natural lighting. The scene is bright and commercial, emphasizing the product's premium build quality and modern design, reflecting a high-contrast retail brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqnzVg30lP3RzYEb6m4FbfFV8S4FKvn6nObb11FeFbPi5E_mHe0ebfZjNSHrDku5FqE48R1DhZ_VdRL-cG3NHk5LLD2rv2ecDKx4RjFy7GvA6Tfvv3SiK1ooyObZ4gCDkCMH_OysN4BpxAuLXrAekjK4WcDYctaAuYl0u8rXQ9YHdKZw4ZatLtclTrE9CleGNzSsTda2sIndOYXg_9fXNRAWPgvw4fucPT25CwDYiKfj1zQug9oWyMftnxWFMoA5tiUERW9VhmlMET"/>
+</div>
+<div class="flex-grow flex flex-col justify-between py-0.5 pr-8">
+<div>
+<h3 class="font-title-md text-title-md leading-tight text-on-surface">Aura Watch S2</h3>
+<p class="text-label-bold font-label-bold text-on-surface-variant">SKU: WT-AW-S2</p>
+</div>
+<div class="flex items-center gap-2">
+<button class="bg-primary-container text-on-primary-container px-3 py-1.5 rounded-lg font-label-bold text-[11px] flex items-center gap-1 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[14px]">add_a_photo</span> Añadir Modelo AR
+                        </button>
+</div>
+</div>
+</div>
+<!-- Product Card 3: In Review -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 flex gap-4 hover:shadow-md transition-shadow">
+<div class="h-20 w-20 rounded-lg overflow-hidden bg-surface-variant flex-shrink-0">
+<img class="h-full w-full object-cover" data-alt="A luxury leather handbag in a deep mahogany color, positioned on a polished marble pedestal with dramatic soft shadows. The lighting is high-end and warm, creating a sense of exclusivity and elegance, aligned with the ShopVibe premium product showcase style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiZgZJDnO2LMzzBV2pzDwNLNEJbBhW0Addm72j-qTpdNsJP9x5KDPtlXxuZnfURD_Jn3V5TqY06fzJR4KVqTm6vfN1MMl8pgkUQDOLSXX3uCC1-2xvyCUT08f5mjY-X69iuqZ090awFmx2V7oSu1zaYflQIIxJZxu5cXUIc3enkAKciM6Jn72lMy37t5AQzxwCuohcEFJZBelxF9jHb_0XlLMnUROuHHMSoRHQ4I2qe40gt4rYUyx8vTCiJcnaoBWIohUcaCd23Gzk"/>
+</div>
+<div class="flex-grow flex flex-col justify-between py-0.5">
+<div>
+<h3 class="font-title-md text-title-md leading-tight text-on-surface">Bolso Cuero Luxe</h3>
+<p class="text-label-bold font-label-bold text-on-surface-variant">SKU: BG-LX-99</p>
+</div>
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1 text-label-bold text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">visibility</span> 0
+                        </span>
+<span class="flex items-center gap-1 text-label-bold text-primary">
+<span class="material-symbols-outlined text-[16px]">pending</span> En Revisión
+                        </span>
+</div>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant self-start">more_vert</button>
+</div>
+<!-- Product Card 4: Active -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-3 flex gap-4 hover:shadow-md transition-shadow">
+<div class="h-20 w-20 rounded-lg overflow-hidden bg-surface-variant flex-shrink-0">
+<img class="h-full w-full object-cover" data-alt="Modern professional headphones with a matte black finish and copper accents, photographed in a high-contrast setting with moody studio lighting. The image emphasizes texture and industrial design, creating a high-tech vibe that appeals to gadget enthusiasts in a vibrant marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuvsc1knKopwx_hVlR_x3wUlwl7JBERZ8FgtWZrQMlxHfuFkotx-OrSToxrV_3e7MaRyVow8rKp_Yunzh54_fj8Fo7P2FrF-z7s_VdTXxmi8YOoN_iwnwEIc-o8FRo7qxmPclTrDYgTwwJ0lvJMVksIUUqV15vgS01TfNkRTNMs-xIskRcjHcSwfvMnvjqKKRDnN4E1mF45FyeXYtgnZeVySMUD-MAhS-ss-7I8ePcO6y08XJUQGeJQaMwI33xfXu7yV1LURrHWu7k"/>
+</div>
+<div class="flex-grow flex flex-col justify-between py-0.5">
+<div>
+<h3 class="font-title-md text-title-md leading-tight text-on-surface">Pro Audio Over-Ear</h3>
+<p class="text-label-bold font-label-bold text-on-surface-variant">SKU: AD-PH-500</p>
+</div>
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1 text-label-bold text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">visibility</span> 3.5k
+                        </span>
+<span class="flex items-center gap-1 text-label-bold text-tertiary">
+<span class="material-symbols-outlined text-[16px]">check_circle</span> Activo
+                        </span>
+</div>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant self-start">more_vert</button>
+</div>
+</div>
+</main>
+<!-- FAB: Help/Create -->
+<button class="fixed right-6 bottom-24 bg-primary-container text-on-primary-container h-14 w-14 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-40 active:scale-95">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</button>
+<!-- BottomNavBar Execution -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center py-2 px-1 bg-surface border-t border-surface-variant shadow-lg z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1 hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-bold text-label-bold">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-3 py-1" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">view_in_ar</span>
+<span class="font-label-bold text-label-bold">AR Try</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1 hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined">style</span>
+<span class="font-label-bold text-label-bold">Feed</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1 hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined">redeem</span>
+<span class="font-label-bold text-label-bold">Earn</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-3 py-1 hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-bold text-label-bold">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('opacity-80', 'scale-95');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('opacity-80', 'scale-95');
+            });
+            el.addEventListener('mouseleave', () => {
+                el.classList.remove('opacity-80', 'scale-95');
+            });
+        });
+
+        // Search highlight effect
+        const searchInput = document.querySelector('input');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('scale-[1.02]');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('scale-[1.02]');
+        });
+    </script>
+</body></html>

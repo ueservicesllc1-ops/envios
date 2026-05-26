@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Gracias por tu compra | ShopVibe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-dim": "#dcd9d9",
+                    "surface-container": "#f0eded",
+                    "on-primary-container": "#572000",
+                    "inverse-surface": "#313030",
+                    "on-tertiary-container": "#003a15",
+                    "tertiary-container": "#00b050",
+                    "on-secondary-container": "#fffbff",
+                    "surface-bright": "#fcf9f8",
+                    "tertiary": "#006e2f",
+                    "secondary-container": "#e32322",
+                    "primary": "#a04100",
+                    "outline": "#8e7164",
+                    "on-tertiary-fixed": "#002109",
+                    "surface": "#fcf9f8",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed": "#351000",
+                    "on-tertiary-fixed-variant": "#005321",
+                    "on-surface": "#1c1b1b",
+                    "surface-variant": "#e5e2e1",
+                    "on-tertiary": "#ffffff",
+                    "on-background": "#1c1b1b",
+                    "error": "#ba1a1a",
+                    "inverse-on-surface": "#f3f0ef",
+                    "primary-fixed-dim": "#ffb693",
+                    "tertiary-fixed-dim": "#4ae176",
+                    "primary-fixed": "#ffdbcc",
+                    "on-primary-fixed-variant": "#7a3000",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#6bff8f",
+                    "secondary-fixed-dim": "#ffb4aa",
+                    "primary-container": "#ff6b00",
+                    "on-secondary-fixed": "#410002",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#e5e2e1",
+                    "on-secondary-fixed-variant": "#930009",
+                    "surface-container-high": "#eae7e7",
+                    "on-surface-variant": "#5a4136",
+                    "background": "#fcf9f8",
+                    "outline-variant": "#e2bfb0",
+                    "surface-tint": "#a04100",
+                    "on-error": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "inverse-primary": "#ffb693",
+                    "secondary-fixed": "#ffdad5",
+                    "surface-container-low": "#f6f3f2",
+                    "secondary": "#bb000f",
+                    "on-primary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xl": "40px",
+                    "margin-desktop": "24px",
+                    "margin-mobile": "12px",
+                    "base": "4px",
+                    "xs": "4px",
+                    "md": "16px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "gutter": "12px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "price-lg": ["Inter"],
+                    "label-bold": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "title-md": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "price-lg": ["22px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "title-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 60;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-lg text-body-lg min-h-screen pb-20">
+<!-- Header Section (Suppressed Navigation Shell as per Transactional rule) -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-surface-dim px-margin-mobile h-14 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-transform" data-icon="close">close</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary-container">ShopVibe</h1>
+<div class="w-6"></div>
+</header>
+<!-- Success Feedback Overlay (Visual Polish) -->
+<canvas class="confetti-canvas" id="confetti"></canvas>
+<main class="mt-14 px-margin-mobile pt-lg pb-xl">
+<!-- Success Identity -->
+<section class="flex flex-col items-center text-center mb-lg pt-md">
+<div class="w-20 h-20 bg-tertiary-container rounded-full flex items-center justify-center mb-md shadow-lg animate-bounce">
+<span class="material-symbols-outlined text-on-tertiary text-5xl" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold mb-xs">¡Gracias por tu compra!</h2>
+<p class="text-on-surface-variant font-label-bold text-label-bold tracking-wider uppercase">Pedido #SV-12345678</p>
+</section>
+<!-- Order Info Card -->
+<section class="bg-surface-container-lowest rounded-xl p-md border border-surface-container-highest mb-lg">
+<div class="flex items-center gap-md mb-sm">
+<span class="material-symbols-outlined text-primary" data-icon="local_shipping">local_shipping</span>
+<div>
+<p class="font-label-bold text-label-bold text-on-surface-variant">Estimación de entrega</p>
+<p class="font-title-md text-title-md text-on-surface">Jueves, 24 de Octubre</p>
+</div>
+</div>
+<div class="h-[1px] bg-surface-container-highest w-full my-sm"></div>
+<p class="text-body-sm text-on-surface-variant">Enviaremos un correo de confirmación con los detalles del seguimiento en unos minutos.</p>
+</section>
+<!-- CTA Actions -->
+<section class="flex flex-col gap-sm mb-xl">
+<button class="bg-primary-container text-on-primary py-md px-lg rounded-full font-headline-lg-mobile text-title-md flex items-center justify-center gap-sm active:scale-95 transition-all shadow-md">
+<span class="material-symbols-outlined" data-icon="live_tv">live_tv</span>
+                Volver al Directo
+            </button>
+<button class="bg-transparent border-2 border-primary-container text-primary py-md px-lg rounded-full font-title-md text-title-md flex items-center justify-center gap-sm active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+                Ver mis pedidos
+            </button>
+</section>
+<!-- Recommendations (High Density Bento-ish Grid) -->
+<section class="mb-lg">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-title-md text-title-md">Recomendado para ti</h3>
+<span class="text-primary font-label-bold text-label-bold">Ver más</span>
+</div>
+<div class="bento-grid">
+<!-- Product Card 1 -->
+<div class="bg-surface-container-lowest rounded-lg border border-surface-container-highest overflow-hidden">
+<img alt="" class="w-full aspect-square object-cover" data-alt="A vibrant red high-performance sneaker floating in a clean, minimalist studio setting with soft high-key lighting. The background is a crisp off-white, echoing a modern e-commerce aesthetic. Bright orange accents highlight the tech features of the shoe, maintaining a high-contrast retail look suitable for an energetic shopping app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIkg1IfRAegihDxbZPbuhuS6W13d1iH79bpcjsG9dphdr6fIp-2Gl02gyJ4tR69mIW4b2I-1lZM0c2PYKYgqsAMvDrC4ILsSi4A-3g5qY2dBRvx4-ZA5TlghGYk3ccnBxhtTMVD2b0rmHnYXyE2zrFVLqLdbrYavlqqo7kyMEQefxKc2UtROwnbf0lq0_y--Mo0kaVCO1s3jEuRLfEaZEn9U5ssQMHyRT7ItL-nKJQ4R7gp2HvxYV-ZXAuDnIDB0dVbuogYXuCDna9"/>
+<div class="p-sm">
+<p class="font-body-sm text-body-sm line-clamp-2 mb-xs">Zapatillas Runner Pro - Edición Speed</p>
+<div class="flex items-center gap-xs">
+<p class="text-secondary font-price-lg text-price-lg">$45.99</p>
+</div>
+<div class="flex items-center gap-[2px] mt-xs">
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" data-icon="star" data-weight="fill">star</span>
+<p class="text-[10px] text-on-surface-variant ml-xs">+2k vendidos</p>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-container-lowest rounded-lg border border-surface-container-highest overflow-hidden">
+<img alt="" class="w-full aspect-square object-cover" data-alt="A sleek white minimalist smartwatch on a textured gray background with sharp, directional studio lighting creating elegant shadows. The device features a vibrant screen interface showing energetic fitness metrics in orange and red. The visual style is premium and tech-focused, perfectly aligned with a high-conversion retail design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqHJNO1c73FOLxPiR8wA1U3b3wgaPN2gC-2aN76Au4UwWDinasNv2VfsE9w4px8iMGstTiR_96qv44grcGX_O6xNsCf_kN8i8dOSDrUnsIUMIYm91jCpVWZmLfmFpp5kbauDyVfiE1nEBUXr8B0deCsUjhgDfW2EtmYeeau4Sl2chonlNCD-7FUS487NGFBt-bGLQjA1_TbQPrBaBUDBMjdS3EA9bE5ttJauFpg8iM_z-s5fHlbKxrWu1Adv7qckYHGvSxKDHyprTI"/>
+<div class="p-sm">
+<p class="font-body-sm text-body-sm line-clamp-2 mb-xs">Reloj Inteligente Vibe v2 - White</p>
+<div class="flex items-center gap-xs">
+<p class="text-secondary font-price-lg text-price-lg">$29.50</p>
+<p class="text-on-surface-variant line-through text-[10px]">$59.00</p>
+</div>
+<div class="flex items-center gap-[2px] mt-xs">
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined text-[12px] text-[#FFC107]" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined text-[12px] text-surface-container-highest" data-icon="star" data-weight="fill">star</span>
+<p class="text-[10px] text-on-surface-variant ml-xs">+800 vendidos</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Flash Coupon Engagement -->
+<section class="bg-gradient-to-r from-primary-container to-secondary-container rounded-xl p-md text-on-primary flex justify-between items-center relative overflow-hidden">
+<div class="z-10">
+<p class="font-label-bold text-label-bold uppercase opacity-90">¡Regalo de agradecimiento!</p>
+<h4 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold">-15% EXTRA</h4>
+<p class="text-body-sm">Cód: GRACIAS15</p>
+</div>
+<div class="z-10 bg-surface-container-lowest text-primary px-md py-sm rounded-full font-label-bold text-label-bold shadow-lg">
+                COPIAR
+            </div>
+<!-- Decorative circle -->
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-white/20 rounded-full blur-2xl"></div>
+</section>
+</main>
+<!-- Interactions Script -->
+<script>
+        // Simple Confetti effect for Success state
+        const canvas = document.getElementById('confetti');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        const colors = ['#ff6b00', '#bb000f', '#00b050', '#ffffff'];
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height - canvas.height;
+                this.size = Math.random() * 8 + 4;
+                this.speedX = Math.random() * 3 - 1.5;
+                this.speedY = Math.random() * 3 + 2;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                this.rotation = Math.random() * 360;
+                this.rotationSpeed = Math.random() * 10;
+            }
+            update() {
+                this.y += this.speedY;
+                this.x += this.speedX;
+                this.rotation += this.rotationSpeed;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation * Math.PI / 180);
+                ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+                ctx.restore();
+            }
+        }
+
+        function initConfetti() {
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].y > canvas.height) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+            if (particles.length > 0) {
+                requestAnimationFrame(animate);
+            }
+        }
+
+        window.onload = () => {
+            initConfetti();
+            animate();
+        };
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body></html>
