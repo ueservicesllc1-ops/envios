@@ -83,7 +83,7 @@ const AdminChats: React.FC<AdminChatsProps> = ({ initialChatUserId }) => {
         if (selectedConversation) {
             // Suscribirse a mensajes de la conversación seleccionada
             const unsubscribe = chatService.subscribeToMessages(
-                selectedConversation.id,
+                selectedConversation.id!,
                 (msgs) => {
                     setMessages(msgs);
                     // Auto scroll to bottom
@@ -231,7 +231,7 @@ const AdminChats: React.FC<AdminChatsProps> = ({ initialChatUserId }) => {
                                                     <p className="font-semibold text-gray-900 truncate">
                                                         {conversation.userName}
                                                     </p>
-                                                    {conversation.unreadCount > 0 && (
+                                                    {(conversation.unreadCount || 0) > 0 && (
                                                         <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full ml-2">
                                                             {conversation.unreadCount}
                                                         </span>
@@ -278,7 +278,7 @@ const AdminChats: React.FC<AdminChatsProps> = ({ initialChatUserId }) => {
                                     <button
                                         onClick={() => {
                                             if (window.confirm('¿Cerrar esta conversación?')) {
-                                                chatService.closeConversation(selectedConversation.id);
+                                                chatService.closeConversation(selectedConversation.id!);
                                                 setSelectedConversation(null);
                                                 toast.success('Conversación cerrada');
                                             }

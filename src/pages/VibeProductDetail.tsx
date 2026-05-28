@@ -6,11 +6,13 @@ import { ArrowLeft, Star, Heart, Share2, ShoppingCart, ShieldCheck, ChevronRight
 import { useCart } from '../contexts/CartContext';
 import VibeProductCard from '../components/vibe/VibeProductCard';
 import toast from 'react-hot-toast';
+import { useVibeConfig } from '../contexts/VibeConfigContext';
 
 export default function VibeProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { config: vibeConfig } = useVibeConfig();
   
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
@@ -55,29 +57,28 @@ export default function VibeProductDetail() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-t-2 border-white rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="p-8 text-center mt-20">
-        <p className="text-gray-600 mb-4">Producto no encontrado.</p>
-        <button 
-          onClick={() => navigate('/vibe-market')} 
-          className="bg-blue-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Volver al inicio
-        </button>
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+        Producto no encontrado
       </div>
     );
   }
 
   const title = product.name || 'Producto';
-  const price = product.salePrice1 || product.originalPrice || product.salePrice || 0;
-  const originalPrice = product.originalPrice || (price * 1.2);
+  const price = product.pvp || product.salePrice1 || product.originalPrice || product.salePrice || 0;
+  
+  const discountMultiplier = 1 + ((vibeConfig?.fakeDiscountPercentage || 0) / 100);
+  const originalPrice = (vibeConfig?.fakeDiscountPercentage && vibeConfig.fakeDiscountPercentage > 0) 
+    ? (price * discountMultiplier) 
+    : (product.originalPrice || (price * 1.2)); 
+    
   const image = product.imageUrl || 'https://via.placeholder.com/600';
   const rating = 4.5;
   const soldCount = 120;

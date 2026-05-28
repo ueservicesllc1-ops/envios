@@ -1,8 +1,10 @@
 import React from 'react';
-import { Star, Heart } from 'lucide-react';
+import { Star, Heart, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import toast from 'react-hot-toast';
+
+import { useVibeConfig } from '../../contexts/VibeConfigContext';
 
 // Simple clsx equivalent
 const cn = (...classes: (string | undefined | false | null)[]) => {
@@ -22,12 +24,19 @@ export default function VibeProductCard({
 }: VibeProductCardProps) {
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { config: vibeConfig } = useVibeConfig();
 
   // Handle both types of products (Bodega Ecuador / SellerStore)
   const id = product.id || product.productId;
   const title = product.name || product.product?.name || 'Producto';
-  const price = product.salePrice1 || product.originalPrice || product.salePrice || 0;
-  const originalPrice = product.originalPrice || (price * 1.2); // Fake original price if not exists
+  const price = product.pvp || product.salePrice1 || product.originalPrice || product.salePrice || 0;
+  
+  // Calculate the fake original price based on the global discount configuration
+  const discountMultiplier = 1 + ((vibeConfig?.fakeDiscountPercentage || 0) / 100);
+  const originalPrice = (vibeConfig?.fakeDiscountPercentage && vibeConfig.fakeDiscountPercentage > 0) 
+    ? (price * discountMultiplier) 
+    : (product.originalPrice || (price * 1.2)); 
+    
   const image = product.imageUrl || product.images?.[0] || product.product?.images?.[0] || 'https://via.placeholder.com/300';
   
   const discount = originalPrice && originalPrice > price 
@@ -98,12 +107,25 @@ export default function VibeProductCard({
           <span>{soldCount} vendidos</span>
         </div>
         
-        <button 
-          onClick={handleAddToCart}
-          className="mt-3 w-full bg-blue-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Añadir al carrito
-        </button>
+        <div className="mt-3 flex gap-1">
+          <button 
+            onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/ar/${id}`);
+            }}
+            className="flex-1 bg-black text-white text-xs font-bold py-2 rounded-lg hover:bg-gray-800 transition-colors flex items-center justify-center gap-1 border border-black"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            AR
+          </button>
+          
+          <button 
+            onClick={handleAddToCart}
+            className="flex-[2] bg-blue-600 text-white text-xs font-bold py-2 rounded-lg hover:bg-blue-700 transition-colors border border-blue-600"
+          >
+            Añadir al carrito
+          </button>
+        </div>
       </div>
     </div>
   );

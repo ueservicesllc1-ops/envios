@@ -138,7 +138,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const productSubtotal = cart.reduce((sum, item) => {
         if (item.type === 'product' && item.product) {
-            return sum + ((item.product.salePrice2 || item.product.salePrice1) * item.quantity);
+            const price = item.product.pvp || item.product.salePrice1 || item.product.originalPrice || 0;
+            return sum + (price * item.quantity);
         }
         return sum;
     }, 0);

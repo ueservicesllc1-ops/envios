@@ -19,7 +19,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const [viewMode, setViewMode] = useState<'admin' | 'seller'>('admin');
   const [isSeller, setIsSeller] = useState(false);
 
-  const isAdmin = user?.email === 'ueservicesllc1@gmail.com';
+  const isAdmin = user?.email === 'ueservicesllc1@gmail.com' || user?.email === 'luisuf@gmail.com';
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {

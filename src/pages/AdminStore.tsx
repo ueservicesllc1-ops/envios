@@ -691,7 +691,7 @@ const OrdersTable = ({
                                     <div className="text-xs text-blue-600 mt-1 max-w-[150px] truncate cursor-help" title={order.notes}>{order.items.length === 0 ? 'Ver detalles 📝' : '+ Notas'}</div>
                                 )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">${order.totalAmount.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">${(order.totalAmount ?? 0).toFixed(2)}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                     ${order.status === 'confirmed' ? 'bg-green-100 text-green-800' :

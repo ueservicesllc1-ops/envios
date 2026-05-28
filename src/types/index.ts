@@ -12,6 +12,7 @@ export interface Product {
   cost: number;
   salePrice1: number;
   salePrice2: number;
+  pvp?: number; // Precio de venta al público en la app Vibe
   originalPrice?: number; // Precio original de venta en tiendas físicas
   barcode?: string;
   imageUrl?: string;

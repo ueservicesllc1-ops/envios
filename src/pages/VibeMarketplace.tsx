@@ -31,8 +31,8 @@ export default function VibeMarketplace() {
   }, []);
 
   const sortedProducts = [...products].sort((a, b) => {
-    const aPrice = a.salePrice1 || a.originalPrice || a.salePrice || 0;
-    const bPrice = b.salePrice1 || b.originalPrice || b.salePrice || 0;
+    const aPrice = a.pvp || a.salePrice1 || a.originalPrice || a.salePrice || 0;
+    const bPrice = b.pvp || b.salePrice1 || b.originalPrice || b.salePrice || 0;
     
     if (activeFilter === 'Menor precio') return aPrice - bPrice;
     if (activeFilter === 'Más vendidos') return (b.soldCount || 0) - (a.soldCount || 0);

@@ -18,7 +18,7 @@ export default function VibeMobileNav() {
     { path: '/feed', icon: Home, label: 'Inicio' },
     { path: '/vibe-market', icon: Store, label: 'Tienda' },
     { path: '/cart', icon: ShoppingCart, label: 'Carrito', badge: cartItemsCount },
-    { path: '/messages', icon: MessageCircle, label: 'Mensajes' },
+    { path: '/inbox', icon: MessageCircle, label: 'Mensajes' },
     { path: user ? '/profile' : '/login', icon: User, label: 'Perfil' },
   ];
 

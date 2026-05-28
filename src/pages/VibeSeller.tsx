@@ -151,17 +151,17 @@ export default function VibeSeller() {
           ))}
         </div>
 
-        {/* Action Button */}
-        <div style={{ marginTop: '20px' }}>
+        {/* Action Buttons */}
+        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
           <button
             onClick={() => navigate('/seller/upload-video')}
             style={{
-              width: '100%',
+              flex: 1,
               background: '#fff',
               color: '#ea580c',
               fontWeight: 800,
-              fontSize: '15px',
-              padding: '14px',
+              fontSize: '14px',
+              padding: '12px',
               borderRadius: '12px',
               border: 'none',
               cursor: 'pointer',
@@ -176,8 +176,35 @@ export default function VibeSeller() {
             onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            <Video style={{ width: '20px', height: '20px' }} />
-            Subir Video Vibe
+            <Video style={{ width: '18px', height: '18px' }} />
+            Subir Video
+          </button>
+          
+          <button
+            onClick={() => navigate('/vibe-host')}
+            style={{
+              flex: 1,
+              background: '#ea580c',
+              color: '#fff',
+              fontWeight: 800,
+              fontSize: '14px',
+              padding: '12px',
+              borderRadius: '12px',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(234, 88, 12, 0.3)',
+              transition: 'transform 0.15s'
+            }}
+            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <Video style={{ width: '18px', height: '18px' }} />
+            Transmitir Live
           </button>
         </div>
       </div>

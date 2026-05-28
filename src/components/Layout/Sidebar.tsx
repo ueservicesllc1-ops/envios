@@ -45,7 +45,7 @@ const navigation = [
   { name: 'Productos Transferidos', href: '/transferred-products', icon: Truck },
   { name: 'Acceso Editor Tienda', href: '/store-editor-access', icon: ShoppingBag },
   { name: 'Test Email', href: '/test-email', icon: Mail },
-  { name: 'Configuración', href: '/settings', icon: Settings },
+  { name: 'Super Admin', href: '/super', icon: Settings },
 ];
 
 interface SidebarProps {

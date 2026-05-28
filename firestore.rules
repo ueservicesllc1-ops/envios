@@ -13,8 +13,8 @@ service cloud.firestore {
     match /inventory/{inventoryId} {
       // Permitir lectura pública para mostrar stock
       allow read: if true;
-      // Solo escritura para usuarios autenticados
-      allow write: if request.auth != null;
+      // Permitir escritura pública temporalmente para que el checkout funcione sin iniciar sesión
+      allow write: if true;
     }
     
     // Reglas para notas de entrada
@@ -123,12 +123,15 @@ service cloud.firestore {
     
     // Reglas para ventas en línea (onlineSales)
     match /onlineSales/{saleId} {
-      allow read, write: if request.auth != null;
+      // Permitir crear órdenes públicamente
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
     }
     
     // Reglas para contabilidad de ventas en línea (onlineSaleAccounting)
     match /onlineSaleAccounting/{entryId} {
-      allow read, write: if request.auth != null;
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
     }
     
     // Reglas para perfumes (productos de pedido, no integrados al inventario)
@@ -215,6 +218,24 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
+    // Reglas para videos de Vibe (Feed)
+    match /vibeVideos/{videoId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Reglas para Live Shopping (Host Panel)
+    match /liveSessions/{sessionId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /liveChat/{messageId} {
+      allow read: if true;
+      // Permitir escribir en el chat si están autenticados
+      allow write: if request.auth != null;
+    }
+
     // Reglas para inventario de Annabel
     match /annabelInventory/{itemId} {
       allow read: if true;
@@ -232,6 +253,26 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Reglas para Billetera Gamificada (Wallets)
+    match /wallets/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Idealmente solo Cloud Functions debería escribir aquí por seguridad, 
+      // pero para este MVP permitimos al usuario actualizar su propio wallet.
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Reglas para Chat Privado
+    match /conversations/{convId} {
+      // Un usuario solo puede leer/escribir si está en la lista 'participants'
+      allow read: if request.auth != null && (request.auth.uid in resource.data.participants);
+      allow write: if request.auth != null;
+    }
+
+    match /chatMessages/{msgId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+    }
+
     // Reglas para pagos de Maria
     match /mariaPayments/{payment=**} {
       allow read, write: if true;
@@ -240,6 +281,28 @@ service cloud.firestore {
     // Reglas para logs de inventario
     match /inventory_logs/{logId} {
       allow read, write: if request.auth != null;
+    }
+
+    // Reglas para videos de Vibe (Feed)
+    match /vibeVideos/{videoId} {
+      // Cualquier usuario puede ver los videos en el feed público
+      allow read: if true;
+      // Solo usuarios autenticados (vendedores) pueden subir/modificar videos
+      allow write: if request.auth != null;
+    }
+
+    // Reglas para pedidos y pagos de la nueva app Vibe
+    match /vibeOrders/{orderId} {
+      allow read, write: if true;
+    }
+    
+    match /vibePayments/{paymentId} {
+      allow read, write: if true;
+    }
+    
+    // Reglas para configuración de la app Vibe
+    match /vibeConfig/{docId} {
+      allow read, write: if true;
     }
 
     // Regla por defecto - denegar todo lo demás
