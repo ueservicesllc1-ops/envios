@@ -21,6 +21,8 @@ import SellerDetails from './pages/SellerDetails';
 import SellerPanel from './pages/SellerPanel';
 import SellerDashboard from './pages/SellerDashboard';
 import Orders from './pages/Orders';
+import AdminChats from './pages/AdminChats';
+import AdminConfig from './pages/AdminConfig';
 import Settings from './pages/Settings';
 import MobileScanner from './pages/MobileScanner';
 import PublicStore from './pages/PublicStore';
@@ -34,7 +36,6 @@ import OrderTracking from './pages/OrderTracking';
 import AdminStore from './pages/AdminStore';
 import StoreEditor from './pages/StoreEditor';
 import StoreEditorAccessConfig from './pages/StoreEditorAccessConfig';
-import AdminChats from './pages/AdminChats';
 import AdvisorPanel from './pages/AdvisorPanel';
 import AppMobile from './pages/AppMobile';
 import AppEnCamino from './pages/AppEnCamino';
@@ -47,6 +48,7 @@ import AppInstallPage from './pages/AppInstallPage';
 import AppVilma from './pages/AppVilma';
 import AppAnnabel from './pages/AppAnnabel';
 import AppMaria from './pages/AppMaria';
+import { VibeConfigProvider } from './contexts/VibeConfigContext';
 import PdfEditor from './pages/PdfEditor';
 import TransferredProducts from './pages/TransferredProducts';
 
@@ -66,8 +68,15 @@ import MarketplaceV2 from './pages/MarketplaceV2';
 import VibeLayout from './components/vibe/VibeLayout';
 import VibeMarketplace from './pages/VibeMarketplace';
 import VibeLiveShopping from './pages/VibeLiveShopping';
+import VibeLiveHost from './pages/VibeLiveHost';
+import VibeRoulette from './pages/VibeRoulette';
+import VibeInbox from './pages/VibeInbox';
+import VibeChatRoom from './pages/VibeChatRoom';
+import VibeAR from './pages/VibeAR';
+import VibeCoupons from './pages/VibeCoupons';
 import VibeFeedPage from './pages/VibeFeedPage';
 import VibeRewards from './pages/VibeRewards';
+import VibeRedeem from './pages/VibeRedeem';
 import VibeReferrals from './pages/VibeReferrals';
 import VibeProductDetail from './pages/VibeProductDetail';
 import VibeMessages from './pages/VibeMessages';
@@ -116,15 +125,17 @@ function App() {
     <PayPalScriptProvider options={paypalOptions}>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <MobileRedirect />
-        <CartProvider>
-          <OnlineTracker /> {/* Tracking de presencia */}
-          <PWAPrompt />
+        <VibeConfigProvider>
+          <CartProvider>
+            <OnlineTracker /> {/* Tracking de presencia */}
+            <PWAPrompt />
           <div className="App">
             <Routes>
-              {/* Ruta pública para la página de inicio (Feed de Videos) */}
-              <Route path="/" element={<Navigate to="/feed" replace />} />
+              {/* Ruta pública para la página de inicio (tienda en línea) */}
+              <Route path="/" element={<Home />} />
 
               {/* Ruta del Carrito */}
+              <Route path="/cart" element={<CartPage />} />
               <Route path="/order-success" element={<OrderSuccess />} />
               <Route path="/terminos" element={<TermsPage />} />
               <Route path="/politica" element={<PrivacyPage />} />
@@ -161,7 +172,14 @@ function App() {
               
               <Route path="/feed" element={<VibeFeedPage />} />
               <Route path="/live" element={<VibeLiveShopping />} />
+              <Route path="/vibe-host" element={<VibeLiveHost />} />
+              <Route path="/vibe-roulette" element={<VibeRoulette />} />
+              <Route path="/inbox" element={<VibeInbox />} />
+              <Route path="/chat/:conversationId" element={<VibeChatRoom />} />
+              <Route path="/ar/:productId" element={<VibeAR />} />
+              <Route path="/coupons" element={<VibeCoupons />} />
               <Route path="/vibe" element={<VibeFeedPage />} />
+              <Route path="/redeem" element={<VibeRedeem />} />
 
               {/* Ruta para App Mobile - sin Layout ni AuthWrapper */}
               <Route path="/app" element={<AppMobile />} />
@@ -216,6 +234,7 @@ function App() {
               <Route path="/asesor" element={<AdvisorPanel />} />
 
               <Route path="/admin/chats" element={<AuthWrapper><Layout><AdminChats /></Layout></AuthWrapper>} />
+              <Route path="/super" element={<AdminConfig />} />
               <Route path="/test-email" element={<AuthWrapper><Layout><TestEmail /></Layout></AuthWrapper>} />
               <Route path="/settings" element={<AuthWrapper><Layout><Settings /></Layout></AuthWrapper>} />
               <Route path="/mobile-scanner" element={<AuthWrapper><Layout><MobileScanner /></Layout></AuthWrapper>} />
@@ -232,6 +251,7 @@ function App() {
             />
           </div>
         </CartProvider>
+        </VibeConfigProvider>
       </Router>
     </PayPalScriptProvider>
   );
