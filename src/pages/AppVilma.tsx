@@ -310,7 +310,7 @@ const AppVilma: React.FC = () => {
                             <FileText className="w-5 h-5" />
                             <span>Reporte de Pagos</span>
                         </button>
-                        <button onClick={() => { toast.promise(generateSellerAppInventoryPDF("Vilma Uchubanda", inventoryItems), { loading: 'Generando PDF con imágenes...', success: 'PDF descargado con éxito', error: 'Error al generar el PDF' }); }}
+                        <button onClick={() => { toast.promise(generateSellerAppInventoryPDF("Vilma Uchubanda", inventoryItems), { loading: 'Generando PDF con imï¿½genes...', success: 'PDF descargado con ï¿½xito', error: 'Error al generar el PDF' }); }}
                             disabled={inventoryItems.length === 0}
                             className="w-full mt-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95">
                             <Download className="w-5 h-5" />
