@@ -72,17 +72,14 @@ app.get('/api/proxy-image', async (req, res) => {
       return res.status(400).json({ error: 'URL parameter is required' });
     }
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const axios = require('axios');
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
 
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+    res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache 1 año
+
+    const buffer = Buffer.from(response.data);
 
     res.send(buffer);
   } catch (error) {
