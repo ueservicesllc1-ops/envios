@@ -185,7 +185,7 @@ export default function VibeAR() {
                                         className={`flex-shrink-0 w-20 h-20 rounded-2xl p-1.5 transition-all duration-300 ${isActive ? 'border-2 border-[#ea580c] bg-white/10 backdrop-blur-md scale-105' : 'border border-white/20 bg-black/50 opacity-60 hover:opacity-100 backdrop-blur-sm'}`}
                                     >
                                         <div className="w-full h-full bg-white rounded-xl overflow-hidden relative">
-                                            <img src={variant.image} className="w-full h-full object-cover" />
+                                            <img src={variant.image} alt={variant.color} className="w-full h-full object-cover" />
                                             {isActive && (
                                                 <div className="absolute bottom-0 w-full bg-[#ea580c] py-0.5 text-center">
                                                     <span className="text-[9px] font-bold text-white tracking-wider">ACTIVE</span>

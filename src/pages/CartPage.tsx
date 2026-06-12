@@ -312,6 +312,7 @@ const CartPage: React.FC = () => {
             
             confirmPayment();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [authLoading]);
 
     useEffect(() => {
