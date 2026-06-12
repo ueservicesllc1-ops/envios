@@ -135,6 +135,45 @@ export const exitNoteService = {
                 }
               }
               toast.success('Inventario de Bodega Ecuador actualizado');
+            } else {
+              // Sincronizar con el catálogo de /app específico del vendedor (Annabel, Vilma, Maria, Yuri)
+              try {
+                const sellerNameLower = (noteData.seller || '').toLowerCase();
+                
+                // Cargar el servicio correcto según el nombre del vendedor
+                let specificService = null;
+                if (sellerNameLower.includes('annabel')) {
+                  const { annabelInventoryService } = await import('./annabelInventoryService');
+                  specificService = annabelInventoryService;
+                } else if (sellerNameLower.includes('vilma')) {
+                  const { vilmaInventoryService } = await import('./vilmaInventoryService');
+                  specificService = vilmaInventoryService;
+                } else if (sellerNameLower.includes('maria')) {
+                  const { mariaInventoryService } = await import('./mariaInventoryService');
+                  specificService = mariaInventoryService;
+                } else if (sellerNameLower.includes('yuri')) {
+                  const { yuriInventoryService } = await import('./yuriInventoryService');
+                  specificService = yuriInventoryService;
+                }
+
+                if (specificService) {
+                  for (const item of noteData.items) {
+                    const product = await productService.getById(item.productId);
+                    if (product) {
+                      await specificService.addProduct(
+                        product,
+                        item.quantity,
+                        product.salePrice1 || 0
+                      );
+                    }
+                  }
+                  toast.success(`Catálogo de /app actualizado para ${noteData.seller}`);
+                } else {
+                  console.log('No es un vendedor de /app con inventario especial:', noteData.seller);
+                }
+              } catch (appSyncError) {
+                console.error('Error sincronizando catálogo /app específico:', appSyncError);
+              }
             }
           }
         } catch (inventoryError) {

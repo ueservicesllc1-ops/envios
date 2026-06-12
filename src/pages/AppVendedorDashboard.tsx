@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, DollarSign, Package, TrendingUp, Calendar, ChevronRight, Truck, CheckCircle, Clock, CreditCard, X, Box, FileText, ClipboardList, Plus, Minus, Search, Save } from 'lucide-react';
+import { ArrowLeft, DollarSign, Package, TrendingUp, Calendar, ChevronRight, Truck, CheckCircle, Clock, CreditCard, X, Box, FileText, ClipboardList, Plus, Minus, Search, Save, Download } from 'lucide-react';
 import { Seller, ExitNote, SellerInventoryItem, Product } from '../types';
 import { sellerService } from '../services/sellerService';
 import { exitNoteService } from '../services/exitNoteService';
@@ -10,6 +10,7 @@ import { productService } from '../services/productService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { getSellerSession } from '../utils/sellerSession';
+import { generateSellerAppInventoryPDF } from '../utils/pdfGenerator';
 
 const AppVendedorDashboard: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -495,9 +496,19 @@ const AppVendedorDashboard: React.FC = () => {
                 {/* 2. Tab Inventario */}
                 {activeTab === 'inventory' && (
                     <div className="space-y-4 animate-fade-in">
-                        <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl mb-4">
-                            <h3 className="text-indigo-800 font-bold mb-1">Mi Stock Actual</h3>
-                            <p className="text-xs text-indigo-600">Productos transferidos desde Bodega Ecuador.</p>
+                        <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl mb-4 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-indigo-800 font-bold mb-1">Mi Stock Actual</h3>
+                                <p className="text-xs text-indigo-600">Productos transferidos desde Bodega Ecuador.</p>
+                            </div>
+                            <button
+                                onClick={() => generateSellerAppInventoryPDF(seller?.name || "Vendedor", inventory.map(i => ({ productName: i.product.name, sku: i.product.sku, quantity: i.quantity, unitPrice: i.unitPrice || i.product.salePrice1, totalValue: (i.unitPrice || i.product.salePrice1) * i.quantity, status: 'inventario' })))}
+                                disabled={inventory.length === 0}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl font-bold text-xs shadow flex items-center transition-colors active:scale-95 disabled:opacity-50"
+                            >
+                                <Download className="w-4 h-4 mr-1.5" />
+                                Descargar
+                            </button>
                         </div>
 
                         {inventory.length === 0 ? (
@@ -685,10 +696,18 @@ const AppVendedorDashboard: React.FC = () => {
                                 <h2 className="text-4xl font-bold mb-4">${totalDebt.toFixed(2)}</h2>
                                 <button
                                     onClick={(e) => handlePayClick(null, e)} // null = pago global
-                                    className="bg-white text-red-600 w-full py-3 rounded-xl font-bold shadow-md hover:bg-red-50 active:scale-95 transition-all flex items-center justify-center"
+                                    className="bg-white text-red-600 w-full py-3 rounded-xl font-bold shadow-md hover:bg-red-50 active:scale-95 transition-all flex items-center justify-center mb-2"
                                 >
                                     <CreditCard className="w-5 h-5 mr-2" />
                                     Realizar Abono a Deuda
+                                </button>
+                                <button
+                                    onClick={() => generateSellerAppInventoryPDF(seller?.name || "Vendedor", inventory.map(i => ({ productName: i.product.name, sku: i.product.sku, quantity: i.quantity, unitPrice: i.unitPrice || i.product.salePrice1, totalValue: (i.unitPrice || i.product.salePrice1) * i.quantity, status: 'inventario' })))}
+                                    disabled={inventory.length === 0}
+                                    className="bg-green-600 text-white w-full py-3 rounded-xl font-bold shadow-md hover:bg-green-700 active:scale-95 transition-all flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                >
+                                    <Download className="w-5 h-5 mr-2" />
+                                    Descargar Inventario
                                 </button>
                             </div>
                         </div>

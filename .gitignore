@@ -117,3 +117,6 @@ temp/
 *.sln
 *.sw?
 
+
+# Scratch scripts
+scratch/

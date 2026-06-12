@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut, EyeOff } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut, EyeOff, Download } from 'lucide-react';
 import { annabelInventoryService, AnnabelInventoryItem } from '../services/annabelInventoryService';
 import { annabelPaymentService, AnnabelPayment } from '../services/annabelPaymentService';
 import { inventoryService } from '../services/inventoryService';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { getSellerSession, clearSellerSession, SellerSession } from '../utils/sellerSession';
 import { exitNoteService } from '../services/exitNoteService';
+import { generateSellerAppInventoryPDF } from '../utils/pdfGenerator';
 
 type TabType = 'inventario' | 'vendido' | 'devueltos';
 
@@ -312,6 +313,18 @@ const AppAnnabel: React.FC = () => {
                         >
                             <FileText className="w-5 h-5" />
                             <span>Reporte de Pagos</span>
+                        </button>
+                        <button onClick={() => {
+                            toast.promise(generateSellerAppInventoryPDF("Annabel Diaz", inventoryItems), {
+                                loading: 'Generando PDF con imágenes...',
+                                success: 'PDF descargado con éxito',
+                                error: 'Error al generar el PDF'
+                            });
+                        }}
+                            disabled={inventoryItems.length === 0}
+                            className="w-full mt-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95">
+                            <Download className="w-5 h-5" />
+                            <span>Descargar Inventario</span>
                         </button>
                         {totalDebt <= 0 && (
                             <p className="text-center text-green-600 text-sm font-medium mt-2">

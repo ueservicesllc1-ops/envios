@@ -233,10 +233,24 @@ const ExitNotes: React.FC = () => {
         createdAt: new Date()
       } as unknown as Seller;
 
+      // Crear vendedores fijos de /app
+      const appSellers: Seller[] = [
+        { id: 'annabel', name: 'Annabel Diaz (/app)', email: 'annabel@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
+        { id: 'vilma', name: 'Vilma (/app)', email: 'vilma@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
+        { id: 'maria', name: 'Maria (/app)', email: 'maria@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
+        { id: 'yuri', name: 'Yuri (/app)', email: 'yuri@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
+      ];
+
+      // Filtrar vendedores de /app que ya puedan estar en la BD para evitar duplicados visuales
+      const dbSellersFiltered = sellersData.filter(s => 
+        !s.name.toLowerCase().includes('annabel') && 
+        !s.name.toLowerCase().includes('vilma') && 
+        !s.name.toLowerCase().includes('maria') && 
+        !s.name.toLowerCase().includes('yuri')
+      );
+
       // Asegurarse de que no exista ya un vendedor con ese ID real (improbable)
-      const finalSellers = sellersData.some(s => s.id === 'bodega-ecuador')
-        ? sellersData
-        : [bodegaEcuadorSeller, ...sellersData];
+      const finalSellers = [bodegaEcuadorSeller, ...appSellers, ...dbSellersFiltered];
 
       setNotes(updatedNotes);
       setProducts(productsData);
@@ -2181,11 +2195,11 @@ const ExitNotes: React.FC = () => {
                           <CheckCircle className="h-4 w-4" />
                         </button>
                       )}
-                      {(note.status === 'delivered' || note.status === 'in-transit') && (
+                      {(note.status === 'delivered' || note.status === 'in-transit' || note.status === 'received') && (
                         <button
-                          onClick={() => handleStatusChange(note.id, 'pending')}
-                          className="p-1 text-gray-400 hover:text-yellow-600"
-                          title="Volver a Pendiente"
+                          onClick={() => handleStatusChange(note.id, note.status === 'received' ? 'delivered' : 'pending')}
+                          className="text-white hover:bg-orange-600 bg-orange-500 rounded-full p-1 transition-colors"
+                          title={note.status === 'received' ? "Revertir a Entregada" : "Revertir a Pendiente"}
                         >
                           <RotateCcw className="h-4 w-4" />
                         </button>

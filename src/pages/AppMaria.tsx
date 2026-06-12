@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut, EyeOff } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut, EyeOff, Download } from 'lucide-react';
 import { mariaInventoryService, MariaInventoryItem } from '../services/mariaInventoryService';
 import { mariaPaymentService, MariaPayment } from '../services/mariaPaymentService';
 import { inventoryService } from '../services/inventoryService';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { getSellerSession, clearSellerSession, SellerSession } from '../utils/sellerSession';
 import { exitNoteService } from '../services/exitNoteService';
+import { generateSellerAppInventoryPDF } from '../utils/pdfGenerator';
 
 type TabType = 'inventario' | 'vendido' | 'devueltos';
 
@@ -310,6 +311,12 @@ const AppMaria: React.FC = () => {
                             className="w-full mt-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95">
                             <FileText className="w-5 h-5" />
                             <span>Reporte de Pagos</span>
+                        </button>
+                        <button onClick={() => generateSellerAppInventoryPDF("Maria E Castro", inventoryItems)}
+                            disabled={inventoryItems.length === 0}
+                            className="w-full mt-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl flex items-center justify-center space-x-2 transition-all active:scale-95">
+                            <Download className="w-5 h-5" />
+                            <span>Descargar Inventario</span>
                         </button>
                         {totalDebt <= 0 && (
                             <p className="text-center text-green-600 text-sm font-medium mt-2">✅ No hay deuda pendiente</p>

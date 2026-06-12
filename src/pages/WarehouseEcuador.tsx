@@ -391,6 +391,13 @@ const WarehouseEcuador: React.FC = () => {
                 await mariaInventoryService.addProduct(product, qty, unitPrice);
             }
 
+            // Si es Yuri, agregar a su inventario dedicado
+            if (selectedSeller?.name?.toLowerCase().includes('yuri') || selectedSeller?.id === 'yuri') {
+                const { yuriInventoryService } = await import('../services/yuriInventoryService');
+                await yuriInventoryService.addProduct(product, qty, unitPrice);
+            }
+
+
             // Log entry
             await addDoc(collection(db, 'inventory_logs'), {
                 type: 'transfer',

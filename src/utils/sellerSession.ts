@@ -1,5 +1,5 @@
 export interface SellerSession {
-    id: 'vilma' | 'maria' | 'annabel';
+    id: 'vilma' | 'maria' | 'annabel' | 'yuri';
     name: string;
     isAdmin: boolean;
 }
@@ -49,13 +49,24 @@ export const MAIN_SELLERS = [
     {
         id: 'annabel' as const,
         name: 'Annabel Diaz',
-        pin: '1619',
+        pin: '1979',
         isAdmin: false,
         gradient: 'from-purple-500 to-violet-700',
         lightText: 'text-purple-100',
         badge: 'Vendedora',
         avatar: '✨',
         route: '/app/annabel',
+    },
+    {
+        id: 'yuri' as const,
+        name: 'Yuri Marquez',
+        pin: '1980',
+        isAdmin: false,
+        gradient: 'from-indigo-500 to-indigo-700',
+        lightText: 'text-indigo-100',
+        badge: 'Vendedora',
+        avatar: '💫',
+        route: '/app/yuri',
     },
 ];
 // Fin de archivo

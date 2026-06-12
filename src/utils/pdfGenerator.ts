@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
-import { Seller, ExitNote, PaymentNote, PointOfSale } from '../types';
+import { Seller, ExitNote, PaymentNote, PointOfSale, SellerInventoryItem } from '../types';
 
 export const generateSellerBalancePDF = (
     seller: Seller,
@@ -75,7 +75,8 @@ export const generateSellerBalancePDF = (
         headStyles: { fillColor: [66, 133, 244] }, // Azul Google
         theme: 'striped',
         foot: [['TOTAL', '', '', `$${historicDebt.toLocaleString()}`]],
-        footStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' }
+        footStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
+        showFoot: 'lastPage'
     });
 
     // --- Tabla de Pagos Realizados ---
@@ -98,7 +99,8 @@ export const generateSellerBalancePDF = (
         headStyles: { fillColor: [52, 168, 83] }, // Verde Google
         theme: 'striped',
         foot: [['TOTAL', '', '', `$${totalPayments.toLocaleString()}`]],
-        footStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' }
+        footStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
+        showFoot: 'lastPage'
     });
 
     // --- Footer ---
@@ -290,4 +292,184 @@ export const generatePOSReceipt = async (sale: PointOfSale) => {
 
     // Save
     doc.save(`Recibo_POS_${sale.saleNumber || 'Venta'}.pdf`);
+};
+
+export const generateSellerInventoryPDF = (
+    seller: Seller,
+    inventoryItems: SellerInventoryItem[]
+) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+
+    // --- Encabezado ---
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Listado de Productos Entregados', pageWidth / 2, 20, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Fecha de emisión: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth / 2, 30, { align: 'center' });
+
+    // --- Información del Vendedor ---
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Información del Vendedor / Cliente:', 14, 45);
+
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Nombre: ${seller.name}`, 14, 52);
+    doc.text(`Email: ${seller.email || 'N/A'}`, 14, 57);
+    doc.text(`Teléfono: ${seller.phone || 'N/A'}`, 14, 62);
+    doc.text(`Ciudad: ${seller.city || 'N/A'}`, 14, 67);
+    doc.text(`Dirección: ${seller.address || 'N/A'}`, 14, 72);
+
+    // --- Tabla de Inventario ---
+    const tableData = inventoryItems.map(item => [
+        item.product.name,
+        item.product.sku,
+        item.product.category || 'N/A',
+        item.quantity.toString(),
+        `$${(item.unitPrice || 0).toFixed(2)}`,
+        `$${(item.totalValue || 0).toFixed(2)}`,
+        item.status === 'delivered' ? 'Entregado' : item.status === 'in-transit' ? 'En Tránsito' : 'Stock'
+    ]);
+
+    const totalQty = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
+    const totalVal = inventoryItems.reduce((sum, item) => sum + (item.totalValue || 0), 0);
+
+    autoTable(doc, {
+        startY: 80,
+        head: [['Producto', 'SKU', 'Categoría', 'Cantidad', 'P. Unitario', 'Valor Total', 'Estado']],
+        body: tableData,
+        headStyles: { fillColor: [66, 133, 244] }, // Azul Google
+        theme: 'striped',
+        foot: [['TOTALES', '', '', totalQty.toString(), '', `$${totalVal.toFixed(2)}`, '']],
+        footStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
+        showFoot: 'lastPage'
+    });
+
+    // --- Footer ---
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Página ${i} de ${pageCount}`, pageWidth - 20, doc.internal.pageSize.height - 10, { align: 'right' });
+        doc.text('Generado por Sistema Envíos Ecuador', 14, doc.internal.pageSize.height - 10);
+    }
+
+    // Guardar PDF
+    doc.save(`Productos_Entregados_${seller.name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`);
+};
+
+export const generateSellerAppInventoryPDF = async (
+    sellerName: string,
+    items: any[]
+) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+
+    // Precargar imágenes en base64
+    const loadedImages: { [key: string]: string } = {};
+    for (const item of items) {
+        if (item.imageUrl && !loadedImages[item.imageUrl]) {
+            try {
+                const response = await fetch(item.imageUrl);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64data = await new Promise<string>((resolve, reject) => {
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                loadedImages[item.imageUrl] = base64data;
+            } catch (e) {
+                console.error('Error preloading image:', item.imageUrl);
+            }
+        }
+    }
+
+    // --- Encabezado ---
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Inventario de Entregas', pageWidth / 2, 20, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Fecha de emisión: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, pageWidth / 2, 30, { align: 'center' });
+
+    // --- Información del Vendedor ---
+    doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Vendedor / Cliente:', 14, 45);
+
+    doc.setFontSize(11);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Nombre: ${sellerName}`, 14, 52);
+
+    // --- Tabla de Inventario ---
+    const tableData = items.map(item => [
+        '', // Columna vacía para la imagen
+        item.productName,
+        item.sku || 'N/A',
+        item.quantity.toString(),
+        `$${item.unitPrice.toFixed(2)}`,
+        `$${item.totalValue.toFixed(2)}`,
+        'En Inventario'
+    ]);
+
+    const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
+    const totalVal = items.reduce((sum, item) => sum + item.totalValue, 0);
+
+    autoTable(doc, {
+        startY: 60,
+        head: [['Foto', 'Producto', 'SKU', 'Cantidad', 'P. Unitario', 'Valor Total', 'Estado']],
+        body: tableData,
+        headStyles: { fillColor: [79, 70, 229] }, // Indigo 600
+        theme: 'striped',
+        styles: { 
+            minCellHeight: 30, 
+            valign: 'middle' 
+        },
+        columnStyles: {
+            0: { cellWidth: 30, halign: 'center' }
+        },
+        foot: [['', 'TOTALES', '', totalQty.toString(), '', `$${totalVal.toFixed(2)}`, '']],
+        footStyles: { fillColor: [200, 200, 200], textColor: [0, 0, 0], fontStyle: 'bold' },
+        showFoot: 'lastPage',
+        didDrawCell: (data: any) => {
+            if (data.section === 'body' && data.column.index === 0) {
+                const item = items[data.row.index];
+                if (item && item.imageUrl && loadedImages[item.imageUrl]) {
+                    const base64data = loadedImages[item.imageUrl];
+                    const dim = data.cell;
+                    // Tamaño de la imagen: 25x25 para que no sea tan miniatura
+                    const imgSize = 25;
+                    const x = dim.x + (dim.width - imgSize) / 2;
+                    const y = dim.y + (dim.height - imgSize) / 2;
+                    
+                    try {
+                        // Determinar el formato basándose en la data base64 (suele ser image/jpeg o image/png)
+                        const format = base64data.includes('image/png') ? 'PNG' : 'JPEG';
+                        doc.addImage(base64data, format, x, y, imgSize, imgSize);
+                    } catch (err) {
+                        console.error('Error al dibujar la imagen en PDF:', err);
+                    }
+                }
+            }
+        }
+    });
+
+    // --- Footer ---
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Página ${i} de ${pageCount}`, pageWidth - 20, doc.internal.pageSize.height - 10, { align: 'right' });
+        doc.text('Generado por Sistema Envíos Ecuador', 14, doc.internal.pageSize.height - 10);
+    }
+
+    // Guardar PDF
+    doc.save(`Inventario_${sellerName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`);
 };

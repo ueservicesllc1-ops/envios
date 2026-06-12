@@ -58,9 +58,36 @@ app.get('/api/b2/image', async (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache 1 año
 
     res.send(imageBuffer);
+    } catch (error) {
+    console.error('Error proxy B2:', error);
+    res.status(500).json({ error: 'Error fetching image' });
+  }
+});
+
+// Proxy general para imágenes (útil para saltarse CORS de Firebase Storage u otros)
+app.get('/api/proxy-image', async (req, res) => {
+  try {
+    const url = req.query.url as string;
+    if (!url) {
+      return res.status(400).json({ error: 'URL parameter is required' });
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache 1 año
+
+    res.send(buffer);
   } catch (error) {
-    console.error('Error serving image:', error);
-    res.status(404).json({ error: 'Image not found' });
+    console.error('Error in proxy-image:', error);
+    res.status(500).json({ error: 'Failed to proxy image' });
   }
 });
 

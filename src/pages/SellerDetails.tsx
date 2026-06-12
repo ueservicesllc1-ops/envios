@@ -15,13 +15,15 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Trash2
+  Trash2,
+  Download
 } from 'lucide-react';
-import { Seller } from '../types';
+import { Seller, SellerInventoryItem } from '../types';
 import { sellerService } from '../services/sellerService';
 import { sellerInventoryService } from '../services/sellerInventoryService';
 import { shippingService, ShippingPackage } from '../services/shippingService';
 import { soldProductService, SoldProduct } from '../services/soldProductService';
+import { generateSellerInventoryPDF } from '../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 
 
@@ -42,6 +44,7 @@ const SellerDetails: React.FC = () => {
   const [soldProducts, setSoldProducts] = useState<SoldProduct[]>([]);
   const [shippingPackages, setShippingPackages] = useState<ShippingPackage[]>([]);
   const [productSummary, setProductSummary] = useState<ProductSummary[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<SellerInventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadSellerDetails = useCallback(async () => {
@@ -62,6 +65,10 @@ const SellerDetails: React.FC = () => {
 
       // Cargar paquetes de envío del vendedor
       await loadShippingPackages(id!);
+
+      // Cargar inventario del vendedor (productos entregados)
+      const inventoryData = await sellerInventoryService.getBySeller(id!);
+      setInventoryItems(inventoryData);
 
       setLoading(false);
     } catch (error) {
@@ -244,21 +251,33 @@ const SellerDetails: React.FC = () => {
             <p className="text-gray-600">Detalles del vendedor</p>
           </div>
         </div>
-        <button
-          onClick={() => navigate(`/seller-panel/${seller.id}`)}
-          className="btn-primary flex items-center"
-        >
-          <Package className="h-4 w-4 mr-2" />
-          Panel del Vendedor
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => navigate(`/seller-panel/${seller.id}`)}
+            className="btn-primary flex items-center"
+          >
+            <Package className="h-4 w-4 mr-2" />
+            Panel del Vendedor
+          </button>
 
-        <button
-          onClick={handleResetSeller}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center ml-2"
-        >
-          <Trash2 className="h-4 w-4 mr-2" />
-          Reiniciar Vendedor
-        </button>
+          <button
+            onClick={() => generateSellerInventoryPDF(seller, inventoryItems)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center disabled:opacity-50"
+            disabled={inventoryItems.length === 0}
+            title="Descargar PDF de productos entregados"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Descargar PDF
+          </button>
+
+          <button
+            onClick={handleResetSeller}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Reiniciar Vendedor
+          </button>
+        </div>
       </div>
 
       {/* Información del Vendedor */}
@@ -347,6 +366,84 @@ const SellerDetails: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Productos Entregados (Inventario Actual) */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Productos Entregados (Inventario Actual)</h3>
+            <p className="text-sm text-gray-500">Listado de productos actualmente en posesión de este vendedor/cliente.</p>
+          </div>
+          <button
+            onClick={() => generateSellerInventoryPDF(seller, inventoryItems)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center disabled:opacity-50"
+            disabled={inventoryItems.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Descargar PDF
+          </button>
+        </div>
+
+        {inventoryItems.length === 0 ? (
+          <div className="text-center py-8">
+            <Package className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay productos entregados</h3>
+            <p className="mt-1 text-sm text-gray-500">Este vendedor no tiene productos entregados en su inventario.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="table-header">Producto</th>
+                  <th className="table-header">SKU</th>
+                  <th className="table-header">Categoría</th>
+                  <th className="table-header">Cantidad</th>
+                  <th className="table-header">P. Unitario</th>
+                  <th className="table-header">Valor Total</th>
+                  <th className="table-header">Estado</th>
+                  <th className="table-header">Última Entrega</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {inventoryItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="table-cell">
+                      <span className="text-sm font-medium text-gray-900">{item.product?.name || 'N/A'}</span>
+                    </td>
+                    <td className="table-cell">
+                      <span className="text-sm text-gray-900">{item.product?.sku || 'N/A'}</span>
+                    </td>
+                    <td className="table-cell">
+                      <span className="text-sm text-gray-900">{item.quantity} unidades</span>
+                    </td>
+                    <td className="table-cell">
+                      <span className="text-sm text-gray-900">${(item.unitPrice || 0).toLocaleString()}</span>
+                    </td>
+                    <td className="table-cell">
+                      <span className="text-sm font-medium text-gray-900">
+                        ${(item.totalValue || 0).toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="table-cell">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        item.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {item.status === 'delivered' ? 'Entregado' : 'En Tránsito'}
+                      </span>
+                    </td>
+                    <td className="table-cell">
+                      <span className="text-sm text-gray-900">
+                        {item.lastDeliveryDate ? new Date(item.lastDeliveryDate).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Productos Vendidos */}

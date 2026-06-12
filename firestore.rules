@@ -253,6 +253,12 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Reglas para inventario de Yuri
+    match /yuriInventory/{item=**} {
+      allow read, write: if true;
+    }
+
+
     // Reglas para Billetera Gamificada (Wallets)
     match /wallets/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
@@ -277,6 +283,12 @@ service cloud.firestore {
     match /mariaPayments/{payment=**} {
       allow read, write: if true;
     }
+
+    // Reglas para pagos de Yuri
+    match /yuriPayments/{payment=**} {
+      allow read, write: if true;
+    }
+
 
     // Reglas para logs de inventario
     match /inventory_logs/{logId} {

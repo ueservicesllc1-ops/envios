@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Search, Edit, Eye, Trash2, Mail, Phone, DollarSign, X, LayoutDashboard, AlertCircle } from 'lucide-react';
+import { Users, Plus, Search, Edit, Eye, Trash2, Mail, Phone, DollarSign, X, LayoutDashboard, AlertCircle, Download } from 'lucide-react';
 import { Seller } from '../types';
 import { sellerService } from '../services/sellerService';
 import { sellerInventoryService } from '../services/sellerInventoryService';
 import { paymentNoteService } from '../services/paymentNoteService';
+import { generateSellerInventoryPDF } from '../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 
 const Sellers: React.FC = () => {
@@ -378,6 +379,26 @@ const Sellers: React.FC = () => {
                     title="Ver detalles"
                   >
                     <Eye className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const items = await sellerInventoryService.getBySeller(seller.id);
+                        if (items.length === 0) {
+                          toast.error('Este vendedor no tiene productos entregados');
+                          return;
+                        }
+                        generateSellerInventoryPDF(seller, items);
+                        toast.success('Descargando listado de productos...');
+                      } catch (error) {
+                        console.error('Error al generar PDF de inventario:', error);
+                        toast.error('Error al generar el PDF');
+                      }
+                    }}
+                    className="p-1 text-gray-400 hover:text-blue-600"
+                    title="Descargar PDF de productos entregados"
+                  >
+                    <Download className="h-4 w-4" />
                   </button>
                 <button
                   onClick={() => handleOpenSellerPanel(seller.id)}
