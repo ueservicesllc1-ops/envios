@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut, EyeOff, Download } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut, EyeOff, Download, Truck, Warehouse } from 'lucide-react';
 import { luisInventoryService, LuisInventoryItem } from '../services/luisInventoryService';
 import { luisPaymentService, LuisPayment } from '../services/luisPaymentService';
 import { inventoryService } from '../services/inventoryService';
@@ -9,6 +9,7 @@ import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
 import { getSellerSession, clearSellerSession, SellerSession } from '../utils/sellerSession';
 import { exitNoteService } from '../services/exitNoteService';
 import { generateSellerAppInventoryPDF } from '../utils/pdfGenerator';
+import { ALL_SELLERS } from '../utils/sellerSession';
 
 type TabType = 'inventario' | 'vendido' | 'devueltos';
 
@@ -41,6 +42,14 @@ const AppLuis: React.FC = () => {
     const [editingItem, setEditingItem] = useState<LuisInventoryItem | null>(null);
     const [newPrice, setNewPrice] = useState('');
     const [updatingPrice, setUpdatingPrice] = useState(false);
+
+    // Modal de transferencia
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [selectedItemToTransfer, setSelectedItemToTransfer] = useState<LuisInventoryItem | null>(null);
+    const [transferSellerId, setTransferSellerId] = useState('');
+    const [transferQuantity, setTransferQuantity] = useState('1');
+    const [transferNotes, setTransferNotes] = useState('');
+    const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
 
     // Filtrar por status
     const inventoryItems = allItems.filter(i => i.status === 'inventario' && i.quantity > 0);
@@ -98,6 +107,117 @@ const AppLuis: React.FC = () => {
             loadData();
         } catch (error) {
             toast.error('Error al marcar como vendido');
+        }
+    };
+
+    const handleProcessTransfer = async () => {
+        if (!selectedItemToTransfer || !transferSellerId || parseInt(transferQuantity) <= 0) {
+            toast.error('Seleccione vendedor/bodega y cantidad válida');
+            return;
+        }
+
+        const qty = parseInt(transferQuantity);
+        if (qty > selectedItemToTransfer.quantity) {
+            toast.error(`Stock insuficiente. Disponible: ${selectedItemToTransfer.quantity}`);
+            return;
+        }
+
+        setIsSubmittingTransfer(true);
+        try {
+            const { productService } = await import('../services/productService');
+            const products = await productService.getAll();
+            const product = products.find(p => p.id === selectedItemToTransfer.productId);
+
+            if (!product) throw new Error('Producto no encontrado en el sistema');
+
+            // 1. Restar/Marcar como devuelto en el inventario de Luis
+            if (qty === selectedItemToTransfer.quantity) {
+                await luisInventoryService.markAsReturned(selectedItemToTransfer.id);
+            } else {
+                const newQty = selectedItemToTransfer.quantity - qty;
+                await luisInventoryService.updateQuantity(selectedItemToTransfer.id, newQty, selectedItemToTransfer.unitPrice);
+                
+                const { addDoc, collection, Timestamp } = await import('firebase/firestore');
+                const { db } = await import('../firebase/config');
+                await addDoc(collection(db, 'luisInventory'), {
+                    productId: selectedItemToTransfer.productId,
+                    productName: selectedItemToTransfer.productName,
+                    sku: selectedItemToTransfer.sku || '',
+                    imageUrl: selectedItemToTransfer.imageUrl || '',
+                    quantity: qty,
+                    unitPrice: selectedItemToTransfer.unitPrice,
+                    totalValue: selectedItemToTransfer.unitPrice * qty,
+                    status: 'devuelto',
+                    transferredAt: Timestamp.now()
+                });
+            }
+
+            // 2. Procesar destino
+            if (transferSellerId === 'bodega-luis') {
+                const { bodegaLuisInventoryService } = await import('../services/bodegaLuisInventoryService');
+                await bodegaLuisInventoryService.addStock(
+                    product.id,
+                    product.name,
+                    product.sku,
+                    product.imageUrl || '',
+                    qty,
+                    product.cost,
+                    selectedItemToTransfer.unitPrice
+                );
+                toast.success('Producto transferido a Bodega Luis');
+            } else {
+                const selectedSeller = ALL_SELLERS.find(s => s.id === transferSellerId);
+                if (!selectedSeller) throw new Error('Vendedor de destino no encontrado');
+
+                const unitPrice = selectedItemToTransfer.unitPrice;
+
+                const sellerNameLow = selectedSeller.name.toLowerCase();
+                if (sellerNameLow.includes('jemima')) {
+                    const { jemimaInventoryService } = await import('../services/jemimaInventoryService');
+                    await jemimaInventoryService.addProduct(product, qty, unitPrice);
+                } else if (sellerNameLow.includes('vilma')) {
+                    const { vilmaInventoryService } = await import('../services/vilmaInventoryService');
+                    await vilmaInventoryService.addProduct(product, qty, unitPrice);
+                } else if (sellerNameLow.includes('annabel')) {
+                    const { annabelInventoryService } = await import('../services/annabelInventoryService');
+                    await annabelInventoryService.addProduct(product, qty, unitPrice);
+                } else if (sellerNameLow.includes('maria')) {
+                    const { mariaInventoryService } = await import('../services/mariaInventoryService');
+                    await mariaInventoryService.addProduct(product, qty, unitPrice);
+                } else if (sellerNameLow.includes('yuri')) {
+                    const { yuriInventoryService } = await import('../services/yuriInventoryService');
+                    await yuriInventoryService.addProduct(product, qty, unitPrice);
+                }
+
+                const exitNoteItem = {
+                    id: `${Date.now()}`,
+                    productId: product.id,
+                    product: product,
+                    quantity: qty,
+                    unitPrice: unitPrice,
+                    totalPrice: unitPrice * qty,
+                    size: product.size || '',
+                    weight: product.weight || 0
+                };
+
+                await exitNoteService.createTransferFromBodegaLuis(
+                    transferSellerId,
+                    [exitNoteItem],
+                    `Traspaso directo desde el Vendedor Luis Uchubanda${transferNotes ? ` - ${transferNotes}` : ''}`,
+                    false
+                );
+
+                toast.success(`Producto transferido a ${selectedSeller.name}`);
+            }
+
+            setShowTransferModal(false);
+            setSelectedItemToTransfer(null);
+            loadData();
+        } catch (error) {
+            console.error('Error al transferir:', error);
+            toast.error('Error al procesar la transferencia');
+        } finally {
+            setIsSubmittingTransfer(false);
         }
     };
 
@@ -253,6 +373,21 @@ const AppLuis: React.FC = () => {
                             >
                                 <CheckCircle className="w-3.5 h-3.5" />
                                 <span>Vendido</span>
+                            </button>
+                        )}
+                        {!isReadOnly && (
+                            <button
+                                onClick={() => {
+                                    setSelectedItemToTransfer(item);
+                                    setTransferSellerId('');
+                                    setTransferQuantity('1');
+                                    setTransferNotes('');
+                                    setShowTransferModal(true);
+                                }}
+                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center space-x-1 transition-all active:scale-95"
+                            >
+                                <Truck className="w-3.5 h-3.5" />
+                                <span>Traspasar</span>
                             </button>
                         )}
                         {showReturnButton && (
@@ -607,6 +742,95 @@ const AppLuis: React.FC = () => {
                                 className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl transition-all hover:bg-blue-700"
                             >
                                 {updatingPrice ? 'Actualizando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Transferir */}
+            {showTransferModal && selectedItemToTransfer && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-scale-up z-10">
+                        <div className="flex items-center space-x-3 text-blue-600 mb-4">
+                            <div className="p-3 bg-blue-100 rounded-full">
+                                <Truck className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <h2 className="text-xl font-bold">Transferir Producto</h2>
+                        </div>
+
+                        <p className="text-gray-600 mb-4 text-sm">
+                            Traspasando <span className="font-bold text-gray-900">{selectedItemToTransfer.productName}</span>.
+                            <br />
+                            <span className="text-xs text-gray-500">Stock actual en Luis: {selectedItemToTransfer.quantity}</span>
+                        </p>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Destino <span className="text-blue-500">*</span></label>
+                            <select
+                                value={transferSellerId}
+                                onChange={(e) => setTransferSellerId(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 text-sm"
+                            >
+                                <option value="">Seleccionar Destino</option>
+                                <option value="bodega-luis">🏠 Bodega Luis</option>
+                                <optgroup label="Vendedores">
+                                    {ALL_SELLERS.filter(s => s.id !== 'luis').map(seller => (
+                                        <option key={seller.id} value={seller.id}>{seller.name}</option>
+                                    ))}
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Cantidad a Transferir</label>
+                            <div className="flex items-center justify-center space-x-6 bg-gray-50 p-4 rounded-xl">
+                                <button
+                                    onClick={() => setTransferQuantity(prev => Math.max(1, (parseInt(prev) || 0) - 1).toString())}
+                                    className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold hover:bg-gray-300"
+                                >
+                                    -
+                                </button>
+                                <input
+                                    type="number"
+                                    value={transferQuantity}
+                                    onChange={(e) => setTransferQuantity(e.target.value)}
+                                    className="w-20 text-center text-2xl font-bold bg-transparent outline-none border-b-2 border-blue-500 pb-1"
+                                    min="1"
+                                    max={selectedItemToTransfer.quantity}
+                                />
+                                <button
+                                    onClick={() => setTransferQuantity(prev => Math.min((parseInt(prev) || 0) + 1, selectedItemToTransfer.quantity).toString())}
+                                    className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-bold hover:bg-blue-700"
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">Notas (Opcional)</label>
+                            <textarea
+                                value={transferNotes}
+                                onChange={(e) => setTransferNotes(e.target.value)}
+                                placeholder="Notas del traspaso..."
+                                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none bg-gray-50 text-sm"
+                            />
+                        </div>
+
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => { setShowTransferModal(false); setTransferNotes(''); setTransferSellerId(''); }}
+                                className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors text-sm"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleProcessTransfer}
+                                disabled={!transferSellerId || isSubmittingTransfer || parseInt(transferQuantity) <= 0}
+                                className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm"
+                            >
+                                {isSubmittingTransfer ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Confirmar'}
                             </button>
                         </div>
                     </div>
