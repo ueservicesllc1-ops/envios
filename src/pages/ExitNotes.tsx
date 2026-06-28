@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { getSellerSession } from '../utils/sellerSession';
 
 const ExitNotes: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -233,13 +234,33 @@ const ExitNotes: React.FC = () => {
         createdAt: new Date()
       } as unknown as Seller;
 
+      // Crear vendedor ficticio para Bodega Luis
+      const bodegaLuisSeller: Seller = {
+        id: 'bodega-luis',
+        name: '🏠 Bodega Luis (Interno)',
+        email: 'luis@interno.com',
+        phone: '',
+        address: 'Bodega Luis Uchubanda',
+        city: 'Interno',
+        role: 'user',
+        commission: 0,
+        isActive: true,
+        createdAt: new Date()
+      } as unknown as Seller;
+
       // Crear vendedores fijos de /app
       const appSellers: Seller[] = [
         { id: 'annabel', name: 'Annabel Diaz (/app)', email: 'annabel@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
         { id: 'vilma', name: 'Vilma (/app)', email: 'vilma@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
         { id: 'maria', name: 'Maria (/app)', email: 'maria@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
         { id: 'yuri', name: 'Yuri (/app)', email: 'yuri@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
+        { id: 'luis', name: 'Luis Uchubanda (/app)', email: 'luis@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
+        { id: 'jemima', name: 'Jemima Vergara (/app)', email: 'jemima@app.com', phone: '', address: 'App', city: 'App', role: 'user', commission: 0, isActive: true, createdAt: new Date() } as unknown as Seller,
       ];
+
+      // Detectar si el usuario actual es Vilma para ocultar Bodega Luis
+      const mobileSession = getSellerSession();
+      const isVilmaSession = mobileSession?.id === 'vilma';
 
       // Filtrar vendedores de /app que ya puedan estar en la BD para evitar duplicados visuales
       const dbSellersFiltered = sellersData.filter(s => 
@@ -250,7 +271,13 @@ const ExitNotes: React.FC = () => {
       );
 
       // Asegurarse de que no exista ya un vendedor con ese ID real (improbable)
-      const finalSellers = [bodegaEcuadorSeller, ...appSellers, ...dbSellersFiltered];
+      // Bodega Luis NO se muestra a Vilma Uchubanda
+      const finalSellers = [
+        bodegaEcuadorSeller,
+        ...(!isVilmaSession ? [bodegaLuisSeller] : []),
+        ...appSellers,
+        ...dbSellersFiltered
+      ];
 
       setNotes(updatedNotes);
       setProducts(productsData);
@@ -885,6 +912,28 @@ const ExitNotes: React.FC = () => {
             updatedProducts.push({ productId: item.productId, quantity: item.quantity });
           }
           toast.success('Nota de salida para Bodega Ecuador creada.');
+        } else if (selectedSeller.id === 'bodega-luis') {
+          // Descontar del inventario general
+          for (const item of exitNoteItems) {
+            await inventoryService.updateStockAfterExit(item.productId, item.quantity, createdNoteId, selectedSeller.id);
+            updatedProducts.push({ productId: item.productId, quantity: item.quantity });
+          }
+          // Agregar DIRECTAMENTE a Bodega Luis
+          const { bodegaLuisInventoryService } = await import('../services/bodegaLuisInventoryService');
+          for (const item of exitNoteItems) {
+            await bodegaLuisInventoryService.addStock(
+              item.productId,
+              item.product.name,
+              item.product.sku,
+              item.product.imageUrl || '',
+              item.quantity,
+              item.product.cost,
+              item.unitPrice
+            );
+          }
+          // Marcar nota como interna
+          await exitNoteService.update(createdNoteId, { isInternal: true });
+          toast.success('✅ Productos enviados a Bodega Luis correctamente');
         } else {
           // Comportamiento normal para otros vendedores
           const isEcuadorNote = exitNoteData.number?.includes('ECU') || exitNoteData.number?.startsWith('NS-ECU-');
@@ -2108,6 +2157,12 @@ const ExitNotes: React.FC = () => {
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-yellow-400 text-yellow-900 border border-yellow-500">
                           <Flag className="h-3.5 w-3.5 mr-1" />
                           ECUADOR
+                        </span>
+                      )}
+                      {(note.sellerId === 'bodega-luis' || note.number?.startsWith('NS-LUI-') || note.seller?.includes('Bodega Luis')) && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-700 text-white border border-blue-800">
+                          <Package className="h-3.5 w-3.5 mr-1" />
+                          LUIS
                         </span>
                       )}
                     </div>

@@ -154,6 +154,9 @@ export const exitNoteService = {
                 } else if (sellerNameLower.includes('yuri')) {
                   const { yuriInventoryService } = await import('./yuriInventoryService');
                   specificService = yuriInventoryService;
+                } else if (sellerNameLower.includes('luis')) {
+                  const { luisInventoryService } = await import('./luisInventoryService');
+                  specificService = luisInventoryService;
                 }
 
                 if (specificService) {
@@ -560,6 +563,75 @@ export const exitNoteService = {
     } catch (error) {
       console.error('Error creating transfer from Bodega Ecuador:', error);
       toast.error('Error al procesar la transferencia desde Bodega Ecuador');
+      throw error;
+    }
+  },
+
+  // Transferir productos de Bodega Luis a un Vendedor
+  async createTransferFromBodegaLuis(
+    sellerId: string,
+    items: ExitNoteItem[],
+    notes?: string,
+    isInternal: boolean = false
+  ): Promise<string> {
+    try {
+      const { sellerService } = await import('./sellerService');
+      let seller = await sellerService.getById(sellerId);
+
+      if (!seller) {
+        const { ALL_SELLERS } = await import('../utils/sellerSession');
+        const local = ALL_SELLERS.find((ms: any) => ms.id === sellerId);
+        if (local) {
+          seller = {
+            id: local.id,
+            name: local.name,
+            priceType: 'price2',
+            isActive: true,
+            createdAt: new Date(),
+            email: '',
+            phone: '',
+            city: '',
+            address: '',
+            commission: 0
+          } as any;
+        }
+      }
+
+      if (!seller) throw new Error('Vendedor no encontrado');
+
+      const exitNoteData: Omit<ExitNote, 'id'> = {
+        number: `NS-LUI-${Date.now()}`,
+        date: new Date(),
+        sellerId: seller!.id,
+        seller: seller!.name,
+        customer: seller!.name,
+        items: items,
+        totalPrice: items.reduce((sum, item) => sum + item.totalPrice, 0),
+        status: 'delivered',
+        isInternal: true,
+        notes: notes || 'Transferencia directa desde Bodega Luis',
+        createdAt: new Date(),
+        createdBy: 'system'
+      };
+
+      const noteId = await this.create(exitNoteData);
+
+      const { sellerInventoryService } = await import('./sellerInventoryService');
+      for (const item of items) {
+        await sellerInventoryService.addToSellerInventory(
+          seller.id,
+          item.productId,
+          item.product,
+          item.quantity,
+          item.unitPrice
+        );
+      }
+
+      toast.success(`Transferencia de Bodega Luis a ${seller.name} completada`);
+      return noteId;
+    } catch (error) {
+      console.error('Error creating transfer from Bodega Luis:', error);
+      toast.error('Error al procesar la transferencia desde Bodega Luis');
       throw error;
     }
   },

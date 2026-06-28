@@ -16,7 +16,8 @@ const AppYuri: React.FC = () => {
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAnonymousAuth();
     const [session, setSessionState] = useState<SellerSession | null>(null);
-    const isReadOnly = !session?.isAdmin;
+    // isReadOnly: si no es admin Y no es yuri la misma persona
+    const isReadOnly = !session?.isAdmin && !session?.isSuperAdmin && session?.id !== 'yuri';
 
     const [loading, setLoading] = useState(true);
     const [allItems, setAllItems] = useState<YuriInventoryItem[]>([]);
@@ -72,8 +73,8 @@ const AppYuri: React.FC = () => {
 
     useEffect(() => {
         const s = getSellerSession();
+        // Solo requiere sesión activa; el PIN ya fue validado en AppMobile
         if (!s) { navigate('/app', { replace: true }); return; }
-        if (!s.isAdmin && s.id !== 'yuri') { navigate('/app', { replace: true }); return; }
         setSessionState(s);
     }, [navigate]);
 
