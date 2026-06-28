@@ -20,6 +20,7 @@ import { getSellerSession } from '../utils/sellerSession';
 
 const ExitNotes: React.FC = () => {
   const { isAdmin } = useAuth();
+  const [showBodegaLuis, setShowBodegaLuis] = useState(false);
   const [notes, setNotes] = useState<ExitNote[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -271,10 +272,10 @@ const ExitNotes: React.FC = () => {
       );
 
       // Asegurarse de que no exista ya un vendedor con ese ID real (improbable)
-      // Bodega Luis NO se muestra a Vilma Uchubanda
+      // Bodega Luis siempre se agrega a la lista base; el dropdown la filtrará dinámicamente con PIN
       const finalSellers = [
         bodegaEcuadorSeller,
-        ...(!isVilmaSession ? [bodegaLuisSeller] : []),
+        bodegaLuisSeller,
         ...appSellers,
         ...dbSellersFiltered
       ];
@@ -2430,9 +2431,28 @@ const ExitNotes: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Información básica */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Vendedor *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Vendedor *
+                  </label>
+                  {!showBodegaLuis && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pin = prompt('Introduce el PIN de acceso para Bodega Luis:');
+                        if (pin === '1619') {
+                          setShowBodegaLuis(true);
+                          toast.success('Bodega Luis habilitada en el selector');
+                        } else if (pin !== null) {
+                          toast.error('PIN incorrecto');
+                        }
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1 font-semibold"
+                    >
+                      <span>🔒 Desbloquear Bodega Luis</span>
+                    </button>
+                  )}
+                </div>
                 <select
                   required
                   value={formData.sellerId}
@@ -2445,7 +2465,7 @@ const ExitNotes: React.FC = () => {
                   disabled={Boolean(editingNote)}
                 >
                   <option value="">Seleccionar vendedor</option>
-                  {sellers.map(seller => (
+                  {sellers.filter(seller => seller.id !== 'bodega-luis' || showBodegaLuis).map(seller => (
                     <option key={seller.id} value={seller.id}>
                       {seller.name} - {seller.priceType === 'price2' ? 'Precio 2' : 'Precio 1'}
                     </option>
