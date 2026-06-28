@@ -56,17 +56,7 @@ const AppBodegaLuis: React.FC = () => {
     const [transferQuantity, setTransferQuantity] = useState('1');
     const [transferNotes, setTransferNotes] = useState('');
 
-    useEffect(() => {
-        if (!authLoading && user) {
-            loadInventory();
-            loadSellers();
-        }
-        if (authError) {
-            toast.error('Error de autenticación. Por favor, recarga la página.');
-        }
-    }, [authLoading, user, authError]);
-
-    const loadSellers = async () => {
+    const loadSellers = React.useCallback(async () => {
         try {
             const sellers = await sellerService.getAll();
 
@@ -110,9 +100,9 @@ const AppBodegaLuis: React.FC = () => {
         } catch (error) {
             console.error('Error loading sellers', error);
         }
-    };
+    }, [session]);
 
-    const loadInventory = async () => {
+    const loadInventory = React.useCallback(async () => {
         try {
             setLoading(true);
             const [productsData, inventoryData] = await Promise.all([
@@ -128,7 +118,17 @@ const AppBodegaLuis: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            loadInventory();
+            loadSellers();
+        }
+        if (authError) {
+            toast.error('Error de autenticación. Por favor, recarga la página.');
+        }
+    }, [authLoading, user, authError, loadInventory, loadSellers]);
 
     const handleAddProduct = async () => {
         if (!selectedProductToAdd || !addQuantity || parseInt(addQuantity) <= 0) {

@@ -18,7 +18,7 @@ const BODEGA_LUIS_PIN = '1619';
 
 const AppMobile: React.FC = () => {
     const navigate = useNavigate();
-    const { } = useAnonymousAuth();
+    const auth = useAnonymousAuth();
 
     const [showSplash, setShowSplash] = useState(true);
     const [session, setSession] = useState<SellerSession | null>(null);
