@@ -397,12 +397,6 @@ const AppBodegaEcuador: React.FC = () => {
                 await yuriInventoryService.addProduct(product, qty, unitPrice);
             }
 
-            // Si es Luis, agregar a su inventario dedicado
-            if (selectedSeller?.name?.toLowerCase().includes('luis') || selectedSeller?.id === 'luis') {
-                const { luisInventoryService } = await import('../services/luisInventoryService');
-                await luisInventoryService.addProduct(product, qty, unitPrice);
-            }
-
 
             // Log entry
             await addDoc(collection(db, 'inventory_logs'), {

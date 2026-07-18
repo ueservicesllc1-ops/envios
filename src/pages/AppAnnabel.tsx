@@ -16,7 +16,7 @@ const AppAnnabel: React.FC = () => {
     const navigate = useNavigate();
     const { user, loading: authLoading } = useAnonymousAuth();
     const [session, setSessionState] = useState<SellerSession | null>(null);
-    const isReadOnly = !session?.isAdmin && !session?.isSuperAdmin && session?.id !== 'annabel';
+    const isReadOnly = !session?.isAdmin;
 
     const [loading, setLoading] = useState(true);
     const [allItems, setAllItems] = useState<AnnabelInventoryItem[]>([]);
@@ -72,8 +72,8 @@ const AppAnnabel: React.FC = () => {
 
     useEffect(() => {
         const s = getSellerSession();
-        // Solo requiere sesión activa; el PIN ya fue validado en AppMobile
         if (!s) { navigate('/app', { replace: true }); return; }
+        if (!s.isAdmin && s.id !== 'annabel') { navigate('/app', { replace: true }); return; }
         setSessionState(s);
     }, [navigate]);
 

@@ -258,11 +258,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Reglas para inventario de Luis
-    match /luisInventory/{item=**} {
-      allow read, write: if true;
-    }
-
 
     // Reglas para Billetera Gamificada (Wallets)
     match /wallets/{userId} {
@@ -294,11 +289,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Reglas para pagos de Luis
-    match /luisPayments/{payment=**} {
-      allow read, write: if true;
-    }
-
 
     // Reglas para logs de inventario
     match /inventory_logs/{logId} {
@@ -324,21 +314,6 @@ service cloud.firestore {
     
     // Reglas para configuración de la app Vibe
     match /vibeConfig/{docId} {
-      allow read, write: if true;
-    }
-
-    // Bodega Luis — inventario privado de Luis Uchubanda
-    match /bodegaLuisInventory/{docId} {
-      allow read, write: if true;
-    }
-
-    // Jemima Vergara — inventario privado (solo accesible desde Bodega Luis)
-    match /jemimaInventory/{docId} {
-      allow read, write: if true;
-    }
-
-    // Jemima Vergara — pagos
-    match /jemimaPayments/{docId} {
       allow read, write: if true;
     }
 

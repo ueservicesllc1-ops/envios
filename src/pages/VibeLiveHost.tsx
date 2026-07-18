@@ -403,7 +403,7 @@ export default function VibeLiveHost() {
                                 <div className="flex-1 overflow-y-auto space-y-3">
                                     {selectedProducts.map(prod => (
                                         <div key={prod.id} className="flex gap-3 bg-gray-50 p-2 rounded-xl border border-gray-100">
-                                            <img src={prod.imageUrl} alt={prod.name || ''} className="w-16 h-16 rounded-lg object-cover" />
+                                            <img src={prod.imageUrl} alt={prod.name} className="w-16 h-16 rounded-lg object-cover" />
                                             <div className="flex-1 flex flex-col justify-center">
                                                 <p className="font-bold text-sm line-clamp-1">{prod.name}</p>
                                                 <p className="text-red-600 font-bold">${Number(prod.salePrice1 || prod.originalPrice).toFixed(2)}</p>
