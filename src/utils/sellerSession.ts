@@ -2,6 +2,7 @@ export interface SellerSession {
     id: 'vilma' | 'maria' | 'annabel' | 'yuri' | 'luis';
     name: string;
     isAdmin: boolean;
+    isSuperAdmin?: boolean;
 }
 
 const SESSION_KEY = 'ce_seller_session';
