@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, CreditCard, CheckCircle, X, DollarSign, ShoppingCart, RotateCcw, FileText, LogOut, EyeOff, Download, Truck, Warehouse } from 'lucide-react';
 import { luisInventoryService, LuisInventoryItem } from '../services/luisInventoryService';
@@ -153,29 +153,14 @@ const AppLuis: React.FC = () => {
             }
 
             // 2. Procesar destino
-            if (transferSellerId === 'bodega-luis') {
-                const { bodegaLuisInventoryService } = await import('../services/bodegaLuisInventoryService');
-                await bodegaLuisInventoryService.addStock(
-                    product.id,
-                    product.name,
-                    product.sku,
-                    product.imageUrl || '',
-                    qty,
-                    product.cost,
-                    selectedItemToTransfer.unitPrice
-                );
-                toast.success('Producto transferido a Bodega Luis');
-            } else {
+            {
                 const selectedSeller = ALL_SELLERS.find(s => s.id === transferSellerId);
                 if (!selectedSeller) throw new Error('Vendedor de destino no encontrado');
 
                 const unitPrice = selectedItemToTransfer.unitPrice;
 
                 const sellerNameLow = selectedSeller.name.toLowerCase();
-                if (sellerNameLow.includes('jemima')) {
-                    const { jemimaInventoryService } = await import('../services/jemimaInventoryService');
-                    await jemimaInventoryService.addProduct(product, qty, unitPrice);
-                } else if (sellerNameLow.includes('vilma')) {
+                if (sellerNameLow.includes('vilma')) {
                     const { vilmaInventoryService } = await import('../services/vilmaInventoryService');
                     await vilmaInventoryService.addProduct(product, qty, unitPrice);
                 } else if (sellerNameLow.includes('annabel')) {
@@ -200,12 +185,20 @@ const AppLuis: React.FC = () => {
                     weight: product.weight || 0
                 };
 
-                await exitNoteService.createTransferFromBodegaLuis(
-                    transferSellerId,
-                    [exitNoteItem],
-                    `Traspaso directo desde el Vendedor Luis Uchubanda${transferNotes ? ` - ${transferNotes}` : ''}`,
-                    false
-                );
+                await exitNoteService.create({
+                    number: `NS-LUIS-${Date.now()}`,
+                    date: new Date(),
+                    sellerId: transferSellerId,
+                    seller: selectedSeller.name,
+                    customer: selectedSeller.name,
+                    items: [exitNoteItem],
+                    totalPrice: exitNoteItem.totalPrice,
+                    status: 'delivered',
+                    isInternal: false,
+                    notes: `Traspaso directo desde el Vendedor Luis Uchubanda${transferNotes ? ` - ${transferNotes}` : ''}`,
+                    createdAt: new Date(),
+                    createdBy: 'system'
+                });
 
                 toast.success(`Producto transferido a ${selectedSeller.name}`);
             }
@@ -773,7 +766,6 @@ const AppLuis: React.FC = () => {
                                 className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 text-sm"
                             >
                                 <option value="">Seleccionar Destino</option>
-                                <option value="bodega-luis">≡ƒÅá Bodega Luis</option>
                                 <optgroup label="Vendedores">
                                     {ALL_SELLERS.filter(s => s.id !== 'luis').map(seller => (
                                         <option key={seller.id} value={seller.id}>{seller.name}</option>
