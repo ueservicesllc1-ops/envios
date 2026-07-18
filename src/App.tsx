@@ -49,6 +49,7 @@ import AppVilma from './pages/AppVilma';
 import AppAnnabel from './pages/AppAnnabel';
 import AppMaria from './pages/AppMaria';
 import AppYuri from './pages/AppYuri';
+import AppLuis from './pages/AppLuis';
 
 import { VibeConfigProvider } from './contexts/VibeConfigContext';
 import PdfEditor from './pages/PdfEditor';
@@ -195,6 +196,7 @@ function App() {
               <Route path="/app/maria" element={<AppMaria />} />
               <Route path="/app/annabel" element={<AppAnnabel />} />
               <Route path="/app/yuri" element={<AppYuri />} />
+              <Route path="/app/luis" element={<AppLuis />} />
 
 
               {/* Landing de instalación de App */}

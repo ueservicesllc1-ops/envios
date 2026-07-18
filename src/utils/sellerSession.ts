@@ -1,5 +1,5 @@
 export interface SellerSession {
-    id: 'vilma' | 'maria' | 'annabel' | 'yuri';
+    id: 'vilma' | 'maria' | 'annabel' | 'yuri' | 'luis';
     name: string;
     isAdmin: boolean;
 }
@@ -67,6 +67,17 @@ export const MAIN_SELLERS = [
         badge: 'Vendedora',
         avatar: '💫',
         route: '/app/yuri',
+    },
+    {
+        id: 'luis' as const,
+        name: 'Luis Uchubanda',
+        pin: '1619',
+        isAdmin: true,
+        gradient: 'from-blue-500 to-blue-700',
+        lightText: 'text-blue-100',
+        badge: 'Admin',
+        avatar: '👔',
+        route: '/app/luis',
     },
 ];
 // Fin de archivo
