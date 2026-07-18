@@ -80,4 +80,6 @@ export const MAIN_SELLERS = [
         route: '/app/luis',
     },
 ];
+// Alias para compatibilidad con AppLuis (transferencias entre vendedores)
+export const ALL_SELLERS = MAIN_SELLERS;
 // Fin de archivo
