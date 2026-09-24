@@ -149,9 +149,6 @@ const Cata: React.FC = () => {
             message += `${index + 1}. *${item.product.name}*${sizeInfo} (Cant: ${item.quantity})\n`;
         });
 
-        const total = cart.reduce((sum, item) => sum + (item.product.salePrice1 * item.quantity), 0);
-        message += `\n*Total estimado: $${total.toFixed(2)}*`;
-
         const encodedMessage = encodeURIComponent(message);
         window.open(`https://wa.me/12017084725?text=${encodedMessage}`, '_blank');
     };
@@ -278,13 +275,9 @@ const Cata: React.FC = () => {
                                             )}
                                         </div>
 
-                                        <div className="mt-auto flex items-center justify-between mb-3">
-                                            <span className="text-lg font-black text-blue-600">${item.unitPrice.toFixed(2)}</span>
-                                        </div>
-
                                         <button
                                             onClick={() => addToCart(item)}
-                                            className={`w-full py-2.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-2 shadow-sm transition-all ${inCart
+                                            className={`mt-auto w-full py-2.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-2 shadow-sm transition-all ${inCart
                                                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                                                 : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100'
                                                 }`}
@@ -350,12 +343,11 @@ const Cata: React.FC = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="text-sm font-bold text-gray-800 line-clamp-1">{item.product.name}</h4>
-                                            <div className="flex items-center gap-2">
-                                                <p className="text-xs text-blue-600 font-black">${item.product.salePrice1.toFixed(2)} c/u</p>
-                                                {item.product.size && (
+                                            {item.product.size && (
+                                                <div className="flex items-center gap-2 mt-0.5">
                                                     <span className="text-[10px] text-gray-400 font-bold">Talla: {item.product.size}</span>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex items-center bg-white rounded-xl border border-gray-100 shadow-sm px-1 py-1">
                                             <button
@@ -385,9 +377,9 @@ const Cata: React.FC = () => {
 
                         <div className="p-6 bg-gray-50/50 border-t border-gray-100 rounded-t-3xl">
                             <div className="flex items-center justify-between mb-6">
-                                <span className="text-lg font-bold text-gray-600">Total Estimado</span>
-                                <span className="text-3xl font-black text-blue-600">
-                                    ${cart.reduce((s, i) => s + (i.product.salePrice1 * i.quantity), 0).toFixed(2)}
+                                <span className="text-lg font-bold text-gray-600">Total Productos</span>
+                                <span className="text-2xl font-black text-blue-600">
+                                    {cart.reduce((s, i) => s + i.quantity, 0)} {cart.reduce((s, i) => s + i.quantity, 0) === 1 ? 'unidad' : 'unidades'}
                                 </span>
                             </div>
 
