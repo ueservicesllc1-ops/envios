@@ -189,6 +189,102 @@ app.post('/api/notifications/send', async (req, res) => {
   }
 });
 
+// Endpoint para buscar imágenes y detalles de producto en la web
+app.get('/api/search-product-images', async (req, res) => {
+  try {
+    const q = (req.query.q as string) || '';
+    const barcode = (req.query.barcode as string) || '';
+
+    const results: Array<{ url: string; title: string; source: string; thumb?: string }> = [];
+    let productInfo: any = null;
+
+    const https = require('https');
+    const fetchHelper = (url: string, headers: any = {}) => {
+      return new Promise<string>((resolve) => {
+        https.get(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            ...headers
+          }
+        }, (resp: any) => {
+          let data = '';
+          resp.on('data', (chunk: any) => data += chunk);
+          resp.on('end', () => resolve(data));
+        }).on('error', () => resolve(''));
+      });
+    };
+
+    // 1. Si hay código de barras, consultar UPCitemdb
+    if (barcode) {
+      try {
+        const upcData = await fetchHelper(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(barcode)}`);
+        if (upcData) {
+          const parsed = JSON.parse(upcData);
+          if (parsed.items && parsed.items.length > 0) {
+            const item = parsed.items[0];
+            productInfo = {
+              name: item.title,
+              brand: item.brand,
+              category: item.category,
+              description: item.description
+            };
+            if (Array.isArray(item.images)) {
+              item.images.forEach((imgUrl: string) => {
+                if (imgUrl && !results.some(r => r.url === imgUrl)) {
+                  results.push({
+                    url: imgUrl,
+                    title: item.title || 'Foto de producto',
+                    source: 'UPC Database',
+                    thumb: imgUrl
+                  });
+                }
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching UPCitemdb in backend:', err);
+      }
+    }
+
+    // 2. Si hay nombre/query (o si UPCitemdb dio un título), buscar en Bing Images
+    const searchTerm = q || productInfo?.name;
+    if (searchTerm) {
+      try {
+        const bingHtml = await fetchHelper(`https://www.bing.com/images/search?q=${encodeURIComponent(searchTerm)}&form=HDRSC2&first=1`);
+        if (bingHtml) {
+          const regex = /murl&quot;:&quot;(https?:\/\/[^&]+?)&quot;/g;
+          let match;
+          let count = 0;
+          while ((match = regex.exec(bingHtml)) !== null && count < 15) {
+            const imgUrl = match[1];
+            if (imgUrl && !results.some(r => r.url === imgUrl)) {
+              results.push({
+                url: imgUrl,
+                title: searchTerm,
+                source: 'Búsqueda Web',
+                thumb: imgUrl
+              });
+              count++;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching Bing images in backend:', err);
+      }
+    }
+
+    res.json({
+      success: true,
+      images: results,
+      productInfo
+    });
+  } catch (error: any) {
+    console.error('Error in /api/search-product-images:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

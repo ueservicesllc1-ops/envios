@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Eye, CheckCircle, XCircle, FileText, X, Trash2, Scan, Edit, Package } from 'lucide-react';
+import { Plus, Search, Eye, CheckCircle, XCircle, FileText, X, Trash2, Scan, Edit, Package, AlertTriangle } from 'lucide-react';
 import { EntryNote, Product } from '../types';
 import { entryNoteService } from '../services/entryNoteService';
 import { productService } from '../services/productService';
 import { inventoryService } from '../services/inventoryService';
 import SimpleBarcodeScanner from '../components/SimpleBarcodeScanner';
+import ProductFormModal from '../components/ProductFormModal';
 import toast from 'react-hot-toast';
 
 const EntryNotes: React.FC = () => {
@@ -43,6 +44,11 @@ const EntryNotes: React.FC = () => {
     cost: number;
     unitPrice: number;
   }>>([]);
+
+  // Estados para producto escaneado no encontrado
+  const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
+  const [showNotFoundModal, setShowNotFoundModal] = useState(false);
+  const [showProductCreateModal, setShowProductCreateModal] = useState(false);
 
   useEffect(() => {
     loadNotes();
@@ -109,32 +115,123 @@ const EntryNotes: React.FC = () => {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const handleBarcodeScan = (barcode: string) => {
-    // Buscar producto por SKU
-    const product = products.find(p => p.sku === barcode);
+  const handleBarcodeScan = async (barcode: string) => {
+    const cleanCode = barcode.trim();
+    if (!cleanCode) return;
+
+    // 1. Buscar en catálogo local cargado en memoria
+    let product = products.find(p => p.sku === cleanCode || p.barcode === cleanCode);
+
+    // 2. Si no está en memoria local, verificar en Firestore directamente
     if (!product) {
-      toast.error(`No se encontró producto con SKU: ${barcode}`);
+      try {
+        const found = await productService.getBySku(cleanCode);
+        if (found) {
+          product = found;
+          setProducts(prev => [found, ...prev.filter(p => p.id !== found.id)]);
+        }
+      } catch (err) {
+        console.warn('Error buscando producto por SKU:', err);
+      }
+    }
+
+    // 3. Si no existe en el sistema, mostrar modal de "Producto No Existente"
+    if (!product) {
+      setShowScanner(false);
+      setNotFoundBarcode(cleanCode);
+      setShowNotFoundModal(true);
       return;
     }
+
+    const validProduct = product;
     
-    // Verificar si el producto ya está en los items
-    const existingItem = items.find(item => item.productId === product.id);
-    if (existingItem) {
-      toast.error('Este producto ya está agregado a la nota');
-      return;
+    // 4. Si el producto existe, agregarlo o incrementar cantidad
+    if (showEditModal) {
+      const existingItem = editItems.find(item => item.productId === validProduct.id);
+      if (existingItem) {
+        setEditItems(prev => prev.map(item =>
+          item.productId === validProduct.id ? { ...item, quantity: (item.quantity || 0) + 1 } : item
+        ));
+        toast.success(`Cantidad actualizada para: ${validProduct.name}`);
+      } else {
+        setEditItems(prev => [...prev, {
+          productId: validProduct.id,
+          quantity: 1,
+          cost: validProduct.cost || 0,
+          unitPrice: validProduct.salePrice1 || validProduct.cost || 0
+        }]);
+        toast.success(`Producto agregado: ${validProduct.name}`);
+      }
+    } else {
+      const existingItem = items.find(item => item.productId === validProduct.id);
+      if (existingItem) {
+        setItems(prev => prev.map(item =>
+          item.productId === validProduct.id ? { ...item, quantity: (item.quantity || 0) + 1 } : item
+        ));
+        toast.success(`Cantidad actualizada para: ${validProduct.name}`);
+      } else {
+        const newItem = {
+          productId: validProduct.id,
+          quantity: 1,
+          cost: validProduct.cost || 0,
+          unitPrice: validProduct.cost || 0
+        };
+        setItems(prev => [...prev, newItem]);
+        toast.success(`Producto agregado: ${validProduct.name}`);
+      }
     }
-    
-    // Agregar producto automáticamente
-    const newItem = {
-      productId: product.id,
-      quantity: 1,
-      cost: product.cost,
-      unitPrice: product.cost
-    };
-    
-    setItems([...items, newItem]);
-    toast.success(`Producto agregado: ${product.name}`);
+
     setShowScanner(false);
+  };
+
+  // Guardar nuevo producto creado desde el modal y agregarlo automáticamente a la nota
+  const handleSaveNewProductFromNote = async (productData: any) => {
+    try {
+      const newId = await productService.create(productData);
+      const newProduct: Product = {
+        id: newId,
+        ...productData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Actualizar catálogo local de productos
+      setProducts(prev => [newProduct, ...prev.filter(p => p.id !== newId)]);
+
+      // Agregar inmediatamente a los items de la nota activa (creación o edición)
+      if (showEditModal) {
+        setEditItems(prev => [
+          ...prev,
+          {
+            productId: newId,
+            quantity: 1,
+            cost: newProduct.cost || 0,
+            unitPrice: newProduct.salePrice1 || newProduct.cost || 0
+          }
+        ]);
+      } else {
+        setItems(prev => [
+          ...prev,
+          {
+            productId: newId,
+            quantity: 1,
+            cost: newProduct.cost || 0,
+            unitPrice: newProduct.cost || 0
+          }
+        ]);
+        // Mantener abierto el formulario de la nota de entrada
+        setShowModal(true);
+      }
+
+      setShowProductCreateModal(false);
+      setNotFoundBarcode(null);
+      toast.success(`Producto "${newProduct.name}" registrado en el sistema y añadido a la nota`);
+      return newId;
+    } catch (error) {
+      console.error('Error al guardar el producto desde nota de entrada:', error);
+      toast.error('Error al registrar el producto');
+      throw error;
+    }
   };
 
   const updateItem = (index: number, field: string, value: any) => {
@@ -763,6 +860,67 @@ const EntryNotes: React.FC = () => {
         title="Escanear Código de Barras del Producto"
       />
 
+      {/* Modal de Advertencia: Producto No Existente */}
+      {showNotFoundModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-100 text-center">
+            <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+              <AlertTriangle className="h-8 w-8 text-amber-600" />
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Producto No Existente
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-4">
+              El código escaneado <span className="font-mono font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">"{notFoundBarcode}"</span> no existe en el sistema ni en el inventario.
+            </p>
+
+            <div className="p-3 bg-amber-50 rounded-xl text-xs text-amber-800 border border-amber-200 mb-6 text-left">
+              💡 Puedes registrar este producto nuevo ahora mismo. Se guardará en todo el sistema y se agregará automáticamente a esta nota de entrada para que continúes sin interrupciones.
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNotFoundModal(false);
+                  setNotFoundBarcode(null);
+                }}
+                className="btn-secondary w-full sm:w-auto px-5 py-2.5"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNotFoundModal(false);
+                  setShowProductCreateModal(true);
+                }}
+                className="btn-primary w-full sm:w-auto px-5 py-2.5 flex items-center justify-center gap-2 bg-gradient-to-r from-primary-600 to-indigo-600 shadow-md hover:shadow-lg"
+              >
+                <Plus className="h-4 w-4" />
+                Agregar nuevo producto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Crear y Registrar Producto Completo con IA */}
+      {showProductCreateModal && (
+        <ProductFormModal
+          isOpen={showProductCreateModal}
+          onClose={() => {
+            setShowProductCreateModal(false);
+            setNotFoundBarcode(null);
+          }}
+          onSave={handleSaveNewProductFromNote}
+          initialSku={notFoundBarcode || ''}
+          title="Agregar Nuevo Producto al Sistema"
+        />
+      )}
+
       {/* Modal para ver detalles de la nota */}
       {viewingNote && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1024,21 +1182,32 @@ const EntryNotes: React.FC = () => {
                       );
                     })}
                     
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditItems([...editItems, {
-                          productId: '',
-                          quantity: 1,
-                          cost: 0,
-                          unitPrice: 0
-                        }]);
-                      }}
-                      className="btn-secondary flex items-center"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar Producto
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditItems([...editItems, {
+                            productId: '',
+                            quantity: 1,
+                            cost: 0,
+                            unitPrice: 0
+                          }]);
+                        }}
+                        className="btn-secondary flex items-center"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Agregar Producto
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowScanner(true)}
+                        className="btn-primary flex items-center"
+                        title="Escanear código de barras"
+                      >
+                        <Scan className="h-4 w-4 mr-2" />
+                        Escanear
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1278,6 +1447,26 @@ const EntryNotes: React.FC = () => {
                 <div className="text-center py-8">
                   <Package className="mx-auto h-12 w-12 text-gray-400" />
                   <p className="mt-2 text-sm text-gray-500">No hay productos disponibles</p>
+                </div>
+              )}
+
+              {(skuSearch.trim() || nameSearch.trim()) && (
+                <div className="col-span-full mt-4 p-4 bg-gray-50 border border-dashed border-gray-300 rounded-xl text-center">
+                  <p className="text-sm text-gray-600 mb-2">
+                    ¿No encuentras el producto buscado?
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProductGrid(false);
+                      setNotFoundBarcode(skuSearch.trim() || null);
+                      setShowProductCreateModal(true);
+                    }}
+                    className="btn-primary text-xs inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Registrar nuevo producto {skuSearch ? `con SKU "${skuSearch}"` : ''}
+                  </button>
                 </div>
               )}
             </div>
