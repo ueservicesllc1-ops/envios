@@ -37,7 +37,7 @@ class ProductImageSearchService {
     // 1. Intentar consultar el backend si está disponible (timeout de 3.5s)
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       const params = new URLSearchParams();
       if (cleanQuery) params.append('q', cleanQuery);
@@ -138,7 +138,7 @@ class ProductImageSearchService {
 
     // 3. Búsqueda por nombre de producto en Open Food Facts (para snacks, bebidas, comestibles, cosméticos)
     const searchTerm = cleanQuery || productInfo?.name || '';
-    if (searchTerm && images.length < 15) {
+    if (searchTerm && images.length < 6) {
       try {
         const offSearchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(searchTerm)}&search_simple=1&action=process&json=1&page_size=8`;
         const res = await fetch(offSearchUrl);
@@ -164,7 +164,7 @@ class ProductImageSearchService {
     }
 
     // 4. Búsqueda en Wikimedia Commons (para electrónica, ropa, perfumes, herramientas, marcas)
-    if (searchTerm && images.length < 15) {
+    if (searchTerm && images.length < 6) {
       try {
         const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(searchTerm)}&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url|thumburl&iiurlwidth=500&format=json&origin=*`;
         const res = await fetch(wikiUrl);

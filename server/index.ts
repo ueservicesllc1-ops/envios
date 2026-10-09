@@ -247,30 +247,39 @@ app.get('/api/search-product-images', async (req, res) => {
       }
     }
 
-    // 2. Si hay nombre/query (o si UPCitemdb dio un título), buscar en Bing Images
-    const searchTerm = q || productInfo?.name;
+    // 2. Buscar en Bing Images (por nombre, por título del UPC, o por el código de barras como último recurso)
+    const searchTerm = q || productInfo?.name || barcode;
     if (searchTerm) {
-      try {
-        const bingHtml = await fetchHelper(`https://www.bing.com/images/search?q=${encodeURIComponent(searchTerm)}&form=HDRSC2&first=1`);
-        if (bingHtml) {
-          const regex = /murl&quot;:&quot;(https?:\/\/[^&]+?)&quot;/g;
+      const decode = (s: string) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"');
+      const terms = [searchTerm];
+      // Si el nombre es corto/ambiguo, ampliar con la marca del UPC
+      if (q && productInfo?.brand && !q.toLowerCase().includes(String(productInfo.brand).toLowerCase())) {
+        terms.unshift(`${productInfo.brand} ${q}`);
+      }
+      for (const term of terms) {
+        if (results.length >= 18) break;
+        try {
+          const bingHtml = await fetchHelper(`https://www.bing.com/images/search?q=${encodeURIComponent(term + ' product')}&form=HDRSC2&first=1&qft=+filterui:photo-photo`);
+          if (!bingHtml) continue;
+          const regex = /murl&quot;:&quot;(https?:\/\/.+?)&quot;(?:(?:(?!murl).)*?turl&quot;:&quot;(https?:\/\/.+?)&quot;)?/g;
           let match;
           let count = 0;
           while ((match = regex.exec(bingHtml)) !== null && count < 15) {
-            const imgUrl = match[1];
-            if (imgUrl && !results.some(r => r.url === imgUrl)) {
+            const imgUrl = decode(match[1]);
+            const thumb = match[2] ? decode(match[2]) : imgUrl;
+            if (imgUrl && imgUrl.length < 500 && !results.some(r => r.url === imgUrl)) {
               results.push({
                 url: imgUrl,
-                title: searchTerm,
+                title: term,
                 source: 'Búsqueda Web',
-                thumb: imgUrl
+                thumb
               });
               count++;
             }
           }
+        } catch (err) {
+          console.warn('Error fetching Bing images in backend:', err);
         }
-      } catch (err) {
-        console.warn('Error fetching Bing images in backend:', err);
       }
     }
 
