@@ -34,7 +34,20 @@ class ProductImageSearchService {
     const images: ProductImageResult[] = [];
     let productInfo: SuggestedProductInfo | undefined;
 
-    // 1. Intentar consultar el backend si está disponible (timeout de 3.5s)
+    const fetchJson = async (url: string, ms = 8000): Promise<any> => {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), ms);
+      try {
+        const r = await fetch(url, { signal: controller.signal });
+        return await r.json();
+      } catch {
+        return null;
+      } finally {
+        clearTimeout(t);
+      }
+    };
+
+    // 1. Backend (búsqueda web Bing + UPCitemdb). Usa REACT_APP_API_URL o localhost:5000 por defecto
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
@@ -76,17 +89,34 @@ class ProductImageSearchService {
     // 2. Si hay código de barras, consultar Open Food Facts y Open Beauty Facts directamente (CORS habilitado)
     if (cleanBarcode) {
       try {
-        const offPromise = fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(cleanBarcode)}.json`)
-          .then(r => r.json())
-          .catch(() => null);
+        const code = encodeURIComponent(cleanBarcode);
+        const [offData, obfData, opfData, upcData] = await Promise.all([
+          fetchJson(`https://world.openfoodfacts.org/api/v0/product/${code}.json`),
+          fetchJson(`https://world.openbeautyfacts.org/api/v0/product/${code}.json`),
+          fetchJson(`https://world.openproductsfacts.org/api/v0/product/${code}.json`),
+          fetchJson(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`)
+        ]);
 
-        const obfPromise = fetch(`https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(cleanBarcode)}.json`)
-          .then(r => r.json())
-          .catch(() => null);
+        // UPCitemdb (productos generales: electrónica, ropa, hogar, etc.)
+        const upcItem = upcData?.items?.[0];
+        if (upcItem) {
+          if (!productInfo) {
+            productInfo = {
+              name: upcItem.title || undefined,
+              brand: upcItem.brand || undefined,
+              category: upcItem.category?.split('>')?.[0]?.trim() || undefined,
+              description: upcItem.description || undefined
+            };
+          }
+          (upcItem.images || []).forEach((url: string) => {
+            if (url && !images.some(item => item.url === url)) {
+              images.push({ url, title: upcItem.title || 'Producto detectado', source: 'UPC Database', thumb: url });
+            }
+          });
+        }
 
-        const [offData, obfData] = await Promise.all([offPromise, obfPromise]);
-
-        const offProduct = offData?.product || obfData?.product;
+        const found = [offData, obfData, opfData].find(d => d?.status === 1 && d?.product);
+        const offProduct = found?.product;
         if (offProduct) {
           if (!productInfo) {
             productInfo = {
