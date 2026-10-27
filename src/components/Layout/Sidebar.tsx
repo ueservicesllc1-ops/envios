@@ -18,7 +18,8 @@ import {
   Sparkles,
   Receipt,
   ShoppingBag,
-  Mail
+  Mail,
+  PackageCheck
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -30,6 +31,7 @@ const navigation = [
   { name: 'Inventario', href: '/inventory', icon: TrendingUp },
   { name: 'Notas de Entrada', href: '/entry-notes', icon: FileText },
   { name: 'Notas de Salida', href: '/exit-notes', icon: FileText },
+  { name: 'Ingresos a Local', href: '/local-receipts', icon: PackageCheck },
   { name: 'Notas de Pago', href: '/payment-notes', icon: CreditCard },
   { name: 'Paquetería', href: '/shipping', icon: Truck },
   { name: 'Contabilidad', href: '/accounting', icon: Calculator },

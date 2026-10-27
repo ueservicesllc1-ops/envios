@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { getProductsFromCollection, getProductStats } from './services/shopifyScraper';
 import { getImageFromB2, uploadImageToB2 } from './services/b2Service';
 import { getVisits, recordVisit } from './services/visitService';
 import { notificationService } from './services/notificationService';
+import { posRouter } from './routes/pos';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -34,6 +36,9 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+// API del Punto de Venta Android (ventas validadas en servidor)
+app.use('/api/pos', posRouter);
 
 // Proxy para imágenes de B2 (con CORS)
 app.get('/api/b2/image', async (req, res) => {

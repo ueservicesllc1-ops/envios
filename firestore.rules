@@ -1,12 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Usuario autenticado que NO es una tablet POS (las cuentas POS llevan el claim posRole).
+    // El POS Android nunca escribe en Firestore: solo lee catalogo/stock y vende via API del servidor.
+    function isNotPos() {
+      return request.auth != null && !('posRole' in request.auth.token);
+    }
+    function isPos() {
+      return request.auth != null && ('posRole' in request.auth.token);
+    }
     // Reglas para productos
     match /products/{productId} {
       // Permitir lectura pública para la tienda
       allow read: if true;
       // Solo escritura para usuarios autenticados
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
     
     // Reglas para inventario
@@ -17,21 +25,26 @@ service cloud.firestore {
       allow write: if true;
     }
     
+    // Notas de ingreso de mercadería a local (admin crea; el POS recibe via API del servidor)
+    match /localReceipts/{receiptId} {
+      allow read, write: if isNotPos();
+    }
+
     // Reglas para notas de entrada
     match /entryNotes/{noteId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para notas de salida
     match /exitNotes/{noteId} {
       // Permitir lectura pública para que el dashboard web funcione sin auth explícita
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
     
     // Reglas para contabilidad
     match /accounting/{entryId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para vendedores
@@ -39,7 +52,7 @@ service cloud.firestore {
       // Permitir lectura pública para la tienda pública
       allow read: if true;
       // Solo escritura para usuarios autenticados
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
     
     // Reglas para tienda de vendedores (sellerStore)
@@ -47,7 +60,7 @@ service cloud.firestore {
       // Permitir lectura pública solo de productos activos para la tienda pública
       allow read: if true;
       // Solo escritura para usuarios autenticados
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
     
     // Reglas para inventario de vendedores (sellerInventory)
@@ -55,17 +68,17 @@ service cloud.firestore {
       // Permitir lectura pública para verificar stock en la tienda pública
       allow read: if true;
       // Solo escritura para usuarios autenticados
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
     
     // Reglas para proveedores
     match /suppliers/{supplierId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para clientes
     match /customers/{customerId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para configuración
@@ -73,65 +86,65 @@ service cloud.firestore {
       // Permitir lectura pública para storeSettings y perfumeSettings
       allow read: if true;
       // Solo escritura para usuarios autenticados
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
     
     // Reglas para productos vendidos
     match /soldProducts/{soldProductId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para notas de pago
     match /paymentNotes/{paymentNoteId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para ventas de notas de salida
     match /exitNoteSales/{saleId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para ventas eliminadas
     match /deletedSales/{deletedSaleId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para envíos (shipping)
     match /shipping/{shippingId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para gastos de envío (shippingExpenses)
     match /shippingExpenses/{expenseId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para gastos de notas de entrada (entryNoteExpenses)
     match /entryNoteExpenses/{expenseId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para órdenes (orders)
     match /orders/{orderId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para devoluciones (returns)
     match /returns/{returnId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
     
     // Reglas para ventas en línea (onlineSales)
     match /onlineSales/{saleId} {
       // Permitir crear órdenes públicamente
       allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow read, update, delete: if isNotPos();
     }
     
     // Reglas para contabilidad de ventas en línea (onlineSaleAccounting)
     match /onlineSaleAccounting/{entryId} {
       allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow read, update, delete: if isNotPos();
     }
     
     // Reglas para perfumes (productos de pedido, no integrados al inventario)
@@ -140,7 +153,7 @@ service cloud.firestore {
       // Esto permite consultas con where sin problemas de permisos
       allow read: if true;
       // Solo escritura para usuarios autenticados
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
     
     // Reglas para configuración de perfumes (perfumeSettings)
@@ -148,104 +161,104 @@ service cloud.firestore {
       // Permitir lectura pública
       allow read: if true;
       // Solo escritura para usuarios autenticados
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
     
     // Reglas para preferencias de usuario (userPreferences)
     match /userPreferences/{userId} {
       // Permitir que cada usuario lea y escriba sus propias preferencias
       // Y permitir al admin leer/escribir todas
-      allow read, write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'ueservicesllc1@gmail.com');
+      allow read, write: if isNotPos() && (request.auth.uid == userId || request.auth.token.email == 'ueservicesllc1@gmail.com');
     }
     
     // Reglas para POS Sales
     match /pos_sales/{saleId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
 
     // Reglas para POS Accounting
     match /pos_accounting/{entryId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
 
     // Reglas para POS Customers
     match /pos_customers/{customerId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
 
     // Reglas para cajas registradoras (cash_registers)
     match /cash_registers/{registerId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
 
     // Reglas para conversaciones de chat
     match /conversations/{conversationId} {
       // Permitir lectura y escritura a usuarios autenticados
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
 
     // Reglas para mensajes de chat
     match /chatMessages/{messageId} {
       // Permitir lectura y escritura a usuarios autenticados
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
 
     // Reglas para cupones
     match /coupons/{couponId} {
       // Los usuarios pueden leer sus propios cupones
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if isNotPos() && resource.data.userId == request.auth.uid;
       // Los usuarios autenticados pueden crear cupones (para el juego de recompensas)
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow create: if isNotPos() && request.resource.data.userId == request.auth.uid;
       // Solo admins pueden actualizar cupones (marcar como usados)
-      allow update: if request.auth != null;
+      allow update: if isNotPos();
     }
 
     // Reglas para mensajes de contacto
     match /contact_messages/{messageId} {
       allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow read, update, delete: if isNotPos();
     }
 
     // Reglas para inventario de Vilma
     match /vilmaInventory/{itemId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
 
     // Reglas para pagos de Vilma
     match /vilmaPayments/{paymentId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
 
     // Reglas para videos de Vibe (Feed)
     match /vibeVideos/{videoId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
 
     // Reglas para Live Shopping (Host Panel)
     match /liveSessions/{sessionId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
 
     match /liveChat/{messageId} {
       allow read: if true;
       // Permitir escribir en el chat si están autenticados
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
 
     // Reglas para inventario de Annabel
     match /annabelInventory/{itemId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
 
     // Reglas para pagos de Annabel
     match /annabelPayments/{paymentId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
 
     // Reglas para inventario de Maria
@@ -261,22 +274,22 @@ service cloud.firestore {
 
     // Reglas para Billetera Gamificada (Wallets)
     match /wallets/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if isNotPos() && request.auth.uid == userId;
       // Idealmente solo Cloud Functions debería escribir aquí por seguridad, 
       // pero para este MVP permitimos al usuario actualizar su propio wallet.
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if isNotPos() && request.auth.uid == userId;
     }
 
     // Reglas para Chat Privado
     match /conversations/{convId} {
       // Un usuario solo puede leer/escribir si está en la lista 'participants'
-      allow read: if request.auth != null && (request.auth.uid in resource.data.participants);
-      allow write: if request.auth != null;
+      allow read: if isNotPos() && (request.auth.uid in resource.data.participants);
+      allow write: if isNotPos();
     }
 
     match /chatMessages/{msgId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+      allow read: if isNotPos();
+      allow write: if isNotPos() && request.resource.data.senderId == request.auth.uid;
     }
 
     // Reglas para pagos de Maria
@@ -292,7 +305,7 @@ service cloud.firestore {
 
     // Reglas para logs de inventario
     match /inventory_logs/{logId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isNotPos();
     }
 
     // Reglas para videos de Vibe (Feed)
@@ -300,7 +313,7 @@ service cloud.firestore {
       // Cualquier usuario puede ver los videos en el feed público
       allow read: if true;
       // Solo usuarios autenticados (vendedores) pueden subir/modificar videos
-      allow write: if request.auth != null;
+      allow write: if isNotPos();
     }
 
     // Reglas para pedidos y pagos de la nueva app Vibe
@@ -315,6 +328,26 @@ service cloud.firestore {
     // Reglas para configuración de la app Vibe
     match /vibeConfig/{docId} {
       allow read, write: if true;
+    }
+
+    // ===== POS Android: estas colecciones solo las escribe el servidor (Admin SDK) =====
+    // Lectura solo para el dueño (panel admin). pos_staff contiene hashes de PIN: nunca exponer.
+    match /pos_audit_log/{id} {
+      allow read: if request.auth != null && request.auth.token.email == 'ueservicesllc1@gmail.com';
+      allow write: if false;
+    }
+    match /pos_approvals/{id} {
+      allow read: if request.auth != null && request.auth.token.email == 'ueservicesllc1@gmail.com';
+      allow write: if false;
+    }
+    match /pos_staff/{id} {
+      allow read, write: if false;
+    }
+    match /pos_devices/{id} {
+      allow read, write: if false;
+    }
+    match /pos_meta/{id} {
+      allow read, write: if false;
     }
 
     // Regla por defecto - denegar todo lo demás
