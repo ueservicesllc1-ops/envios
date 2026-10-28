@@ -101,24 +101,42 @@ perfumeAdvisorRouter.post('/scan-barcode', async (req: Request, res: Response) =
     }
 
     const cleanBarcode = barcode.trim();
+    const cleanDigits = cleanBarcode.replace(/[^0-9]/g, '');
 
-    // 1. Buscar en products por barcode o sku
+    // 1. Buscar en products por barcode o sku con todas las variantes (ceros a la izquierda, UPC-A vs EAN-13)
     let productDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
 
-    const snapBarcode = await db().collection('products')
-      .where('barcode', '==', cleanBarcode)
-      .limit(1)
-      .get();
+    const candidates = Array.from(new Set([
+      cleanBarcode,
+      cleanBarcode.replace(/^0+/, ''),
+      '0' + cleanBarcode.replace(/^0+/, ''),
+      cleanDigits
+    ])).filter(c => c && c.length > 0);
 
-    if (!snapBarcode.empty) {
-      productDoc = snapBarcode.docs[0];
-    } else {
-      const snapSku = await db().collection('products')
-        .where('sku', '==', cleanBarcode)
-        .limit(1)
-        .get();
-      if (!snapSku.empty) {
-        productDoc = snapSku.docs[0];
+    for (const c of candidates) {
+      if (productDoc) break;
+      const s1 = await db().collection('products').where('barcode', '==', c).limit(1).get();
+      if (!s1.empty) { productDoc = s1.docs[0]; break; }
+
+      const s2 = await db().collection('products').where('sku', '==', c).limit(1).get();
+      if (!s2.empty) { productDoc = s2.docs[0]; break; }
+    }
+
+    // Si aún no se encuentra, buscar por coincidencia de dígitos en el catálogo de perfumes
+    if (!productDoc && cleanDigits.length >= 6) {
+      const allPerfumesSnap = await db().collection('products').get();
+      for (const d of allPerfumesSnap.docs) {
+        const data = d.data();
+        const pSkuDigits = (data.sku || '').replace(/[^0-9]/g, '');
+        const pBarcodeDigits = (data.barcode || '').replace(/[^0-9]/g, '');
+
+        if (
+          (pSkuDigits.length >= 6 && (pSkuDigits == cleanDigits || pSkuDigits.endsWith(cleanDigits) || cleanDigits.endsWith(pSkuDigits))) ||
+          (pBarcodeDigits.length >= 6 && (pBarcodeDigits == cleanDigits || pBarcodeDigits.endsWith(cleanDigits) || cleanDigits.endsWith(pBarcodeDigits)))
+        ) {
+          productDoc = d;
+          break;
+        }
       }
     }
 
