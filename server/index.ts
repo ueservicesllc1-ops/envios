@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.RAILWAY_ENVIRONMENT ? (Number(process.env.PORT) || 5000) : (Number(process.env.SERVER_PORT) || 5000);
 
 // Dominios permitidos
-const defaultDomains = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'];
+const defaultDomains = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'https://localhost', 'capacitor://localhost'];
 const allowedDomains = [
   ...defaultDomains,
   ...(process.env.ALLOWED_DOMAINS ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim()) : [])
@@ -311,11 +311,51 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Servir la nueva aplicación web de Asesores de Perfumes (/catalogoasesor)
+// Servir la aplicación web PWA de Asesores de Perfumes (/catalogoasesor)
 const path = require('path');
 const catalogoPath = path.join(__dirname, '../catalogo-asesor/out');
+
+// Servir assets de _next tanto en raíz como con prefijo
 app.use('/_next', express.static(path.join(catalogoPath, '_next')));
-app.use('/catalogoasesor', express.static(catalogoPath));
+app.use('/catalogoasesor/_next', express.static(path.join(catalogoPath, '_next')));
+
+// Servir estáticos con soporte de Service Worker y WebManifest
+app.use('/catalogoasesor', express.static(catalogoPath, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.webmanifest') || filePath.endsWith('manifest.json')) {
+      res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    }
+    if (filePath.endsWith('sw.js')) {
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
+
+// Accesos directos a PWA manifest, service worker e iconos
+app.get('/catalogoasesor/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.sendFile(path.join(catalogoPath, 'manifest.json'));
+});
+app.get('/catalogoasesor/sw.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(catalogoPath, 'sw.js'));
+});
+app.get('/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.sendFile(path.join(catalogoPath, 'manifest.json'));
+});
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(catalogoPath, 'sw.js'));
+});
+
+// Rutas de la PWA
+app.get('/catalogoasesor', (req, res) => {
+  res.sendFile(path.join(catalogoPath, 'index.html'));
+});
 app.get('/catalogoasesor/*', (req, res) => {
   res.sendFile(path.join(catalogoPath, 'index.html'));
 });

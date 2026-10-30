@@ -23,6 +23,7 @@ import { BottomNav } from '../components/BottomNav';
 import { ScannerView } from '../components/ScannerView';
 import { SearchView } from '../components/SearchView';
 import { FavoritesView } from '../components/FavoritesView';
+import { IpadInstallPrompt } from '../components/IpadInstallPrompt';
 import { useTheme } from '../context/ThemeContext';
 
 export default function CatalogApp() {
@@ -141,6 +142,9 @@ export default function CatalogApp() {
         isLight ? 'bg-slate-50 text-slate-900' : 'bg-black text-neutral-100'
       }`}
     >
+      {/* PWA iPad Installation Prompt */}
+      <IpadInstallPrompt />
+
       {/* Top Header Bar */}
       <header
         className={`sticky top-0 z-30 backdrop-blur-md px-4 py-3 flex items-center justify-between transition-colors duration-250 ${

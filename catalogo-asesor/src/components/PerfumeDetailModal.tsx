@@ -71,9 +71,9 @@ export const PerfumeDetailModal: React.FC<PerfumeDetailModalProps> = ({
   const totalStock = perfume.stock.total;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm transition-opacity">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm transition-opacity p-0 sm:p-4">
       <div
-        className={`w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 border ${
+        className={`w-full max-w-md sm:max-w-xl md:max-w-4xl lg:max-w-5xl rounded-t-3xl sm:rounded-3xl max-h-[92vh] md:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300 border ${
           isLight
             ? 'bg-white border-slate-200 text-slate-900'
             : 'bg-[#0d121f] border-amber-500/20 text-white'
@@ -81,7 +81,7 @@ export const PerfumeDetailModal: React.FC<PerfumeDetailModalProps> = ({
       >
         {/* Top Header bar */}
         <div
-          className={`sticky top-0 z-20 flex items-center justify-between px-4 py-3 backdrop-blur-md border-b ${
+          className={`sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 py-3.5 backdrop-blur-md border-b shrink-0 ${
             isLight
               ? 'bg-white/95 border-slate-200'
               : 'bg-[#0d121f]/95 border-slate-800/80'
@@ -89,7 +89,7 @@ export const PerfumeDetailModal: React.FC<PerfumeDetailModalProps> = ({
         >
           <div className="flex items-center gap-2">
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border ${
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase border ${
                 isLight
                   ? 'bg-amber-100 text-amber-800 border-amber-300'
                   : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
@@ -99,7 +99,7 @@ export const PerfumeDetailModal: React.FC<PerfumeDetailModalProps> = ({
             </span>
             {perfume.size && (
               <span
-                className={`text-[11px] font-medium ${
+                className={`text-xs font-semibold ${
                   isLight ? 'text-slate-500' : 'text-slate-400'
                 }`}
               >
@@ -108,7 +108,7 @@ export const PerfumeDetailModal: React.FC<PerfumeDetailModalProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => onToggleFavorite(perfume.id)}
               className={`p-2 rounded-full backdrop-blur-md transition-colors ${
@@ -144,54 +144,96 @@ export const PerfumeDetailModal: React.FC<PerfumeDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 no-scrollbar">
-          {/* Main Hero Photo: Pure white in light mode so white photos blend 100% seamlessly */}
-          <div
-            className={`relative w-full aspect-[4/3] rounded-2xl p-4 flex items-center justify-center border ${
-              isLight
-                ? 'bg-white border-slate-200 shadow-sm'
-                : 'bg-gradient-to-b from-[#182033] to-[#0f1422] border-slate-800/80 shadow-inner'
-            }`}
-          >
-            <img
-              src={perfume.imageUrl}
-              alt={perfume.name}
-              className={`w-full h-full object-contain filter drop-shadow-md ${
-                isLight ? 'mix-blend-multiply' : ''
-              }`}
-            />
-            {totalStock > 0 ? (
+        {/* Scrollable Content: 2 Columns on iPad Pro (md:), Stack on Phone */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4 md:space-y-0 no-scrollbar">
+          <div className="md:grid md:grid-cols-12 md:gap-6 items-start">
+            {/* Left Column (Hero Photo, Price, Stock & Quick Share on iPad) */}
+            <div className="md:col-span-5 space-y-4 md:sticky md:top-0">
               <div
-                className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 backdrop-blur-md border ${
+                className={`relative w-full aspect-[4/3] md:aspect-square rounded-2xl p-4 flex items-center justify-center border shadow-sm ${
                   isLight
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                    : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                    ? 'bg-white border-slate-200'
+                    : 'bg-gradient-to-b from-[#182033] to-[#0f1422] border-slate-800/80'
                 }`}
               >
-                <span
-                  className={`w-2 h-2 rounded-full animate-pulse ${
-                    isLight ? 'bg-emerald-600' : 'bg-emerald-400'
+                <img
+                  src={perfume.imageUrl}
+                  alt={perfume.name}
+                  className={`w-full h-full object-contain filter drop-shadow-md transition-transform duration-300 hover:scale-105 ${
+                    isLight ? 'mix-blend-multiply' : ''
                   }`}
                 />
-                {totalStock} en existencia
+                {totalStock > 0 ? (
+                  <div
+                    className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 backdrop-blur-md border ${
+                      isLight
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full animate-pulse ${
+                        isLight ? 'bg-emerald-600' : 'bg-emerald-400'
+                      }`}
+                    />
+                    {totalStock} en existencia
+                  </div>
+                ) : (
+                  <div
+                    className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-md border ${
+                      isLight
+                        ? 'bg-rose-50 text-rose-600 border-rose-200'
+                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    }`}
+                  >
+                    Agotado en tienda
+                  </div>
+                )}
               </div>
-            ) : (
+
+              {/* Price & SKU Box */}
               <div
-                className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-md border ${
+                className={`p-3.5 rounded-2xl border flex items-center justify-between ${
                   isLight
-                    ? 'bg-rose-50 text-rose-600 border-rose-200'
-                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    ? 'bg-slate-50 border-slate-200'
+                    : 'bg-[#121826] border-slate-800'
                 }`}
               >
-                Agotado en tienda
+                <div>
+                  <span className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Precio Venta
+                  </span>
+                  <div className={`text-2xl font-black ${isLight ? 'text-amber-600' : 'text-amber-400'}`}>
+                    ${perfume.price > 0 ? perfume.price.toFixed(2) : 'A consultar'}
+                  </div>
+                </div>
+                {perfume.sku && (
+                  <div className="text-right">
+                    <span className={`text-[10px] uppercase font-bold tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                      SKU / Código
+                    </span>
+                    <div className="text-xs font-mono font-bold mt-0.5">
+                      {perfume.sku}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Title & Price */}
-          <div>
-            <div className="flex items-start justify-between gap-3">
+              {/* Desktop / iPad Quick WhatsApp Button */}
+              <div className="hidden md:block">
+                <button
+                  onClick={handleShareWhatsApp}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Compartir Ficha por WhatsApp</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column (Title, Dupe Radar, Olfactory Pyramid, Stock) */}
+            <div className="md:col-span-7 space-y-4">
+              {/* Title & Brand */}
               <div>
                 <span
                   className={`text-xs font-bold tracking-wider uppercase ${
@@ -201,71 +243,39 @@ export const PerfumeDetailModal: React.FC<PerfumeDetailModalProps> = ({
                   {perfume.brand}
                 </span>
                 <h2
-                  className={`text-lg font-extrabold leading-snug mt-0.5 ${
+                  className={`text-xl font-extrabold leading-snug mt-0.5 ${
                     isLight ? 'text-slate-900' : 'text-white'
                   }`}
                 >
                   {perfume.name}
                 </h2>
-              </div>
-              <div className="text-right shrink-0">
-                <div
-                  className={`text-xl font-extrabold ${
-                    isLight ? 'text-amber-600' : 'text-amber-400'
-                  }`}
-                >
-                  ${perfume.price > 0 ? perfume.price.toFixed(2) : 'A consultar'}
-                </div>
-                {perfume.originalPrice && perfume.originalPrice > perfume.price && (
-                  <div
-                    className={`text-xs line-through ${
-                      isLight ? 'text-slate-400' : 'text-slate-500'
-                    }`}
-                  >
-                    ${perfume.originalPrice.toFixed(2)}
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Quick Specs badges */}
-            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-              {perfume.concentration && (
-                <span
-                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
-                    isLight
-                      ? 'bg-slate-100 text-slate-700 border-slate-200'
-                      : 'bg-slate-800 text-slate-300 border border-slate-700/60'
-                  }`}
-                >
-                  {perfume.concentration}
-                </span>
-              )}
-              {perfume.gender && (
-                <span
-                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
-                    isLight
-                      ? 'bg-slate-100 text-slate-700 border-slate-200'
-                      : 'bg-slate-800 text-slate-300 border border-slate-700/60'
-                  }`}
-                >
-                  {perfume.gender}
-                </span>
-              )}
-              {perfume.sku && (
-                <span
-                  className={`px-2 py-0.5 rounded-md text-[11px] font-mono border flex items-center gap-1 ${
-                    isLight
-                      ? 'bg-slate-100 text-slate-600 border-slate-200'
-                      : 'text-slate-400 bg-slate-900 border-slate-800'
-                  }`}
-                >
-                  <Barcode className="w-3 h-3" />
-                  {perfume.sku}
-                </span>
-              )}
-            </div>
-          </div>
+                {/* Quick Specs badges */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {perfume.concentration && (
+                    <span
+                      className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
+                        isLight
+                          ? 'bg-slate-100 text-slate-700 border-slate-200'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+                      }`}
+                    >
+                      {perfume.concentration}
+                    </span>
+                  )}
+                  {perfume.gender && (
+                    <span
+                      className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
+                        isLight
+                          ? 'bg-slate-100 text-slate-700 border-slate-200'
+                          : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+                      }`}
+                    >
+                      {perfume.gender}
+                    </span>
+                  )}
+                </div>
+              </div>
 
           {/* DUPE / INSPIRACIÓN CARD (STAR FEATURE) */}
           {perfume.dupeOf ? (
@@ -788,11 +798,13 @@ export const PerfumeDetailModal: React.FC<PerfumeDetailModalProps> = ({
               </div>
             </div>
           )}
+            </div>
+          </div>
         </div>
 
-        {/* Bottom Action Footer */}
+        {/* Bottom Action Footer (Mobile Only) */}
         <div
-          className={`sticky bottom-0 p-3 border-t flex items-center gap-2 ${
+          className={`sticky bottom-0 p-3 border-t flex md:hidden items-center gap-2 ${
             isLight
               ? 'bg-white border-slate-200'
               : 'bg-[#0d121f] border-slate-800/80'
