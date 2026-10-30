@@ -155,3 +155,27 @@ body {
 .theme-light aside .border-\[\#282D37\] {
   border-color: #282D37 !important;
 }
+
+/* ==========================================================================
+   FILTRO NEGRO ELEGANTE PARA EL LOGO FALCONI EN MODO CLARO
+   ========================================================================== */
+.theme-light .falconi-logo-standby {
+  filter: brightness(0) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.18)) !important;
+  opacity: 0.92;
+}
+
+.theme-light .falconi-logo-login {
+  filter: brightness(0) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.18)) !important;
+  opacity: 0.92;
+}
+
+.theme-light .falconi-title {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  color: #0F172A !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.theme-light .falconi-subtitle {
+  color: #946E26 !important;
+}

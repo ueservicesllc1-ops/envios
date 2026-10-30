@@ -328,7 +328,7 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
         <img
           src="/puntodeventa/logo_falconi.png"
           alt="Falconi Perfumes"
-          className="relative w-36 h-36 sm:w-48 sm:h-48 object-contain filter drop-shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition duration-500 group-hover:scale-105"
+          className="falconi-logo-standby relative w-36 h-36 sm:w-48 sm:h-48 object-contain filter drop-shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition duration-500 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             if (target.src.includes('/puntodeventa/')) {
@@ -338,10 +338,10 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
         />
       </div>
 
-      <h2 className="text-3xl sm:text-4xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 uppercase">
+      <h2 className="falconi-title text-3xl sm:text-4xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 uppercase">
         Falconi Perfumes
       </h2>
-      <p className="text-xs sm:text-sm font-extrabold tracking-widest text-amber-500/80 uppercase mt-1 mb-6">
+      <p className="falconi-subtitle text-xs sm:text-sm font-extrabold tracking-widest text-amber-500/80 uppercase mt-1 mb-6">
         Punto de Venta Oficial &bull; iPad Pro Edition
       </p>
 
