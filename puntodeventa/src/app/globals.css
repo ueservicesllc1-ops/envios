@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #070b12;
-  --foreground: #f8fafc;
+  --background: #0F1115;
+  --foreground: #F8FAFC;
 }
 
 body {
@@ -51,4 +51,107 @@ body {
 }
 .pt-safe {
   padding-top: env(safe-area-inset-top, 16px);
+}
+
+/* ==========================================================================
+   MODO CLARO (LIGHT MODE) - Paleta de Lujo Falconi: Marfil Cálido, Blanco y Oro
+   ========================================================================== */
+.theme-light {
+  color-scheme: light;
+  background-color: #F5F2EB !important;
+  color: #0F172A !important;
+}
+
+.theme-light .bg-\[\#0F1115\] {
+  background-color: #F5F2EB !important;
+}
+
+.theme-light .bg-\[\#181B20\] {
+  background-color: #FFFFFF !important;
+}
+
+.theme-light .bg-\[\#181B20\]\/95,
+.theme-light .bg-\[\#181B20\]\/90 {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+}
+
+.theme-light .bg-\[\#22262E\] {
+  background-color: #F2EFE9 !important;
+}
+
+.theme-light .bg-\[\#22262E\]\/70,
+.theme-light .bg-\[\#22262E\]\/60,
+.theme-light .bg-\[\#22262E\]\/40 {
+  background-color: #F7F5F0 !important;
+}
+
+.theme-light .text-white {
+  color: #0F172A !important;
+}
+
+.theme-light .text-slate-200,
+.theme-light .text-slate-300 {
+  color: #1E293B !important;
+}
+
+.theme-light .text-slate-400 {
+  color: #64748B !important;
+}
+
+.theme-light .text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+.theme-light .border-\[\#282D37\],
+.theme-light .border-slate-700,
+.theme-light .border-slate-700\/80,
+.theme-light .border-slate-700\/60,
+.theme-light .border-slate-800,
+.theme-light .border-slate-800\/80,
+.theme-light .border-slate-800\/60 {
+  border-color: #E2DCD2 !important;
+}
+
+.theme-light input,
+.theme-light textarea {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+.theme-light input::placeholder,
+.theme-light textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+.theme-light .hover\:bg-\[\#22262E\]:hover,
+.theme-light .hover\:bg-\[\#2b303a\]:hover,
+.theme-light .hover\:bg-slate-700:hover {
+  background-color: #E8E2D6 !important;
+}
+
+.theme-light .hover\:text-white:hover {
+  color: #0F172A !important;
+}
+
+/* Excepción intencional: Barra Lateral siempre en Charcoal Oscuro Elegante (#141518) como en pos-android Theme.kt */
+.theme-light aside {
+  background-color: #141518 !important;
+  border-color: #282D37 !important;
+}
+
+.theme-light aside .text-white {
+  color: #FFFFFF !important;
+}
+
+.theme-light aside .text-slate-400 {
+  color: #94A3B8 !important;
+}
+
+.theme-light aside .bg-\[\#181B20\] {
+  background-color: #1E2229 !important;
+}
+
+.theme-light aside .border-\[\#282D37\] {
+  border-color: #282D37 !important;
 }

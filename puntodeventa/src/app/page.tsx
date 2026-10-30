@@ -308,7 +308,9 @@ export default function PosApp() {
 
   return (
     <div
-      className={`fixed inset-0 flex bg-[#0F1115] text-white overflow-hidden select-none ${
+      className={`fixed inset-0 flex overflow-hidden select-none ${
+        isDarkMode ? 'theme-dark bg-[#0F1115] text-white' : 'theme-light bg-[#F5F2EB] text-[#0F172A]'
+      } ${
         fontScale > 1.2 ? 'text-base' : fontScale > 1.1 ? 'text-[15px]' : 'text-sm'
       }`}
     >
