@@ -165,13 +165,22 @@ export default function PosApp() {
     localStorage.removeItem('falconi_pos_session');
   };
 
-  // Cart operations
+  // Cart operations (solo productos con stock en Tienda Local se pueden facturar)
   const handleAdd = (product: Product, qty: number = 1) => {
+    if (product.stockLocal <= 0) {
+      alert(`El perfume "${product.name}" solo se encuentra en Bodega y no tiene stock disponible en Tienda Local para facturar.`);
+      return;
+    }
     triggerBeep();
     triggerHaptic();
 
     setCart((prev) => {
       const existing = prev.find((it) => it.product.id === product.id);
+      const currentQty = existing ? existing.quantity : 0;
+      if (currentQty + qty > product.stockLocal) {
+        alert(`Stock máximo disponible en Tienda Local: ${product.stockLocal} unidades`);
+        return prev;
+      }
       if (existing) {
         return prev.map((it) =>
           it.product.id === product.id ? { ...it, quantity: it.quantity + qty } : it

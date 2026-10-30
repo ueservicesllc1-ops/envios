@@ -217,23 +217,37 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
 
         {/* Bottom add button */}
         <div className="mt-6 pt-4 border-t border-[#282D37] flex items-center justify-between gap-4">
-          <p className="text-sm text-slate-400">
-            Total línea:{' '}
-            <span className="text-white font-bold text-lg">
-              ${(p.price * selectedQty).toFixed(2)}
-            </span>
-          </p>
+          <div>
+            <p className="text-sm text-slate-400">
+              Total estimado:{' '}
+              <span className="text-white font-bold text-lg">
+                ${(p.price * selectedQty).toFixed(2)}
+              </span>
+            </p>
+            {p.stockLocal <= 0 && (
+              <p className="text-[11px] text-amber-400 font-semibold flex items-center gap-1 mt-0.5">
+                <AlertCircle size={13} /> Solo disponible en Bodega (No facturable en mostrador)
+              </p>
+            )}
+          </div>
 
-          <button
-            onClick={() => {
-              onAdd(p, selectedQty);
-              onClearSpotlight();
-            }}
-            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-base sm:text-lg tracking-wide shadow-xl shadow-amber-500/20 active:scale-[0.98] transition flex items-center gap-2"
-          >
-            <ShoppingBag size={22} />
-            Agregar al Ticket
-          </button>
+          {p.stockLocal > 0 ? (
+            <button
+              onClick={() => {
+                onAdd(p, selectedQty);
+                onClearSpotlight();
+              }}
+              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-base sm:text-lg tracking-wide shadow-xl shadow-amber-500/20 active:scale-[0.98] transition flex items-center gap-2"
+            >
+              <ShoppingBag size={22} />
+              Agregar al Ticket
+            </button>
+          ) : (
+            <div className="px-6 py-3.5 rounded-2xl bg-[#22262E] border border-slate-700 text-slate-400 font-bold text-xs sm:text-sm flex items-center gap-2">
+              <Warehouse size={18} className="text-blue-400" />
+              <span>Producto en Bodega (Solo Consulta)</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -284,12 +298,19 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
 
               <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between">
                 <p className="text-lg font-black text-amber-400">${p.price.toFixed(2)}</p>
-                <button
-                  onClick={() => onAdd(p, 1)}
-                  className="p-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold active:scale-95 transition"
-                >
-                  <Plus size={16} />
-                </button>
+                {p.stockLocal > 0 ? (
+                  <button
+                    onClick={() => onAdd(p, 1)}
+                    className="p-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold active:scale-95 transition shadow"
+                    title="Agregar al Ticket"
+                  >
+                    <Plus size={16} />
+                  </button>
+                ) : (
+                  <span className="text-[10px] font-bold text-blue-400 bg-blue-950/60 px-2 py-1 rounded-lg border border-blue-800/60">
+                    En Bodega
+                  </span>
+                )}
               </div>
             </div>
           ))}

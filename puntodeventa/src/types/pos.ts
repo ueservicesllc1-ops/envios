@@ -36,6 +36,7 @@ export interface Product {
   stockLocal: number;
   stockBodegaEc: number;
   stockBodegaUsa: number;
+  description?: string;
 }
 
 export interface CartLine {

@@ -158,6 +158,7 @@ export class CatalogService {
       stockLocal: sLocal,
       stockBodegaEc: sEc,
       stockBodegaUsa: sUsa,
+      description: d.description || '',
     };
   }
 }
