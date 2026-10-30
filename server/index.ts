@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.RAILWAY_ENVIRONMENT ? (Number(process.env.PORT) || 5000) : (Number(process.env.SERVER_PORT) || 5000);
 
 // Dominios permitidos
-const defaultDomains = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'https://localhost', 'capacitor://localhost'];
+const defaultDomains = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'http://192.168.1.240:5000', 'http://192.168.1.240:3000', 'https://localhost', 'capacitor://localhost'];
 const allowedDomains = [
   ...defaultDomains,
   ...(process.env.ALLOWED_DOMAINS ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim()) : [])
@@ -389,6 +389,17 @@ app.get('/puntodeventa/sw.js', (req, res) => {
   res.setHeader('Service-Worker-Allowed', '/');
   res.sendFile(path.join(posPath, 'sw.js'));
 });
+app.get('/puntodeventa/logo_falconi.png', (req, res) => {
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(path.join(posPath, 'logo_falconi.png'));
+});
+app.get('/logo_falconi.png', (req, res) => {
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(path.join(posPath, 'logo_falconi.png'));
+});
+
 app.get('/puntodeventa', (req, res) => {
   res.sendFile(path.join(posPath, 'index.html'));
 });

@@ -305,11 +305,14 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
       <div className="relative mb-4 group">
         <div className="absolute -inset-4 bg-gradient-to-r from-amber-500/20 via-yellow-600/20 to-amber-500/20 rounded-full blur-2xl opacity-60 group-hover:opacity-100 transition duration-500" />
         <img
-          src="/logo_falconi.png"
+          src="/puntodeventa/logo_falconi.png"
           alt="Falconi Perfumes"
           className="relative w-36 h-36 sm:w-48 sm:h-48 object-contain filter drop-shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition duration-500 group-hover:scale-105"
           onError={(e) => {
-            (e.target as HTMLElement).style.display = 'none';
+            const target = e.target as HTMLImageElement;
+            if (target.src.includes('/puntodeventa/')) {
+              target.src = '/logo_falconi.png';
+            }
           }}
         />
       </div>

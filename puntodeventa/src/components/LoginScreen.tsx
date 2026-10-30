@@ -74,12 +74,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <div className="absolute -inset-2 bg-gradient-to-r from-amber-500/20 to-yellow-600/20 rounded-full blur-xl opacity-75 group-hover:opacity-100 transition duration-500"></div>
             {/* Falconi Gold Logo */}
             <img
-              src="/logo_falconi.png"
+              src="/puntodeventa/logo_falconi.png"
               alt="Falconi Perfumes"
               className="relative w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_4px_20px_rgba(212,175,55,0.4)]"
               onError={(e) => {
-                // Fallback si no carga imagen
-                (e.target as HTMLElement).style.display = 'none';
+                const target = e.target as HTMLImageElement;
+                if (target.src.includes('/puntodeventa/')) {
+                  target.src = '/logo_falconi.png';
+                }
               }}
             />
           </div>

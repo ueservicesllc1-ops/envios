@@ -61,11 +61,14 @@ export const SidebarPane: React.FC<SidebarPaneProps> = ({
           title="Falconi Perfumes POS"
         >
           <img
-            src="/logo_falconi.png"
+            src="/puntodeventa/logo_falconi.png"
             alt="Falconi"
             className="w-12 h-12 object-contain filter drop-shadow-[0_2px_8px_rgba(212,175,55,0.4)] transition group-hover:scale-105"
             onError={(e) => {
-              (e.target as HTMLElement).style.display = 'none';
+              const target = e.target as HTMLImageElement;
+              if (target.src.includes('/puntodeventa/')) {
+                target.src = '/logo_falconi.png';
+              }
             }}
           />
         </button>
