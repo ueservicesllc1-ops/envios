@@ -352,13 +352,53 @@ app.get('/sw.js', (req, res) => {
   res.sendFile(path.join(catalogoPath, 'sw.js'));
 });
 
-// Rutas de la PWA
+// Rutas de la PWA de Asesores
 app.get('/catalogoasesor', (req, res) => {
   res.sendFile(path.join(catalogoPath, 'index.html'));
 });
 app.get('/catalogoasesor/*', (req, res) => {
   res.sendFile(path.join(catalogoPath, 'index.html'));
 });
+
+// ---------------------------------------------------------------------------
+// Servir la aplicación web PWA de Punto de Venta (/puntodeventa)
+// ---------------------------------------------------------------------------
+const posPath = path.join(__dirname, '../puntodeventa/out');
+
+app.use('/puntodeventa/_next', express.static(path.join(posPath, '_next')));
+app.use('/_next', express.static(path.join(posPath, '_next')));
+
+app.use('/puntodeventa', express.static(posPath, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.webmanifest') || filePath.endsWith('manifest.json')) {
+      res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    }
+    if (filePath.endsWith('sw.js')) {
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
+
+app.get('/puntodeventa/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.sendFile(path.join(posPath, 'manifest.json'));
+});
+app.get('/puntodeventa/sw.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.sendFile(path.join(posPath, 'sw.js'));
+});
+app.get('/puntodeventa', (req, res) => {
+  res.sendFile(path.join(posPath, 'index.html'));
+});
+app.get('/puntodeventa/*', (req, res) => {
+  res.sendFile(path.join(posPath, 'index.html'));
+});
+
+// Alias amigables
+app.get('/pos', (req, res) => res.redirect('/puntodeventa'));
+app.get('/punto-de-venta', (req, res) => res.redirect('/puntodeventa'));
 
 // Servir archivos estáticos de React en producción
 if (process.env.NODE_ENV === 'production') {

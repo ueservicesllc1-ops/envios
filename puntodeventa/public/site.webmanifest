@@ -1,0 +1,58 @@
+{
+  "id": "/puntodeventa/",
+  "name": "Falconi POS • Punto de Venta",
+  "short_name": "Falconi POS",
+  "description": "Terminal de Punto de Venta táctil de alta velocidad para iPad Pro y tablets con escaneo de código de barras, control de inventario y emisión de recibos.",
+  "start_url": "/puntodeventa/",
+  "scope": "/puntodeventa/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#050a14",
+  "theme_color": "#050a14",
+  "lang": "es-EC",
+  "categories": ["business", "finance", "shopping"],
+  "icons": [
+    {
+      "src": "/puntodeventa/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/puntodeventa/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/puntodeventa/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/puntodeventa/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/puntodeventa/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nueva Venta",
+      "url": "/puntodeventa/",
+      "icons": [{ "src": "/puntodeventa/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Historial de Ventas",
+      "url": "/puntodeventa/?tab=history",
+      "icons": [{ "src": "/puntodeventa/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
