@@ -1,63 +1,130 @@
-export interface PosProduct {
+export interface Staff {
   id: string;
   name: string;
-  sku: string;
-  barcode?: string;
-  brand?: string;
-  category?: string;
-  salePrice1: number;
-  salePrice2?: number;
-  pvp?: number;
-  imageUrl?: string;
-  perfumeName?: string;
-  stockBabahoyo?: number;
-  stockPrincipal?: number;
-  totalStock?: number;
+  role: 'advisor' | 'manager' | 'owner' | string;
 }
 
-export interface PosCartItem {
+export type PosLocationId = 'local' | 'bodega_ec' | 'bodega_usa';
+
+export interface PosLocation {
+  id: PosLocationId;
+  label: string;
+}
+
+export const POS_LOCATIONS: Record<PosLocationId, PosLocation> = {
+  local: { id: 'local', label: 'Tienda Local' },
+  bodega_ec: { id: 'bodega_ec', label: 'Bodega Ecuador' },
+  bodega_usa: { id: 'bodega_usa', label: 'Bodega USA' },
+};
+
+export interface PosSession {
+  staff: Staff;
+  location: string;
+  priceField: string;
+  maxDiscountPct: number;
+}
+
+export interface Product {
   id: string;
-  productId: string;
-  product: PosProduct;
+  name: string;
+  brand: string;
+  category: string;
+  sku: string;
+  barcode: string;
+  imageUrl?: string;
+  price: number;
+  stockLocal: number;
+  stockBodegaEc: number;
+  stockBodegaUsa: number;
+}
+
+export interface CartLine {
+  product: Product;
+  quantity: number;
+}
+
+export type PayMethod = 'cash' | 'card' | 'transfer' | 'mixed';
+
+export interface PaymentInput {
+  method: PayMethod;
+  cashReceived: number;
+  cardAmount: number;
+  transferAmount: number;
+  reference: string;
+}
+
+export interface SaleResult {
+  saleNumber: string;
+  total: number;
+  change: number;
+  duplicate?: boolean;
+}
+
+export interface PosClient {
+  id: string;
+  nombre: string;
+  apellido: string;
+  fullName: string;
+  telefono: string;
+  email: string;
+  cedula: string;
+}
+
+export interface PosSaleItem {
+  name: string;
   quantity: number;
   unitPrice: number;
-  discount: number;
   totalPrice: number;
-  availableStock: number;
 }
 
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'mixed';
-
-export interface PosSale {
-  id?: string;
-  saleNumber?: string;
-  date: Date;
-  customerName: string;
-  customerPhone?: string;
-  customerEmail?: string;
-  customerAddress?: string;
-  items: PosCartItem[];
-  subtotal: number;
-  discount: number;
-  tax: number;
+export interface PosSaleRecord {
+  id: string;
+  saleNumber: string;
   total: number;
-  paymentMethod: PaymentMethod;
-  cashReceived?: number;
-  change?: number;
-  cardAmount?: number;
-  transferAmount?: number;
-  status: 'completed' | 'cancelled';
-  createdBy?: string;
-  location?: string;
+  subtotal: number;
+  discountAmount: number;
+  paymentMethod: string;
+  customerName: string;
+  customerCedula: string;
+  customerEmail: string;
+  staffName: string;
+  createdAt: string;
+  items: PosSaleItem[];
 }
 
-export interface PosCustomer {
-  id?: string;
+export interface TopPerfume {
   name: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  totalPurchases?: number;
-  lastPurchaseDate?: Date;
-  isActive?: boolean;
+  qty: number;
+  total: number;
+}
+
+export interface PosReports {
+  totalSalesCount: number;
+  totalRevenue: number;
+  totalItemsSold: number;
+  byMethod: Record<string, number>;
+  topPerfumes: TopPerfume[];
+}
+
+export interface EmailConfigStatus {
+  configured: boolean;
+  user: string;
+  instructionsUrl: string;
+}
+
+export interface ReceiptItem {
+  productId: string;
+  name: string;
+  barcode: string;
+  expectedQty: number;
+  receivedQty: number;
+}
+
+export interface LocalReceipt {
+  id: string;
+  number: string;
+  status: 'pending' | 'completed' | 'closed' | string;
+  notes: string;
+  createdAt: string;
+  items: ReceiptItem[];
 }
