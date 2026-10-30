@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, AlertTriangle, Package, Search, Filter, Plus, Edit, Eye, X, Trash2 } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Package, Search, Filter, Plus, Edit, Eye, X, Trash2, Sparkles, RefreshCw } from 'lucide-react';
 import { InventoryItem, Product } from '../types';
 import { inventoryService } from '../services/inventoryService';
 import { productService } from '../services/productService';
+import { perfumeAdvisorClient } from '../services/perfumeAdvisorClient';
 import toast from 'react-hot-toast';
 
 const Inventory: React.FC = () => {
@@ -12,6 +13,7 @@ const Inventory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [filterBy, setFilterBy] = useState('all');
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
   // Estados para edición
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -89,6 +91,43 @@ const Inventory: React.FC = () => {
       toast.error('Error al cargar inventario');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const isPerfumeItem = (product?: Product) => {
+    if (!product) return false;
+    const cat = (product.category || '').toLowerCase();
+    const name = (product.name || '').toLowerCase();
+    return (
+      cat.includes('perfume') ||
+      cat.includes('fragr') ||
+      cat.includes('colonia') ||
+      name.includes('perfume') ||
+      name.includes('parfum') ||
+      name.includes('edp') ||
+      name.includes('edt') ||
+      name.includes('eau de') ||
+      name.includes('cologne') ||
+      Boolean(product.dupeOf)
+    );
+  };
+
+  const handleEnrichPerfume = async (productId: string, productName: string) => {
+    try {
+      setEnrichingId(productId);
+      toast.loading(`Consultando IA Gemini para "${productName}"...`, { id: `ai-${productId}` });
+      const res = await perfumeAdvisorClient.enrichOne(productId);
+      if (res.success) {
+        toast.success(`¡Notas olfativas y dupe guardados en Firestore!`, { id: `ai-${productId}` });
+        await loadData();
+      } else {
+        toast.error(res.error || 'No se pudo obtener información con IA', { id: `ai-${productId}` });
+      }
+    } catch (err: any) {
+      console.error('Error enriqueciendo perfume:', err);
+      toast.error('Error al conectar con el servicio de IA', { id: `ai-${productId}` });
+    } finally {
+      setEnrichingId(null);
     }
   };
 
@@ -522,6 +561,25 @@ const Inventory: React.FC = () => {
                     </td>
                     <td className="table-cell">
                       <div className="flex items-center space-x-2">
+                        {isPerfumeItem(item.product) && (
+                          <button
+                            onClick={() => handleEnrichPerfume(item.productId, item.product?.name || 'Perfume')}
+                            disabled={enrichingId === item.productId}
+                            className={`px-2.5 py-1 rounded text-xs font-bold flex items-center space-x-1 shadow-sm transition-all ${
+                              item.product?.aiEnriched || item.product?.dupeOf
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200'
+                                : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700'
+                            }`}
+                            title="Buscar notas olfativas y dupe con IA"
+                          >
+                            {enrichingId === item.productId ? (
+                              <RefreshCw className="h-3 w-3 animate-spin text-purple-600" />
+                            ) : (
+                              <Sparkles className="h-3 w-3 text-yellow-300" />
+                            )}
+                            <span>{item.product?.aiEnriched ? '✨ Notas IA' : '✨ IA Notas'}</span>
+                          </button>
+                        )}
                         <button
                           className="p-1 text-gray-400 hover:text-blue-600"
                           title="Ver detalles"

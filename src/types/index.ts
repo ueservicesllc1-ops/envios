@@ -21,6 +21,18 @@ export interface Product {
   // Campos específicos para perfumes
   brand?: string; // Marca del perfume
   perfumeName?: string; // Nombre específico del perfume
+  aiEnriched?: boolean;
+  dupeOf?: string;
+  dupeBrand?: string;
+  olfactoryFamily?: string;
+  notes?: {
+    top?: string[];
+    middle?: string[];
+    base?: string[];
+  };
+  mainAccords?: string[];
+  longevity?: string;
+  salesPitch?: string;
   // Campos para productos consolidados
   isConsolidated?: boolean; // Si es un producto consolidado
   consolidatedProducts?: string[]; // IDs de los productos que forman este consolidado
@@ -283,6 +295,24 @@ export interface Perfume {
   shopifyProductId?: string; // ID del producto en Shopify
   shopifyVariantId?: string; // ID de la variante en Shopify
   isActive: boolean; // Si está visible en la tienda
+  barcode?: string;
+  dupeOf?: string;
+  dupeBrand?: string;
+  dupeStatus?: string;
+  olfactoryFamily?: string;
+  gender?: 'Hombre' | 'Mujer' | 'Unisex';
+  concentration?: string;
+  notes?: {
+    top?: string[];
+    middle?: string[];
+    base?: string[];
+  };
+  mainAccords?: string[];
+  longevity?: string;
+  bestOccasion?: string;
+  salesPitch?: string;
+  aiEnriched?: boolean;
+  aiEnrichedAt?: string;
   createdAt: Date;
   updatedAt: Date;
 }

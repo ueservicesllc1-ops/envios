@@ -11,10 +11,12 @@ import { perfumeAdvisorRouter } from './routes/perfumeAdvisor';
 const app = express();
 const PORT = process.env.RAILWAY_ENVIRONMENT ? (Number(process.env.PORT) || 5000) : (Number(process.env.SERVER_PORT) || 5000);
 
-// Dominios permitidos (Railway)
-const allowedDomains = process.env.ALLOWED_DOMAINS
-  ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim())
-  : ['http://localhost:3000', 'http://localhost:3001'];
+// Dominios permitidos
+const defaultDomains = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000'];
+const allowedDomains = [
+  ...defaultDomains,
+  ...(process.env.ALLOWED_DOMAINS ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim()) : [])
+];
 
 // Middleware CORS dinámico
 app.use(cors({
@@ -309,10 +311,17 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Servir la nueva aplicación web de Asesores de Perfumes (/catalogoasesor)
+const path = require('path');
+const catalogoPath = path.join(__dirname, '../catalogo-asesor/out');
+app.use('/_next', express.static(path.join(catalogoPath, '_next')));
+app.use('/catalogoasesor', express.static(catalogoPath));
+app.get('/catalogoasesor/*', (req, res) => {
+  res.sendFile(path.join(catalogoPath, 'index.html'));
+});
+
 // Servir archivos estáticos de React en producción
 if (process.env.NODE_ENV === 'production') {
-  const path = require('path');
-
   // Servir archivos estáticos del build
   app.use(express.static(path.join(__dirname, '../build')));
 

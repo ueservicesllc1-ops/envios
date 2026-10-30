@@ -58,6 +58,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "set CI=false && react-scripts build",
+    "build:catalogo": "npm --prefix catalogo-asesor run build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "serve": "serve -s build -l 3000",

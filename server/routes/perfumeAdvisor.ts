@@ -43,9 +43,14 @@ perfumeAdvisorRouter.get('/status', async (_req: Request, res: Response) => {
     const key = await perfumeAiService.getApiKey();
     const hasKey = !!(key && key.length > 10);
 
-    const productsSnap = await db().collection('products').get();
-    let totalPerfumes = 0;
-    let enrichedCount = 0;
+    // Contar perfumes en ambas colecciones: perfumes y products
+    const [perfumesSnap, productsSnap] = await Promise.all([
+      db().collection('perfumes').get(),
+      db().collection('products').get()
+    ]);
+
+    let totalPerfumes = perfumesSnap.size;
+    let enrichedCount = perfumesSnap.docs.filter(doc => doc.data().aiEnriched === true).length;
 
     productsSnap.docs.forEach(doc => {
       const data = doc.data();
@@ -342,40 +347,86 @@ perfumeAdvisorRouter.post('/identify-photo', async (req: Request, res: Response)
 perfumeAdvisorRouter.post('/sync-pending', async (req: Request, res: Response) => {
   try {
     const limit = Number(req.body?.limit) || 10;
-    const snap = await db().collection('products').get();
-
-    const pending = snap.docs.filter(doc => {
-      const d = doc.data();
-      const cat = (d.category || '').toLowerCase();
-      return cat.includes('perfume') && d.aiEnriched !== true;
-    }).slice(0, limit);
-
+    const mode = req.body?.mode === 'inventory' ? 'inventory' : 'catalog';
     const enrichedResults: string[] = [];
 
-    for (const doc of pending) {
-      const d = doc.data();
+    let pendingDocs: { id: string; collection: string; data: any }[] = [];
+
+    if (mode === 'inventory') {
+      // 1. Priorizar productos con stock físico en bodegas/tienda
+      const inventorySnap = await db().collection('inventory').get();
+      const inStockProductIds = new Set<string>();
+      inventorySnap.docs.forEach(doc => {
+        const d = doc.data();
+        if (d.productId && Number(d.quantity) > 0) {
+          inStockProductIds.add(d.productId);
+        }
+      });
+
+      const productsSnap = await db().collection('products').get();
+      pendingDocs = productsSnap.docs
+        .filter(doc => {
+          const d = doc.data();
+          const cat = (d.category || '').toLowerCase();
+          return cat.includes('perfume') && inStockProductIds.has(doc.id) && d.aiEnriched !== true;
+        })
+        .slice(0, limit)
+        .map(doc => ({ id: doc.id, collection: 'products', data: doc.data() }));
+    } else {
+      // 2. Modo Catálogo: perfumes del catálogo general
+      const perfumesSnap = await db().collection('perfumes').get();
+      pendingDocs = perfumesSnap.docs
+        .filter(doc => doc.data().aiEnriched !== true)
+        .slice(0, limit)
+        .map(doc => ({ id: doc.id, collection: 'perfumes', data: doc.data() }));
+
+      if (pendingDocs.length < limit) {
+        const remaining = limit - pendingDocs.length;
+        const productsSnap = await db().collection('products').get();
+        const pendingProducts = productsSnap.docs
+          .filter(doc => {
+            const d = doc.data();
+            const cat = (d.category || '').toLowerCase();
+            return cat.includes('perfume') && d.aiEnriched !== true;
+          })
+          .slice(0, remaining)
+          .map(doc => ({ id: doc.id, collection: 'products', data: doc.data() }));
+
+        pendingDocs = [...pendingDocs, ...pendingProducts];
+      }
+    }
+
+    for (let i = 0; i < pendingDocs.length; i++) {
+      const item = pendingDocs[i];
+      const d = item.data;
       try {
-        const aiData = await perfumeAiService.enrichByNameOrBarcode(d.name, d.brand, d.barcode);
+        const aiData = await perfumeAiService.enrichByNameOrBarcode(d.name, d.brand, d.barcode || d.sku);
         if (aiData) {
-          await db().collection('products').doc(doc.id).update({
+          await db().collection(item.collection).doc(item.id).update({
             aiEnriched: true,
             aiEnrichedAt: new Date().toISOString(),
-            dupeOf: aiData.dupeOf,
-            dupeBrand: aiData.dupeBrand,
-            olfactoryFamily: aiData.olfactoryFamily,
-            gender: aiData.gender,
-            concentration: aiData.concentration,
-            notes: aiData.notes,
-            mainAccords: aiData.mainAccords,
-            longevity: aiData.longevity,
-            bestOccasion: aiData.bestOccasion,
-            salesPitch: aiData.salesPitch,
+            dupeOf: aiData.dupeOf || '',
+            dupeBrand: aiData.dupeBrand || '',
+            olfactoryFamily: aiData.olfactoryFamily || '',
+            gender: aiData.gender || 'Unisex',
+            concentration: aiData.concentration || 'Eau de Parfum',
+            notes: aiData.notes || { top: [], middle: [], base: [] },
+            mainAccords: aiData.mainAccords || [],
+            longevity: aiData.longevity || '',
+            bestOccasion: aiData.bestOccasion || '',
+            salesPitch: aiData.salesPitch || '',
+            description: aiData.description || d.description || aiData.salesPitch || '',
             ...(d.brand ? {} : { brand: aiData.brand })
           });
-          enrichedResults.push(`${d.name} -> Dupe: ${aiData.dupeOf}`);
+          enrichedResults.push(`${d.name} -> Dupe: ${aiData.dupeOf || 'Identificado'}`);
         }
       } catch (e: any) {
         console.warn(`Error enriqueciendo ${d.name}:`, e.message);
+      }
+
+      // Pausa de 3.5 segundos para respetar los límites del Free Tier (15 RPM)
+      if (i < pendingDocs.length - 1) {
+        await new Promise(r => setTimeout(r, 3500));
       }
     }
 
@@ -385,6 +436,108 @@ perfumeAdvisorRouter.post('/sync-pending', async (req: Request, res: Response) =
       details: enrichedResults
     });
   } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/perfumes/enrich-one
+ * Enriquece un perfume individual desde el panel web admin y guarda notas, dupe y descripción en Firestore
+ */
+perfumeAdvisorRouter.post('/enrich-one', async (req: Request, res: Response) => {
+  try {
+    const { productId } = req.body;
+    if (!productId) {
+      return res.status(400).json({ success: false, error: 'productId requerido' });
+    }
+
+    let targetCollection = 'products';
+    let doc = await db().collection('products').doc(productId).get();
+    if (!doc.exists) {
+      doc = await db().collection('perfumes').doc(productId).get();
+      if (doc.exists) {
+        targetCollection = 'perfumes';
+      } else {
+        return res.status(404).json({ success: false, error: 'Producto no encontrado' });
+      }
+    }
+
+    const p = doc.data()!;
+    const aiData = await perfumeAiService.enrichByNameOrBarcode(
+      p.name,
+      p.brand,
+      p.barcode || p.sku
+    );
+
+    if (!aiData) {
+      return res.status(422).json({ success: false, error: 'No se pudo obtener información con IA' });
+    }
+
+    const updatePayload: any = {
+      aiEnriched: true,
+      aiEnrichedAt: new Date().toISOString(),
+      dupeOf: aiData.dupeOf || '',
+      dupeBrand: aiData.dupeBrand || '',
+      olfactoryFamily: aiData.olfactoryFamily || '',
+      gender: aiData.gender || 'Unisex',
+      concentration: aiData.concentration || 'Eau de Parfum',
+      notes: aiData.notes || { top: [], middle: [], base: [] },
+      mainAccords: aiData.mainAccords || [],
+      longevity: aiData.longevity || '',
+      bestOccasion: aiData.bestOccasion || '',
+      salesPitch: aiData.salesPitch || '',
+      description: aiData.description || p.description || aiData.salesPitch || '',
+      ...(p.brand ? {} : { brand: aiData.brand })
+    };
+
+    await db().collection(targetCollection).doc(productId).update(updatePayload);
+
+    const stock = await getStockForProduct(productId);
+
+    res.json({
+      success: true,
+      perfume: {
+        id: productId,
+        ...p,
+        ...updatePayload,
+        ...stock,
+        price: p.salePrice2 || p.pvp || p.salePrice1 || 0
+      }
+    });
+  } catch (err: any) {
+    console.error('Error in /enrich-one:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/perfumes/investigate-preview
+ * Investiga un perfume por nombre/marca/código usando IA y devuelve los datos
+ * para previsualizar y autocompletar en el formulario ANTES de guardar.
+ */
+perfumeAdvisorRouter.post('/investigate-preview', async (req: Request, res: Response) => {
+  try {
+    const { name, brand, barcode, sku } = req.body;
+    if (!name && !barcode && !sku) {
+      return res.status(400).json({ success: false, error: 'Se requiere al menos el nombre o código del perfume' });
+    }
+
+    const aiData = await perfumeAiService.enrichByNameOrBarcode(
+      name || '',
+      brand || '',
+      barcode || sku || ''
+    );
+
+    if (!aiData) {
+      return res.status(422).json({ success: false, error: 'No se pudo obtener información con IA' });
+    }
+
+    res.json({
+      success: true,
+      analysis: aiData
+    });
+  } catch (err: any) {
+    console.error('Error in /investigate-preview:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -422,7 +575,13 @@ perfumeAdvisorRouter.get('/catalog', async (_req: Request, res: Response) => {
     const perfumes = productsSnap.docs
       .filter(doc => {
         const cat = (doc.data().category || '').toLowerCase();
-        return cat.includes('perfume');
+        if (!cat.includes('perfume')) return false;
+        const id = doc.id;
+        const stockLocal = stockLocalMap.get(id) || 0;
+        const stockBodegaEc = stockEcMap.get(id) || 0;
+        const stockBodegaUsa = stockUsaMap.get(id) || 0;
+        // Solo perfumes con stock físico en bodega o tienda
+        return (stockLocal + stockBodegaEc + stockBodegaUsa) > 0;
       })
       .map(doc => {
         const d = doc.data();
@@ -468,3 +627,239 @@ perfumeAdvisorRouter.get('/catalog', async (_req: Request, res: Response) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+/**
+ * POST /api/perfumes/find-dupe
+ * Busca el dupe o perfume de diseñador consultado (ej: "Creed Aventus" o "Aventus").
+ * 1. Cruza contra fragranceReferences (50 referencias precargadas + dinámicas)
+ * 2. Cruza contra el inventario físico real en `products` + `inventory` (Tienda, Bodega EC, Bodega USA)
+ * 3. Si no existe en la base, consulta a Gemini AI en vivo para descubrir los clones y los guarda
+ * 4. Devuelve candidatos clasificados: enTienda, enBodega, paraImportar
+ */
+perfumeAdvisorRouter.post('/find-dupe', async (req: Request, res: Response) => {
+  try {
+    const { query: queryTerm } = req.body;
+    if (!queryTerm || typeof queryTerm !== 'string' || !queryTerm.trim()) {
+      return res.status(400).json({ success: false, error: 'Término de búsqueda requerido' });
+    }
+
+    const cleanQ = queryTerm.trim().toLowerCase();
+
+    // 1. Obtener inventario físico desglosado
+    const productsSnap = await db().collection('products').get();
+    const inventorySnap = await db().collection('inventory').get();
+
+    const stockLocalMap = new Map<string, number>();
+    const stockEcMap = new Map<string, number>();
+    const stockUsaMap = new Map<string, number>();
+
+    inventorySnap.docs.forEach(doc => {
+      const d = doc.data();
+      const pid = d.productId;
+      if (!pid) return;
+      const loc = (d.location || '').toLowerCase();
+      const qty = Number(d.quantity) || 0;
+
+      if (loc.includes('local') || loc.includes('tienda') || loc.includes('mostrador') || loc.includes('babahoyo')) {
+        stockLocalMap.set(pid, (stockLocalMap.get(pid) || 0) + qty);
+      } else if (loc.includes('usa') || loc.includes('eeuu') || loc.includes('estados unidos')) {
+        stockUsaMap.set(pid, (stockUsaMap.get(pid) || 0) + qty);
+      } else {
+        stockEcMap.set(pid, (stockEcMap.get(pid) || 0) + qty);
+      }
+    });
+
+    // Indexar nuestros perfumes físicos reales
+    const myPerfumes = productsSnap.docs
+      .filter(doc => (doc.data().category || '').toLowerCase().includes('perfume'))
+      .map(doc => {
+        const d = doc.data();
+        const id = doc.id;
+        const stockLocal = stockLocalMap.get(id) || 0;
+        const stockBodegaEc = stockEcMap.get(id) || 0;
+        const stockBodegaUsa = stockUsaMap.get(id) || 0;
+        return {
+          id,
+          name: d.name || '',
+          brand: d.brand || '',
+          sku: d.sku || '',
+          barcode: d.barcode || '',
+          price: d.salePrice2 || d.pvp || d.salePrice1 || d.price || 0,
+          imageUrl: d.imageUrl || (Array.isArray(d.images) && d.images[0]) || '',
+          dupeOf: d.dupeOf || '',
+          dupeBrand: d.dupeBrand || '',
+          notes: d.notes || null,
+          mainAccords: d.mainAccords || [],
+          gender: d.gender || 'Unisex',
+          salesPitch: d.salesPitch || '',
+          stockLocal,
+          stockBodegaEc,
+          stockBodegaUsa,
+          totalStock: stockLocal + stockBodegaEc + stockBodegaUsa
+        };
+      });
+
+    // 2. Buscar en la colección de Referencias Olfativas (`fragranceReferences`)
+    const refSnap = await db().collection('fragranceReferences').get();
+    let matchedRef: any = null;
+
+    for (const doc of refSnap.docs) {
+      const r = doc.data();
+      const rName = (r.name || '').toLowerCase();
+      const rBrand = (r.brand || '').toLowerCase();
+      const combined = `${rBrand} ${rName}`.toLowerCase();
+
+      if (combined.includes(cleanQ) || cleanQ.includes(rName) || rName.includes(cleanQ)) {
+        matchedRef = { id: doc.id, ...r };
+        break;
+      }
+    }
+
+    // 3. Si no existe en las referencias estáticas, llamar a Gemini en vivo
+    if (!matchedRef) {
+      try {
+        const aiRef = await perfumeAiService.researchReferenceWithDupes(queryTerm);
+        if (aiRef && aiRef.name) {
+          matchedRef = {
+            id: aiRef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            ...aiRef,
+            requestCount: 1,
+            createdAt: new Date().toISOString()
+          };
+          // Guardar en la base de datos para que quede en el sistema para siempre
+          await db().collection('fragranceReferences').doc(matchedRef.id).set(matchedRef, { merge: true });
+        }
+      } catch (aiErr: any) {
+        console.warn('Error investigando referencia con Gemini:', aiErr.message);
+      }
+    }
+
+    // 4. Si encontramos la referencia o el término, cruzar contra nuestro inventario
+    const knownDupesList: any[] = matchedRef?.knownDupes || [];
+    const searchTargetNames = [
+      cleanQ,
+      matchedRef?.name?.toLowerCase(),
+      ...knownDupesList.map(k => k.name.toLowerCase())
+    ].filter(Boolean);
+
+    // Encontrar candidatos físicos en nuestra tienda y bodega
+    const physicalMatches = myPerfumes.filter(p => {
+      const pName = p.name.toLowerCase();
+      const pBrand = p.brand.toLowerCase();
+      const pDupe = (p.dupeOf || '').toLowerCase();
+
+      // Coincide por campo dupeOf explícito
+      if (pDupe && (cleanQ.includes(pDupe) || pDupe.includes(cleanQ) || (matchedRef?.name && pDupe.includes(matchedRef.name.toLowerCase())))) {
+        return true;
+      }
+
+      // Coincide con alguno de los nombres conocidos de dupes
+      return searchTargetNames.some(target => pName.includes(target) || (target.length > 4 && target.split(' ').every((w: string) => pName.includes(w))));
+    });
+
+    // Separar por disponibilidad
+    const enTienda = physicalMatches.filter(p => p.stockLocal > 0);
+    const enBodega = physicalMatches.filter(p => p.stockLocal <= 0 && (p.stockBodegaEc > 0 || p.stockBodegaUsa > 0));
+
+    // Identificar cuáles dupes conocidos NO tenemos en físico para poder pedirlos/importarlos
+    const physicalNamesLower = physicalMatches.map(p => p.name.toLowerCase());
+    const paraImportar = knownDupesList.filter(kd => {
+      const kdName = kd.name.toLowerCase();
+      return !physicalNamesLower.some(pn => pn.includes(kdName) || kdName.includes(pn));
+    });
+
+    res.json({
+      success: true,
+      query: queryTerm,
+      reference: matchedRef ? {
+        name: matchedRef.name,
+        brand: matchedRef.brand,
+        gender: matchedRef.gender,
+        olfactoryFamily: matchedRef.olfactoryFamily,
+        keyNotes: matchedRef.keyNotes || [],
+        mainAccords: matchedRef.mainAccords || [],
+        description: matchedRef.description || ''
+      } : null,
+      candidates: {
+        enTienda,
+        enBodega,
+        paraImportar
+      }
+    });
+  } catch (err: any) {
+    console.error('Error in /find-dupe:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/perfumes/request-dupe
+ * Registra el interés de compra de un cliente para un perfume que no tenemos en inventario
+ * Permite a la gerencia saber qué perfumes pedir e importar
+ */
+perfumeAdvisorRouter.post('/request-dupe', async (req: Request, res: Response) => {
+  try {
+    const { perfumeName, dupeName, brand, referenceName, referenceBrand, advisorName, customerPhone, notes } = req.body;
+    const finalPerfumeName = (perfumeName || dupeName || '').trim();
+    if (!finalPerfumeName) {
+      return res.status(400).json({ success: false, error: 'Nombre de perfume requerido' });
+    }
+
+    const docRef = await db().collection('requestedPerfumes').add({
+      perfumeName: finalPerfumeName,
+      brand: (brand || '').trim(),
+      referenceName: (referenceName || '').trim(),
+      referenceBrand: (referenceBrand || '').trim(),
+      advisorName: (advisorName || 'Asesor').trim(),
+      customerPhone: (customerPhone || '').trim(),
+      notes: (notes || '').trim(),
+      status: 'PENDIENTE_PEDIDO',
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      id: docRef.id,
+      message: 'Solicitud de importación registrada exitosamente'
+    });
+  } catch (err: any) {
+    console.error('Error in /request-dupe:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/perfumes/requested
+ * Obtiene la lista de perfumes solicitados por clientes desde el asesor de ventas
+ */
+perfumeAdvisorRouter.get('/requested', async (req: Request, res: Response) => {
+  try {
+    const snap = await db().collection('requestedPerfumes').orderBy('createdAt', 'desc').limit(100).get();
+    const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json({ success: true, count: items.length, items });
+  } catch (err: any) {
+    console.error('Error in GET /requested:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * PATCH /api/perfumes/requested/:id
+ * Actualiza el estado de una solicitud ('PENDIENTE_PEDIDO', 'IMPORTADO', 'DESCARTADO')
+ */
+perfumeAdvisorRouter.patch('/requested/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    const updateData: any = { updatedAt: new Date().toISOString() };
+    if (status) updateData.status = status;
+    if (notes !== undefined) updateData.notes = notes;
+
+    await db().collection('requestedPerfumes').doc(id).update(updateData);
+    res.json({ success: true, message: 'Estado actualizado' });
+  } catch (err: any) {
+    console.error('Error in PATCH /requested/:id:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit, Trash2, Eye, Filter, Package, X, Database, Upload, Image, Scan, Layers, CheckSquare, Square, Download } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Eye, Filter, Package, X, Database, Upload, Image, Scan, Layers, CheckSquare, Square, Download, Sparkles, RefreshCw } from 'lucide-react';
 import { Product } from '../types';
 import { productService } from '../services/productService';
+import { perfumeAdvisorClient } from '../services/perfumeAdvisorClient';
 import { addSampleProducts } from '../utils/addSampleProducts';
 import { importFiveBelowProducts } from '../utils/importFiveBelow';
 import { importWalgreensProducts } from '../utils/importWalgreens';
@@ -37,6 +38,11 @@ const Products: React.FC = () => {
   const [priceRange, setPriceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000 });
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'category'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  const [syncingAi, setSyncingAi] = useState<boolean>(false);
+  const [showAiKeyModal, setShowAiKeyModal] = useState<boolean>(false);
+  const [geminiKeyInput, setGeminiKeyInput] = useState<string>('');
+  const [savingKey, setSavingKey] = useState<boolean>(false);
 
 
   useEffect(() => {
@@ -296,6 +302,88 @@ const Products: React.FC = () => {
     } catch (error) {
       console.error('Error saving product:', error);
       toast.error('Error al guardar el producto');
+    }
+  };
+
+  const isPerfumeItem = (product: Product) => {
+    const cat = (product.category || '').toLowerCase();
+    const name = (product.name || '').toLowerCase();
+    return (
+      cat.includes('perfume') ||
+      cat.includes('fragr') ||
+      cat.includes('colonia') ||
+      name.includes('perfume') ||
+      name.includes('parfum') ||
+      name.includes('edp') ||
+      name.includes('edt') ||
+      name.includes('eau de') ||
+      name.includes('cologne') ||
+      name.includes('fragrance') ||
+      Boolean(product.dupeOf)
+    );
+  };
+
+  const handleEnrichPerfume = async (product: Product) => {
+    try {
+      setEnrichingId(product.id);
+      toast.loading(`Consultando IA Gemini para "${product.name}"...`, { id: `ai-${product.id}` });
+      const res = await perfumeAdvisorClient.enrichOne(product.id);
+      if (res.success && res.perfume) {
+        setProducts(prev => prev.map(p => p.id === product.id ? { ...p, ...res.perfume } : p));
+        toast.success(`¡Notas, dupe y descripción guardados en Firestore para ${product.name}!`, { id: `ai-${product.id}` });
+      } else {
+        if (res.error?.includes('API Key') || res.error?.includes('Gemini')) {
+          setShowAiKeyModal(true);
+        }
+        toast.error(res.error || 'No se pudo enriquecer el perfume con IA', { id: `ai-${product.id}` });
+      }
+    } catch (err: any) {
+      console.error('Error enriqueciendo perfume:', err);
+      toast.error('Error al conectar con el servicio de IA', { id: `ai-${product.id}` });
+    } finally {
+      setEnrichingId(null);
+    }
+  };
+
+  const handleSyncPendingPerfumes = async () => {
+    try {
+      setSyncingAi(true);
+      toast.loading('Enriqueciendo perfumes pendientes con IA en Firestore...', { id: 'ai-sync' });
+      const res = await perfumeAdvisorClient.syncPending(15);
+      if (res.success) {
+        toast.success(`¡${res.processed} perfumes enriquecidos exitosamente!`, { id: 'ai-sync' });
+        loadProducts();
+      } else {
+        if (res.error?.includes('API Key') || res.error?.includes('Gemini')) {
+          setShowAiKeyModal(true);
+        }
+        toast.error(res.error || 'Error al procesar perfumes', { id: 'ai-sync' });
+      }
+    } catch (err: any) {
+      console.error('Error en sync IA:', err);
+      toast.error('Error al conectar con el servidor', { id: 'ai-sync' });
+    } finally {
+      setSyncingAi(false);
+    }
+  };
+
+  const handleSaveGeminiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!geminiKeyInput.trim()) return;
+    try {
+      setSavingKey(true);
+      const res = await perfumeAdvisorClient.configKey(geminiKeyInput.trim());
+      if (res.success) {
+        toast.success('¡Clave de Google Gemini guardada exitosamente en Firestore!');
+        setShowAiKeyModal(false);
+        setGeminiKeyInput('');
+      } else {
+        toast.error(res.error || 'Error al guardar la clave');
+      }
+    } catch (err: any) {
+      toast.error('Error al guardar clave de IA');
+    } finally {
+      setSavingKey(false);
     }
   };
 
@@ -596,6 +684,21 @@ const Products: React.FC = () => {
               <X className="h-4 w-4 mr-1 sm:mr-2" />
               <span className="hidden sm:inline">Limpiar</span>
             </button>
+
+            {/* Botón para enriquecer con IA todos los perfumes pendientes */}
+            <button
+              onClick={handleSyncPendingPerfumes}
+              disabled={syncingAi}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg flex items-center text-xs font-semibold shadow-sm transition-all"
+              title="Buscar notas olfativas, dupes y descripciones con IA para perfumes"
+            >
+              {syncingAi ? (
+                <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1.5 text-yellow-300" />
+              )}
+              <span>IA Perfumes</span>
+            </button>
           </div>
         </div>
       </div>
@@ -716,12 +819,19 @@ const Products: React.FC = () => {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {product.category}
                       </span>
-                      {(product.size || product.color || product.color2 || product.brand || product.perfumeName) && (
+                      {(product.size || product.color || product.color2 || product.brand || product.perfumeName || product.dupeOf) && (
                         <div className="mt-1 text-xs text-gray-500">
                           {product.category === 'Perfumes' ? (
                             <>
-                              {product.brand && <span className="mr-2">Marca: {product.brand}</span>}
+                              {product.brand && <span className="mr-2 font-medium">Marca: {product.brand}</span>}
                               {product.perfumeName && <span>Perfume: {product.perfumeName}</span>}
+                              {product.dupeOf && (
+                                <div className="mt-1">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                    💎 Insp: {product.dupeOf}
+                                  </span>
+                                </div>
+                              )}
                             </>
                           ) : (
                             <>
@@ -763,6 +873,25 @@ const Products: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
+                        {isPerfumeItem(product) && (
+                          <button
+                            onClick={() => handleEnrichPerfume(product)}
+                            disabled={enrichingId === product.id}
+                            className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center space-x-1 shadow transition-all ${
+                              product.aiEnriched || product.dupeOf
+                                ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300'
+                                : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700'
+                            }`}
+                            title={product.aiEnriched ? 'Actualizar notas olfativas y dupe con IA' : 'Buscar notas olfativas y dupe con IA'}
+                          >
+                            {enrichingId === product.id ? (
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin text-purple-600" />
+                            ) : (
+                              <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
+                            )}
+                            <span>{product.aiEnriched ? '✨ Notas IA' : '✨ IA Notas'}</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(product)}
                           className="p-1 text-gray-400 hover:text-blue-600"
@@ -861,6 +990,25 @@ const Products: React.FC = () => {
                       </p>
                     </div>
                     <div className="flex items-center space-x-1 ml-2">
+                      {isPerfumeItem(product) && (
+                        <button
+                          onClick={() => handleEnrichPerfume(product)}
+                          disabled={enrichingId === product.id}
+                          className={`px-2 py-1 rounded text-xs font-bold flex items-center space-x-1 shadow-sm transition-all ${
+                            product.aiEnriched || product.dupeOf
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : 'bg-purple-600 text-white hover:bg-purple-700'
+                          }`}
+                          title="IA Perfume"
+                        >
+                          {enrichingId === product.id ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5" />
+                          )}
+                          <span>IA</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEdit(product)}
                         className="p-1 text-gray-400 hover:text-blue-600"
@@ -1306,6 +1454,76 @@ const Products: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Configurar Clave de IA Gemini */}
+      {showAiKeyModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="h-6 w-6 text-purple-600" />
+                <h3 className="text-lg font-bold text-gray-900">Google Gemini AI - Perfumes</h3>
+              </div>
+              <button
+                onClick={() => setShowAiKeyModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Para buscar automáticamente notas olfativas, acordes y dupes/inspiraciones de perfumes, ingresa tu clave API gratuita de Google Gemini. Se guardará permanentemente en Firestore.
+            </p>
+
+            <form onSubmit={handleSaveGeminiKey} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  API Key de Gemini
+                </label>
+                <input
+                  type="text"
+                  placeholder="AIzaSy..."
+                  value={geminiKeyInput}
+                  onChange={(e) => setGeminiKeyInput(e.target.value)}
+                  className="input-field w-full text-sm font-mono"
+                  required
+                />
+              </div>
+
+              <div className="text-xs text-gray-500">
+                ¿No tienes una clave? Puedes obtenerla gratis en{' '}
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 underline font-medium"
+                >
+                  aistudio.google.com
+                </a>
+              </div>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAiKeyModal(false)}
+                  className="flex-1 btn-secondary text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingKey || !geminiKeyInput.trim()}
+                  className="flex-1 btn-primary text-sm flex items-center justify-center space-x-2"
+                >
+                  {savingKey && <RefreshCw className="h-4 w-4 animate-spin" />}
+                  <span>Guardar Clave</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

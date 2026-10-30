@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Falconi Perfumes</string>
+    <string name="title_activity_main">Falconi Perfumes</string>
+    <string name="package_name">com.falconi.perfumes</string>
+    <string name="custom_url_scheme">com.falconi.perfumes</string>
+</resources>

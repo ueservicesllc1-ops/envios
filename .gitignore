@@ -120,3 +120,7 @@ temp/
 
 # Scratch scripts
 scratch/
+
+# Local android experiments
+perfumes-android/
+tablet_screen*.png
