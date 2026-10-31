@@ -70,7 +70,7 @@ export const TicketPane: React.FC<TicketPaneProps> = ({
   const discountOptions = [0, 5, 10, 15].filter((d) => d <= (maxDiscountPct || 100));
 
   return (
-    <aside className="w-80 sm:w-92 lg:w-96 bg-[#181B20] border-l border-[#282D37] flex flex-col justify-between shrink-0 h-full select-none z-20">
+    <aside className="pos-ticket-pane w-80 sm:w-92 lg:w-96 bg-[#181B20] border-l border-[#282D37] flex flex-col justify-between shrink-0 h-full select-none z-20">
       {/* 1. Header & Client selector */}
       <div className="p-4 border-b border-[#282D37] flex flex-col gap-2.5 shrink-0">
         <div className="flex items-center justify-between">

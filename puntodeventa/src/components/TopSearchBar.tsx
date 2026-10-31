@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Camera, QrCode, Lock, LogOut, X, Sparkles } from 'lucide-react';
+import { Search, Camera, QrCode, Lock, LogOut, X, Sparkles, Send } from 'lucide-react';
 import { PosLocation, POS_LOCATIONS, PosLocationId } from '../types/pos';
 
 interface TopSearchBarProps {
@@ -12,6 +12,7 @@ interface TopSearchBarProps {
   onScanPhoto: () => void;
   onLock: () => void;
   onLogout: () => void;
+  onOpenBroadcast?: () => void;
 }
 
 export const TopSearchBar: React.FC<TopSearchBarProps> = ({
@@ -22,6 +23,7 @@ export const TopSearchBar: React.FC<TopSearchBarProps> = ({
   onScanPhoto,
   onLock,
   onLogout,
+  onOpenBroadcast,
 }) => {
   const loc = POS_LOCATIONS[selectedLocation] || POS_LOCATIONS.local;
 
@@ -36,7 +38,7 @@ export const TopSearchBar: React.FC<TopSearchBarProps> = ({
           type="text"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder="Buscar por nombre, marca, SKU o código de barras..."
+          placeholder={`Buscar en ${loc.label} por nombre, marca o código...`}
           className="w-full h-11 pl-10 pr-10 rounded-2xl bg-[#22262E] border border-slate-700 text-white placeholder-slate-400 text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
         />
         {query && (
@@ -52,8 +54,14 @@ export const TopSearchBar: React.FC<TopSearchBarProps> = ({
       {/* Action buttons & Location badge */}
       <div className="flex items-center gap-2">
         {/* Active location badge */}
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold ${
+          selectedLocation === 'local'
+            ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+            : 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+        }`}>
+          <span className={`w-2 h-2 rounded-full animate-pulse ${
+            selectedLocation === 'local' ? 'bg-emerald-400' : 'bg-blue-400'
+          }`}></span>
           <span>{loc.label}</span>
         </div>
 
@@ -76,6 +84,18 @@ export const TopSearchBar: React.FC<TopSearchBarProps> = ({
           <Camera size={16} className="text-amber-400" />
           <span className="hidden md:inline">Por Foto</span>
         </button>
+
+        {/* Botón a la derecha para enviar promociones por correo a clientes */}
+        {onOpenBroadcast && (
+          <button
+            onClick={onOpenBroadcast}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black text-xs font-black transition shadow-md shadow-amber-500/20 active:scale-95"
+            title="Enviar promociones y últimos perfumes por correo a todos los clientes registrados"
+          >
+            <Send size={15} className="text-black stroke-[2.5]" />
+            <span className="hidden sm:inline">Enviar Promociones</span>
+          </button>
+        )}
 
         {/* Lock screen */}
         <button

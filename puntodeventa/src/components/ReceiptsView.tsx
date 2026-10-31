@@ -14,16 +14,19 @@ import {
   AlertCircle,
   X,
   FileCheck,
+  Send,
 } from 'lucide-react';
 
 interface ReceiptsViewProps {
   onBackToPos: () => void;
   onOpenScanner: (onScan: (code: string) => void) => void;
+  onOpenBroadcast?: () => void;
 }
 
 export const ReceiptsView: React.FC<ReceiptsViewProps> = ({
   onBackToPos,
   onOpenScanner,
+  onOpenBroadcast,
 }) => {
   const [receipts, setReceipts] = useState<LocalReceipt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,13 +119,26 @@ export const ReceiptsView: React.FC<ReceiptsViewProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={loadReceipts}
-          className="p-2.5 rounded-2xl bg-[#181B20] hover:bg-[#22262E] border border-slate-700 text-slate-300 hover:text-amber-400 transition flex items-center gap-2 text-xs font-semibold"
-        >
-          <RefreshCw size={16} className={loading ? 'animate-spin text-amber-400' : ''} />
-          <span>Actualizar</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenBroadcast && (
+            <button
+              onClick={onOpenBroadcast}
+              className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs transition shadow-md shadow-amber-500/20 flex items-center gap-2"
+              title="Notificar por correo a los clientes sobre los últimos perfumes recibidos"
+            >
+              <Send size={15} className="text-black stroke-[2.5]" />
+              <span>Difusión / Promociones</span>
+            </button>
+          )}
+
+          <button
+            onClick={loadReceipts}
+            className="p-2.5 rounded-2xl bg-[#181B20] hover:bg-[#22262E] border border-slate-700 text-slate-300 hover:text-amber-400 transition flex items-center gap-2 text-xs font-semibold"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin text-amber-400' : ''} />
+            <span>Actualizar</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}
@@ -261,9 +277,18 @@ export const ReceiptsView: React.FC<ReceiptsViewProps> = ({
               <p className="font-semibold text-slate-300">
                 No hay notas de ingreso pendientes
               </p>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1 max-w-sm">
                 Todas las mercaderías despachadas hacia este local han sido recibidas.
               </p>
+              {onOpenBroadcast && (
+                <button
+                  onClick={onOpenBroadcast}
+                  className="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-extrabold text-xs transition shadow-md shadow-amber-500/20 flex items-center gap-2"
+                >
+                  <Send size={14} className="text-black stroke-[2.5]" />
+                  <span>Enviar aviso de Nuevos Perfumes por Correo</span>
+                </button>
+              )}
             </div>
           ) : (
             receipts.map((r) => {

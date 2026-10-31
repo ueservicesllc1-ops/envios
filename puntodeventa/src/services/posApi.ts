@@ -234,6 +234,15 @@ class PosApiClient {
   async closeReceipt(receiptId: string, reason: string): Promise<any> {
     return await this.request(`/receipts/${receiptId}/close`, 'POST', { reason }, true);
   }
+
+  // 11. Campañas de Difusión por correo
+  async getBroadcastRecipients(): Promise<any> {
+    return await this.request('/broadcast/recipients', 'GET', null, true);
+  }
+
+  async sendBroadcast(payload: any): Promise<any> {
+    return await this.request('/broadcast', 'POST', payload, true);
+  }
 }
 
 export const posApi = new PosApiClient();

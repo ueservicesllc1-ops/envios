@@ -20,6 +20,7 @@ interface CatalogPaneProps {
   selectedLocation: PosLocationId;
   onSetLocation?: (loc: PosLocationId) => void;
   showWarehouseTabs?: boolean;
+  searchQuery?: string;
   onAdd: (product: Product) => void;
 }
 
@@ -28,39 +29,76 @@ export const CatalogPane: React.FC<CatalogPaneProps> = ({
   selectedLocation,
   onSetLocation,
   showWarehouseTabs = false,
+  searchQuery = '',
   onAdd,
 }) => {
   const [selectedBrand, setSelectedBrand] = useState('Todos');
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
 
-  const isBodega = selectedLocation === 'bodega_ec' || selectedLocation === 'bodega_usa';
+  const isBodega = selectedLocation === 'bodega_ec' || selectedLocation === 'bodega_usa' || selectedLocation === 'todas_bodegas';
 
-  // Extract unique brands
+  // Extraer marcas únicas disponibles EXCLUSIVAMENTE en la ubicación seleccionada
   const brands = useMemo(() => {
     const set = new Set<string>();
     products.forEach((p) => {
-      if (p.brand && p.brand.trim()) set.add(p.brand.trim());
-    });
-    return ['Todos', ...Array.from(set).sort()];
-  }, [products]);
-
-  // Filter products by location stock and brand
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
       const stock =
         selectedLocation === 'local'
           ? p.stockLocal
           : selectedLocation === 'bodega_ec'
           ? p.stockBodegaEc
-          : p.stockBodegaUsa;
+          : selectedLocation === 'bodega_usa'
+          ? p.stockBodegaUsa
+          : p.stockBodegaEc + p.stockBodegaUsa;
+
+      if (stock > 0 && p.brand && p.brand.trim()) {
+        set.add(p.brand.trim());
+      }
+    });
+    return ['Todos', ...Array.from(set).sort()];
+  }, [products, selectedLocation]);
+
+  // Si la marca seleccionada ya no existe en la ubicación activa, resetear a Todos
+  React.useEffect(() => {
+    if (selectedBrand !== 'Todos' && !brands.includes(selectedBrand)) {
+      setSelectedBrand('Todos');
+    }
+  }, [brands, selectedBrand]);
+
+  // Filtrar productos estrictamente por stock de la ubicación, marca y búsqueda
+  const filteredProducts = useMemo(() => {
+    const cleanQ = searchQuery ? searchQuery.trim().toLowerCase() : '';
+
+    return products.filter((p) => {
+      // 1. Stock estricto en la ubicación actual
+      const stock =
+        selectedLocation === 'local'
+          ? p.stockLocal
+          : selectedLocation === 'bodega_ec'
+          ? p.stockBodegaEc
+          : selectedLocation === 'bodega_usa'
+          ? p.stockBodegaUsa
+          : p.stockBodegaEc + p.stockBodegaUsa;
 
       if (stock <= 0) return false;
+
+      // 2. Búsqueda por texto si existe
+      if (cleanQ) {
+        const matchesQuery =
+          p.name.toLowerCase().includes(cleanQ) ||
+          p.brand.toLowerCase().includes(cleanQ) ||
+          p.sku.toLowerCase().includes(cleanQ) ||
+          p.barcode.includes(cleanQ);
+        if (!matchesQuery) return false;
+      }
+
+      // 3. Marca seleccionada
       if (selectedBrand !== 'Todos' && p.brand !== selectedBrand) return false;
+
       return true;
     });
-  }, [products, selectedLocation, selectedBrand]);
+  }, [products, selectedLocation, selectedBrand, searchQuery]);
 
-  const loc = POS_LOCATIONS[selectedLocation];
+  const loc = POS_LOCATIONS[selectedLocation] || POS_LOCATIONS.local;
 
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden select-none">

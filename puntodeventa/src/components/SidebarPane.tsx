@@ -52,13 +52,13 @@ export const SidebarPane: React.FC<SidebarPaneProps> = ({
   ];
 
   return (
-    <aside className="w-20 md:w-24 lg:w-28 bg-[#0D0E11] border-r border-[#282D37] flex flex-col items-center py-4 justify-between select-none shrink-0 z-30">
+    <aside className="pos-sidebar-pane w-20 md:w-24 lg:w-28 bg-[#0D0E11] border-r border-[#282D37] flex flex-col items-center py-4 justify-between select-none shrink-0 z-30">
       {/* Top: Falconi Logo */}
       <div className="flex flex-col items-center mb-2">
         <button
           onClick={() => onSelectNav('inicio')}
           className="relative group p-1 transition"
-          title="Falconi Perfumes POS"
+          title="Falconi Parfums POS"
         >
           <img
             src="/puntodeventa/logo_falconi.png"

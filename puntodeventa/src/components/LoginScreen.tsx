@@ -75,7 +75,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             {/* Falconi Gold Logo */}
             <img
               src="/puntodeventa/logo_falconi.png"
-              alt="Falconi Perfumes"
+              alt="Falconi Parfums"
               className="relative w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-[0_4px_20px_rgba(212,175,55,0.4)]"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -87,7 +87,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 uppercase">
-            Falconi Perfumes
+            Falconi Parfums
           </h1>
           <p className="text-xs sm:text-sm font-semibold tracking-widest text-amber-500/80 uppercase mt-0.5 mb-2">
             Punto de Venta Oficial

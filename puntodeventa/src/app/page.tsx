@@ -27,6 +27,7 @@ import { ReceiptsView } from '../components/ReceiptsView';
 import { SettingsView } from '../components/SettingsView';
 import { ScannerModal } from '../components/ScannerModal';
 import { PhotoRecognitionModal } from '../components/PhotoRecognitionModal';
+import { BroadcastPromoModal } from '../components/BroadcastPromoModal';
 import { IpadInstallPrompt } from '../components/IpadInstallPrompt';
 import { triggerBeep, triggerHaptic } from '../lib/feedback';
 import { FileText, PauseCircle, Play, Trash2, X } from 'lucide-react';
@@ -80,6 +81,7 @@ export default function PosApp() {
   const [tempNote, setTempNote] = useState('');
   const [showHeldSalesModal, setShowHeldSalesModal] = useState(false);
   const [showClientSelector, setShowClientSelector] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
 
   // 6. Settings State
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -113,6 +115,23 @@ export default function PosApp() {
       }
     } catch (_) {}
   }, [loadStaff]);
+
+  // Sincronizar clase de tema al documentElement para soporte global de modales y diálogos
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isDarkMode) {
+        document.documentElement.classList.remove('theme-light');
+        document.documentElement.classList.add('theme-dark');
+        document.body.classList.remove('theme-light');
+        document.body.classList.add('theme-dark');
+      } else {
+        document.documentElement.classList.remove('theme-dark');
+        document.documentElement.classList.add('theme-light');
+        document.body.classList.remove('theme-dark');
+        document.body.classList.add('theme-light');
+      }
+    }
+  }, [isDarkMode]);
 
   // Connect realtime catalog when session is active
   useEffect(() => {
@@ -318,11 +337,13 @@ export default function PosApp() {
       <SidebarPane
         selectedNav={selectedNav}
         onSelectNav={(nav) => {
-          if (nav === 'productos') {
+          if (nav === 'inicio' || nav === 'productos') {
             setSelectedLocation('local');
           } else if (nav === 'bodegas') {
             if (selectedLocation === 'local') setSelectedLocation('bodega_ec');
           }
+          setQuery('');
+          setScannedProduct(null);
           setSelectedNav(nav);
         }}
         staff={session.staff}
@@ -347,6 +368,7 @@ export default function PosApp() {
           onScanPhoto={() => setShowPhotoModal(true)}
           onLock={handleLock}
           onLogout={handleLogout}
+          onOpenBroadcast={() => setShowBroadcastModal(true)}
         />
 
         {/* View Router */}
@@ -404,6 +426,7 @@ export default function PosApp() {
               <CatalogPane
                 products={products}
                 selectedLocation="local"
+                searchQuery={query}
                 onAdd={handleAdd}
               />
 
@@ -439,6 +462,7 @@ export default function PosApp() {
                 selectedLocation={selectedLocation}
                 onSetLocation={setSelectedLocation}
                 showWarehouseTabs={true}
+                searchQuery={query}
                 onAdd={handleAdd}
               />
 
@@ -492,6 +516,7 @@ export default function PosApp() {
                 setScannerCallback(() => cb);
                 setShowScanner(true);
               }}
+              onOpenBroadcast={() => setShowBroadcastModal(true)}
             />
           )}
 
@@ -703,6 +728,15 @@ export default function PosApp() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Broadcast / Mass Promotional Email Modal */}
+      {showBroadcastModal && (
+        <BroadcastPromoModal
+          isOpen={showBroadcastModal}
+          onClose={() => setShowBroadcastModal(false)}
+          staffName={session?.staff?.name || 'Asesor Falconi'}
+        />
       )}
 
       {/* iPad PWA Install Banner */}

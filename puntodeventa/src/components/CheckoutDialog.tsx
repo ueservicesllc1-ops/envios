@@ -117,7 +117,7 @@ export const CheckoutDialog: React.FC<CheckoutDialogProps> = ({
       .map((it) => `• ${it.quantity}x ${it.product.name} - $${(it.product.price * it.quantity).toFixed(2)}`)
       .join('\n');
 
-    const msg = `🧾 *FALCONI PERFUMES* 🧾\n*Comprobante de Venta #${saleResult.saleNumber}*\n\n*Cliente:* ${customerName}\n*Fecha:* ${new Date().toLocaleString('es-EC')}\n\n*Detalle:*\n${itemsText}\n\n*Total:* $${saleResult.total.toFixed(2)}\n*Método:* ${method.toUpperCase()}\n\n¡Gracias por su preferencia!`;
+    const msg = `🧾 *FALCONI PARFUMS* 🧾\n*Comprobante de Venta #${saleResult.saleNumber}*\n\n*Cliente:* ${customerName}\n*Fecha:* ${new Date().toLocaleString('es-EC')}\n\n*Detalle:*\n${itemsText}\n\n*Total:* $${saleResult.total.toFixed(2)}\n*Método:* ${method.toUpperCase()}\n\n¡Gracias por su preferencia!`;
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
@@ -153,7 +153,7 @@ export const CheckoutDialog: React.FC<CheckoutDialogProps> = ({
               Venta #{saleResult.saleNumber}
             </h2>
             <p className="text-sm text-slate-400 max-w-sm mb-6">
-              Venta registrada correctamente en el inventario y contabilidad de Falconi Perfumes.
+              Venta registrada correctamente en el inventario y contabilidad de Falconi Parfums.
             </p>
 
             {/* Summary card */}

@@ -44,20 +44,36 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
 }) => {
   const [selectedQty, setSelectedQty] = useState(1);
 
-  // Filter products by query
+  // En Inicio / Mostrador: SOLO productos con existencias físicas en Tienda Local (stockLocal > 0)
   const cleanQ = query.trim().toLowerCase();
+
   const searchMatches = cleanQ
     ? products.filter(
         (p) =>
-          p.name.toLowerCase().includes(cleanQ) ||
-          p.brand.toLowerCase().includes(cleanQ) ||
-          p.sku.toLowerCase().includes(cleanQ) ||
-          p.barcode.includes(cleanQ)
+          p.stockLocal > 0 &&
+          (p.name.toLowerCase().includes(cleanQ) ||
+            p.brand.toLowerCase().includes(cleanQ) ||
+            p.sku.toLowerCase().includes(cleanQ) ||
+            p.barcode.includes(cleanQ))
       )
     : [];
 
+  // Conteo de coincidencias en Bodegas para ofrecer acceso rápido a la sección Bodegas
+  const bodegaMatchesCount = cleanQ
+    ? products.filter(
+        (p) =>
+          p.stockLocal <= 0 &&
+          (p.stockBodegaEc > 0 || p.stockBodegaUsa > 0) &&
+          (p.name.toLowerCase().includes(cleanQ) ||
+            p.brand.toLowerCase().includes(cleanQ) ||
+            p.sku.toLowerCase().includes(cleanQ) ||
+            p.barcode.includes(cleanQ))
+      ).length
+    : 0;
+
   const activeSpotlightProduct =
-    scannedProduct || (cleanQ && searchMatches.length === 1 ? searchMatches[0] : null);
+    (scannedProduct && scannedProduct.stockLocal > 0 ? scannedProduct : null) ||
+    (cleanQ && searchMatches.length === 1 ? searchMatches[0] : null);
 
   // Total stock counters
   const totalLocal = products.reduce((acc, p) => acc + (p.stockLocal > 0 ? 1 : 0), 0);
@@ -253,15 +269,72 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
     );
   }
 
-  // Case 2: Query matches multiple products
+  // Case 2: Query matches ZERO products in Tienda Local
+  if (cleanQ && searchMatches.length === 0) {
+    return (
+      <div className="flex-1 bg-[#181B20] border border-[#282D37] rounded-3xl p-8 flex flex-col items-center justify-center text-center overflow-y-auto">
+        <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 flex items-center justify-center mb-4">
+          <Warehouse size={32} />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-1">
+          Sin existencias en Tienda Local para "{query}"
+        </h3>
+        <p className="text-xs sm:text-sm text-slate-400 max-w-md mb-6">
+          En esta pantalla solo se muestran perfumes con stock disponible en el mostrador para facturación inmediata.
+        </p>
+
+        {bodegaMatchesCount > 0 ? (
+          <div className="p-5 rounded-2xl bg-[#22262E] border border-blue-500/40 flex flex-col sm:flex-row items-center gap-4 max-w-lg shadow-lg">
+            <div className="text-left flex-1">
+              <p className="text-sm font-bold text-white flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span>
+                <span>{bodegaMatchesCount} {bodegaMatchesCount === 1 ? 'modelo disponible' : 'modelos disponibles'} en Bodegas</span>
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Existen unidades registradas en Bodega Ecuador / USA.
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenCatalog('bodega_ec')}
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition whitespace-nowrap shadow-md active:scale-95"
+            >
+              <Warehouse size={16} />
+              <span>Ver en Bodegas</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onClearSpotlight}
+            className="px-4 py-2 rounded-xl bg-[#22262E] hover:bg-slate-700 text-slate-300 font-bold text-xs transition"
+          >
+            Limpiar búsqueda
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Case 3: Query matches multiple products in Tienda Local
   if (cleanQ && searchMatches.length > 1) {
     return (
       <div className="flex-1 bg-[#181B20] border border-[#282D37] rounded-3xl p-6 flex flex-col overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Sparkles size={18} className="text-amber-400" />
-            Resultados para "{query}" ({searchMatches.length})
-          </h3>
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <Sparkles size={18} className="text-amber-400" />
+              <span>Tienda Local: {searchMatches.length} {searchMatches.length === 1 ? 'resultado' : 'resultados'} para "{query}"</span>
+            </h3>
+            {bodegaMatchesCount > 0 && (
+              <button
+                onClick={() => onOpenCatalog('bodega_ec')}
+                className="px-2.5 py-1 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-semibold hover:bg-blue-500/25 transition flex items-center gap-1.5"
+                title="Ver productos disponibles en Bodegas"
+              >
+                <Warehouse size={13} />
+                <span>+{bodegaMatchesCount} en Bodegas</span>
+              </button>
+            )}
+          </div>
           <button
             onClick={onClearSpotlight}
             className="text-xs text-slate-400 hover:text-white"
@@ -276,6 +349,7 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
               key={p.id}
               className="bg-[#22262E] border border-slate-700/60 rounded-2xl p-4 flex flex-col justify-between hover:border-amber-500/40 transition group"
             >
+              {/* Image */}
               <div className="w-full h-36 rounded-xl bg-[#181B20] p-2 flex items-center justify-center mb-3">
                 <img
                   src={p.imageUrl || '/logo_falconi.png'}
@@ -288,7 +362,7 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
               </div>
 
               <div>
-                <p className="text-[11px] font-bold text-amber-400 uppercase tracking-wider truncate">
+                <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wider truncate">
                   {p.brand}
                 </p>
                 <p className="text-sm font-bold text-white line-clamp-2 leading-tight mb-2">
@@ -297,20 +371,18 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
               </div>
 
               <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between">
-                <p className="text-lg font-black text-amber-400">${p.price.toFixed(2)}</p>
-                {p.stockLocal > 0 ? (
-                  <button
-                    onClick={() => onAdd(p, 1)}
-                    className="p-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold active:scale-95 transition shadow"
-                    title="Agregar al Ticket"
-                  >
-                    <Plus size={16} />
-                  </button>
-                ) : (
-                  <span className="text-[10px] font-bold text-blue-400 bg-blue-950/60 px-2 py-1 rounded-lg border border-blue-800/60">
-                    En Bodega
-                  </span>
-                )}
+                <div>
+                  <p className="text-[10px] text-slate-400 font-semibold">{p.stockLocal} disp.</p>
+                  <p className="text-lg font-black text-amber-400">${p.price.toFixed(2)}</p>
+                </div>
+                <button
+                  onClick={() => onAdd(p, 1)}
+                  className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold active:scale-95 transition shadow flex items-center gap-1 text-xs"
+                  title="Agregar al Ticket"
+                >
+                  <Plus size={15} />
+                  <span>Agregar</span>
+                </button>
               </div>
             </div>
           ))}
@@ -327,7 +399,7 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
         <div className="absolute -inset-4 bg-gradient-to-r from-amber-500/20 via-yellow-600/20 to-amber-500/20 rounded-full blur-2xl opacity-60 group-hover:opacity-100 transition duration-500" />
         <img
           src="/puntodeventa/logo_falconi.png"
-          alt="Falconi Perfumes"
+          alt="Falconi Parfums"
           className="falconi-logo-standby relative w-36 h-36 sm:w-48 sm:h-48 object-contain filter drop-shadow-[0_8px_30px_rgba(212,175,55,0.4)] transition duration-500 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
@@ -339,7 +411,7 @@ export const HomeSpotlightPane: React.FC<HomeSpotlightPaneProps> = ({
       </div>
 
       <h2 className="falconi-title text-3xl sm:text-4xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 uppercase">
-        Falconi Perfumes
+        Falconi Parfums
       </h2>
       <p className="falconi-subtitle text-xs sm:text-sm font-extrabold tracking-widest text-amber-500/80 uppercase mt-1 mb-6">
         Punto de Venta Oficial &bull; iPad Pro Edition

@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import * as crypto from 'crypto';
 import { admin, adminAuth, adminDb, isAdminReady } from '../services/firebaseAdmin';
-import { sendSaleReceiptEmail, getEmailConfigInfo } from '../services/posEmailService';
+import { sendSaleReceiptEmail, sendBroadcastPromoEmail, getEmailConfigInfo } from '../services/posEmailService';
 
 /**
  * API del Punto de Venta Android (Vibe POS).
@@ -909,3 +909,182 @@ posRouter.post('/receipts/:id/close', requirePos, async (req, res) => {
         res.status(e.http || 500).json({ error: e.message });
     }
 });
+
+// ---------------------------------------------------------------------------
+// DIFUSIÓN / PROMOCIONES MASIVAS
+// ---------------------------------------------------------------------------
+// GET /api/pos/broadcast/recipients -> obtiene lista de clientes registrados con email y últimos perfumes con stock local
+posRouter.get('/broadcast/recipients', requirePos, async (req, res) => {
+    try {
+        const settings = await getSettings();
+        const localLoc = settings.location || 'Local Falconi';
+
+        // 1. Clientes registrados con correo
+        const clientsSnap = await db().collection('clients').get();
+        const clientsWithEmail: Array<{ id: string; name: string; email: string; phone?: string }> = [];
+
+        clientsSnap.docs.forEach((doc) => {
+            const d = doc.data() as any;
+            const email = (d.email || '').trim();
+            if (email && email.includes('@')) {
+                const name = [d.nombre, d.apellido].filter(Boolean).join(' ') || d.name || 'Cliente';
+                clientsWithEmail.push({
+                    id: doc.id,
+                    name,
+                    email,
+                    phone: d.telefono || d.phone || '',
+                });
+            }
+        });
+
+        // 2. Perfumes con stock en el local (para sugerir últimos añadidos o promociones)
+        const invSnap = await db().collection('inventory')
+            .where('location', '==', localLoc)
+            .get();
+
+        const productStockMap: Record<string, number> = {};
+        invSnap.docs.forEach((d) => {
+            const data = d.data() as any;
+            const q = Number(data.quantity) || 0;
+            if (data.productId && q > 0) {
+                productStockMap[data.productId] = (productStockMap[data.productId] || 0) + q;
+            }
+        });
+
+        const productIds = Object.keys(productStockMap);
+        let products: any[] = [];
+        if (productIds.length > 0) {
+            const chunks: string[][] = [];
+            for (let i = 0; i < productIds.length; i += 30) {
+                chunks.push(productIds.slice(i, i + 30));
+            }
+            for (const chunk of chunks) {
+                const pSnap = await db().collection('products').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+                pSnap.docs.forEach((doc) => {
+                    const pd = doc.data() as any;
+                    products.push({
+                        id: doc.id,
+                        name: pd.name || 'Perfume',
+                        brand: pd.brand || 'Falconi Parfums',
+                        price: Number(pd[settings.priceField] || pd.salePrice2 || pd.salePrice1 || 0),
+                        imageUrl: pd.imageUrl || pd.image || '',
+                        stockLocal: productStockMap[doc.id] || 0,
+                        updatedAt: pd.updatedAt?.toDate ? pd.updatedAt.toDate().toISOString() : '',
+                    });
+                });
+            }
+        }
+
+        // Ordenar por stock y recent si tienen updatedAt
+        products.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+
+        res.json({
+            success: true,
+            totalRecipients: clientsWithEmail.length,
+            recipients: clientsWithEmail,
+            recentLocalProducts: products,
+        });
+    } catch (e: any) {
+        console.error('Error fetching broadcast recipients:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/pos/broadcast -> envía correo promocional a todos o a los seleccionados
+posRouter.post('/broadcast', requirePos, async (req, res) => {
+    try {
+        const body = req.body || {};
+        const campaignType = body.campaignType || 'new_arrivals';
+        const subject = String(body.subject || '').trim();
+        const headline = String(body.headline || '').trim();
+        const messageText = String(body.messageText || '').trim();
+        const discountBadge = body.discountBadge ? String(body.discountBadge).trim() : undefined;
+        const productsList = Array.isArray(body.products) ? body.products : [];
+
+        if (!subject) return res.status(400).json({ error: 'El asunto del correo es obligatorio' });
+        if (!headline) return res.status(400).json({ error: 'El titular de la campaña es obligatorio' });
+
+        // Obtener clientes con email (o si se pasaron destinatarios específicos)
+        let recipients: Array<{ name: string; email: string }> = [];
+        if (Array.isArray(body.recipients) && body.recipients.length > 0) {
+            recipients = body.recipients.filter((r: any) => r.email && r.email.includes('@'));
+        } else {
+            const clientsSnap = await db().collection('clients').get();
+            clientsSnap.docs.forEach((doc) => {
+                const d = doc.data() as any;
+                const email = (d.email || '').trim();
+                if (email && email.includes('@')) {
+                    const name = [d.nombre, d.apellido].filter(Boolean).join(' ') || d.name || 'Cliente';
+                    recipients.push({ name, email });
+                }
+            });
+        }
+
+        if (recipients.length === 0) {
+            return res.status(400).json({ error: 'No hay clientes registrados con correo electrónico válido' });
+        }
+
+        const settings = await getSettings();
+
+        let sentCount = 0;
+        let failedCount = 0;
+        const errors: string[] = [];
+
+        for (const recipient of recipients) {
+            try {
+                const result = await sendBroadcastPromoEmail({
+                    toEmail: recipient.email,
+                    customerName: recipient.name,
+                    campaignType,
+                    subject,
+                    headline,
+                    messageText,
+                    discountBadge,
+                    products: productsList,
+                    storeLocation: settings.location || 'Local Falconi',
+                });
+
+                if (result.success) {
+                    sentCount++;
+                } else {
+                    failedCount++;
+                    errors.push(`${recipient.email}: ${result.message}`);
+                }
+            } catch (err: any) {
+                failedCount++;
+                errors.push(`${recipient.email}: ${err.message}`);
+            }
+
+            // Pequeña pausa entre envíos
+            await new Promise((r) => setTimeout(r, 150));
+        }
+
+        // Registrar en auditoría
+        const pos = (req as any).pos as PosUser;
+        if (pos) {
+            await appendAudit(null, null, {
+                type: 'PROMO_BROADCAST_SENT',
+                staffId: pos.staffId,
+                data: {
+                    campaignType,
+                    subject,
+                    totalRecipients: recipients.length,
+                    sentCount,
+                    failedCount,
+                },
+            });
+        }
+
+        res.json({
+            success: true,
+            totalRecipients: recipients.length,
+            sentCount,
+            failedCount,
+            errors: errors.slice(0, 5),
+        });
+    } catch (e: any) {
+        console.error('Error in broadcast sending:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+

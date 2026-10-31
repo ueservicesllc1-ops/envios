@@ -4,7 +4,7 @@ export interface Staff {
   role: 'advisor' | 'manager' | 'owner' | string;
 }
 
-export type PosLocationId = 'local' | 'bodega_ec' | 'bodega_usa';
+export type PosLocationId = 'local' | 'todas_bodegas' | 'bodega_ec' | 'bodega_usa';
 
 export interface PosLocation {
   id: PosLocationId;
@@ -13,6 +13,7 @@ export interface PosLocation {
 
 export const POS_LOCATIONS: Record<PosLocationId, PosLocation> = {
   local: { id: 'local', label: 'Tienda Local' },
+  todas_bodegas: { id: 'todas_bodegas', label: 'Todas las Bodegas' },
   bodega_ec: { id: 'bodega_ec', label: 'Bodega Ecuador' },
   bodega_usa: { id: 'bodega_usa', label: 'Bodega USA' },
 };

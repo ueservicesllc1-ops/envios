@@ -54,7 +54,8 @@ body {
 }
 
 /* ==========================================================================
-   MODO CLARO (LIGHT MODE) - Paleta de Lujo Falconi: Marfil Cálido, Blanco y Oro
+   MODO CLARO (LIGHT MODE) - Paleta de Lujo Falconi: Marfil Cálido, Blanco y Oro Bronce
+   Alto Contraste y Legibilidad Absoluta para iPad Pro y Pantallas Táctiles
    ========================================================================== */
 .theme-light {
   color-scheme: light;
@@ -62,6 +63,7 @@ body {
   color: #0F172A !important;
 }
 
+/* Fondos Generales */
 .theme-light .bg-\[\#0F1115\] {
   background-color: #F5F2EB !important;
 }
@@ -72,46 +74,220 @@ body {
 
 .theme-light .bg-\[\#181B20\]\/95,
 .theme-light .bg-\[\#181B20\]\/90 {
-  background-color: rgba(255, 255, 255, 0.96) !important;
+  background-color: rgba(255, 255, 255, 0.98) !important;
 }
 
 .theme-light .bg-\[\#22262E\] {
-  background-color: #F2EFE9 !important;
+  background-color: #EDE8DE !important;
 }
 
 .theme-light .bg-\[\#22262E\]\/70,
 .theme-light .bg-\[\#22262E\]\/60,
 .theme-light .bg-\[\#22262E\]\/40 {
-  background-color: #F7F5F0 !important;
+  background-color: #F5F2EB !important;
 }
 
-.theme-light .text-white {
-  color: #0F172A !important;
-}
-
-.theme-light .text-slate-200,
-.theme-light .text-slate-300 {
-  color: #1E293B !important;
-}
-
-.theme-light .text-slate-400 {
-  color: #64748B !important;
-}
-
-.theme-light .text-slate-500 {
-  color: #94A3B8 !important;
-}
-
+/* Bordes nítidos y elegantes */
 .theme-light .border-\[\#282D37\],
 .theme-light .border-slate-700,
 .theme-light .border-slate-700\/80,
 .theme-light .border-slate-700\/60,
+.theme-light .border-slate-700\/50,
 .theme-light .border-slate-800,
 .theme-light .border-slate-800\/80,
 .theme-light .border-slate-800\/60 {
-  border-color: #E2DCD2 !important;
+  border-color: #D6CFC3 !important;
 }
 
+/* Botones de acción pequeña (numpad, plus/minus, etc.) */
+.theme-light :not(.pos-sidebar-pane) .bg-slate-800,
+.theme-light :not(.pos-sidebar-pane) .bg-slate-800\/80 {
+  background-color: #E2DCD2 !important;
+  color: #0F172A !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+.theme-light :not(.pos-sidebar-pane) .bg-slate-800:hover,
+.theme-light :not(.pos-sidebar-pane) .bg-slate-800\/80:hover {
+  background-color: #D6CFC3 !important;
+}
+
+/* --------------------------------------------------------------------------
+   1. CONTRASTE DE TEXTO: Adiós letras blancas en fondos claros
+   -------------------------------------------------------------------------- */
+.theme-light :not(.pos-sidebar-pane) .text-white,
+.theme-light :not(.pos-sidebar-pane) h1.text-white,
+.theme-light :not(.pos-sidebar-pane) h2.text-white,
+.theme-light :not(.pos-sidebar-pane) h3.text-white,
+.theme-light :not(.pos-sidebar-pane) h4.text-white,
+.theme-light :not(.pos-sidebar-pane) p.text-white,
+.theme-light :not(.pos-sidebar-pane) span.text-white {
+  color: #0F172A !important;
+}
+
+.theme-light :not(.pos-sidebar-pane) .text-slate-100,
+.theme-light :not(.pos-sidebar-pane) .text-slate-200,
+.theme-light :not(.pos-sidebar-pane) .text-slate-300 {
+  color: #1E293B !important;
+}
+
+.theme-light :not(.pos-sidebar-pane) .text-slate-400 {
+  color: #475569 !important;
+}
+
+.theme-light :not(.pos-sidebar-pane) .text-slate-500 {
+  color: #64748B !important;
+}
+
+.theme-light :not(.pos-sidebar-pane) .text-slate-600 {
+  color: #475569 !important;
+}
+
+.theme-light :not(.pos-sidebar-pane) .hover\:text-white:hover {
+  color: #0F172A !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. CONTRASTE DE DORADOS Y TONOS CREMA: Oro Bronce de Alto Contraste (#784909 y #8C6218)
+   -------------------------------------------------------------------------- */
+.theme-light :not(.pos-sidebar-pane) .text-amber-200,
+.theme-light :not(.pos-sidebar-pane) .text-amber-300,
+.theme-light :not(.pos-sidebar-pane) .text-yellow-200,
+.theme-light :not(.pos-sidebar-pane) .text-yellow-300 {
+  color: #8C6218 !important;
+  font-weight: 700 !important;
+}
+
+.theme-light :not(.pos-sidebar-pane) .text-amber-400,
+.theme-light :not(.pos-sidebar-pane) .text-amber-500,
+.theme-light :not(.pos-sidebar-pane) .text-yellow-400,
+.theme-light :not(.pos-sidebar-pane) .text-yellow-500,
+.theme-light :not(.pos-sidebar-pane) .text-yellow-600 {
+  color: #784909 !important;
+}
+
+/* Íconos dorados en modo claro */
+.theme-light :not(.pos-sidebar-pane) svg.text-amber-400,
+.theme-light :not(.pos-sidebar-pane) svg.text-amber-300,
+.theme-light :not(.pos-sidebar-pane) svg.text-amber-500 {
+  color: #784909 !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. PASTILLAS Y BADGES (Stock, Ubicaciones, Alertas)
+   -------------------------------------------------------------------------- */
+/* Pastilla Ámbar / Crema */
+.theme-light :not(.pos-sidebar-pane) .bg-amber-500\/10,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-500\/15,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-500\/20,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-950\/20,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-950\/30,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-950\/80 {
+  background-color: #FEF3C7 !important;
+  border-color: #F59E0B !important;
+  color: #78350F !important;
+}
+.theme-light :not(.pos-sidebar-pane) .bg-amber-500\/10 *,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-500\/15 *,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-500\/20 *,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-950\/20 *,
+.theme-light :not(.pos-sidebar-pane) .bg-amber-950\/80 * {
+  color: #78350F !important;
+}
+
+/* Pastilla Verde Esmeralda (Stock Local disponible) */
+.theme-light :not(.pos-sidebar-pane) .bg-emerald-950\/80,
+.theme-light :not(.pos-sidebar-pane) .bg-emerald-950\/30,
+.theme-light :not(.pos-sidebar-pane) .bg-emerald-500\/10,
+.theme-light :not(.pos-sidebar-pane) .bg-emerald-500\/20 {
+  background-color: #ECFDF5 !important;
+  border-color: #6EE7B7 !important;
+  color: #065F46 !important;
+}
+.theme-light :not(.pos-sidebar-pane) .bg-emerald-950\/80 *,
+.theme-light :not(.pos-sidebar-pane) .bg-emerald-950\/30 * {
+  color: #065F46 !important;
+}
+.theme-light :not(.pos-sidebar-pane) .text-emerald-300,
+.theme-light :not(.pos-sidebar-pane) .text-emerald-400 {
+  color: #065F46 !important;
+}
+
+/* Pastilla Azul (Bodega Ecuador) */
+.theme-light :not(.pos-sidebar-pane) .bg-blue-950\/80,
+.theme-light :not(.pos-sidebar-pane) .bg-blue-950\/60,
+.theme-light :not(.pos-sidebar-pane) .bg-blue-950\/30,
+.theme-light :not(.pos-sidebar-pane) .bg-blue-500\/10 {
+  background-color: #EFF6FF !important;
+  border-color: #93C5FD !important;
+  color: #1E40AF !important;
+}
+.theme-light :not(.pos-sidebar-pane) .bg-blue-950\/80 *,
+.theme-light :not(.pos-sidebar-pane) .bg-blue-950\/30 * {
+  color: #1E40AF !important;
+}
+.theme-light :not(.pos-sidebar-pane) .text-blue-300,
+.theme-light :not(.pos-sidebar-pane) .text-blue-400 {
+  color: #1E40AF !important;
+}
+
+/* Pastilla Morada (Bodega USA) */
+.theme-light :not(.pos-sidebar-pane) .bg-purple-950\/30,
+.theme-light :not(.pos-sidebar-pane) .bg-purple-500\/10 {
+  background-color: #FAF5FF !important;
+  border-color: #D8B4FE !important;
+  color: #6B21A8 !important;
+}
+.theme-light :not(.pos-sidebar-pane) .bg-purple-950\/30 * {
+  color: #6B21A8 !important;
+}
+.theme-light :not(.pos-sidebar-pane) .text-purple-300,
+.theme-light :not(.pos-sidebar-pane) .text-purple-400 {
+  color: #6B21A8 !important;
+}
+
+/* Pastilla Roja (Sin Stock / Errores) */
+.theme-light :not(.pos-sidebar-pane) .bg-red-950\/80,
+.theme-light :not(.pos-sidebar-pane) .bg-red-950\/40,
+.theme-light :not(.pos-sidebar-pane) .bg-red-500\/10 {
+  background-color: #FEF2F2 !important;
+  border-color: #FCA5A5 !important;
+  color: #991B1B !important;
+}
+.theme-light :not(.pos-sidebar-pane) .bg-red-950\/80 *,
+.theme-light :not(.pos-sidebar-pane) .bg-red-950\/40 * {
+  color: #991B1B !important;
+}
+.theme-light :not(.pos-sidebar-pane) .text-red-300,
+.theme-light :not(.pos-sidebar-pane) .text-red-400 {
+  color: #991B1B !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. CHIPS DE MARCAS (En Catálogo)
+   -------------------------------------------------------------------------- */
+.theme-light .border-amber-500.text-amber-300 {
+  background-color: #784909 !important;
+  border-color: #784909 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(120, 73, 9, 0.25) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. BOTONES PRIMARIOS DORADOS (Mantener texto oscuro nítido)
+   -------------------------------------------------------------------------- */
+.theme-light .bg-amber-500,
+.theme-light .bg-gradient-to-r.from-amber-500 {
+  color: #0F172A !important;
+}
+.theme-light .bg-amber-500 *,
+.theme-light .bg-gradient-to-r.from-amber-500 * {
+  color: #0F172A !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. CAMPOS DE TEXTO E INPUTS
+   -------------------------------------------------------------------------- */
 .theme-light input,
 .theme-light textarea {
   background-color: #FFFFFF !important;
@@ -121,61 +297,77 @@ body {
 
 .theme-light input::placeholder,
 .theme-light textarea::placeholder {
-  color: #94A3B8 !important;
+  color: #64748B !important;
 }
 
+/* --------------------------------------------------------------------------
+   7. HOVERS
+   -------------------------------------------------------------------------- */
 .theme-light .hover\:bg-\[\#22262E\]:hover,
 .theme-light .hover\:bg-\[\#2b303a\]:hover,
 .theme-light .hover\:bg-slate-700:hover {
-  background-color: #E8E2D6 !important;
+  background-color: #E2DCD2 !important;
 }
 
-.theme-light .hover\:text-white:hover {
-  color: #0F172A !important;
-}
-
-/* Excepción intencional: Barra Lateral siempre en Charcoal Oscuro Elegante (#141518) como en pos-android Theme.kt */
-.theme-light aside {
+/* --------------------------------------------------------------------------
+   8. BARRA LATERAL (pos-sidebar-pane): Charcoal Oscuro de Lujo (#141518)
+   -------------------------------------------------------------------------- */
+.theme-light .pos-sidebar-pane {
   background-color: #141518 !important;
   border-color: #282D37 !important;
 }
 
-.theme-light aside .text-white {
+.theme-light .pos-sidebar-pane .text-white {
   color: #FFFFFF !important;
 }
 
-.theme-light aside .text-slate-400 {
+.theme-light .pos-sidebar-pane .text-slate-400 {
   color: #94A3B8 !important;
 }
 
-.theme-light aside .bg-\[\#181B20\] {
+.theme-light .pos-sidebar-pane .text-amber-400,
+.theme-light .pos-sidebar-pane .text-amber-500 {
+  color: #F59E0B !important;
+}
+
+.theme-light .pos-sidebar-pane svg.text-amber-400 {
+  color: #F59E0B !important;
+}
+
+.theme-light .pos-sidebar-pane .bg-\[\#181B20\] {
   background-color: #1E2229 !important;
 }
 
-.theme-light aside .border-\[\#282D37\] {
+.theme-light .pos-sidebar-pane .border-\[\#282D37\],
+.theme-light .pos-sidebar-pane .border-slate-800 {
   border-color: #282D37 !important;
 }
 
-/* ==========================================================================
-   FILTRO NEGRO ELEGANTE PARA EL LOGO FALCONI EN MODO CLARO
-   ========================================================================== */
-.theme-light .falconi-logo-standby {
-  filter: brightness(0) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.18)) !important;
-  opacity: 0.92;
-}
-
+/* --------------------------------------------------------------------------
+   9. LOGO FALCONI Y TÍTULOS EN MODO CLARO
+   -------------------------------------------------------------------------- */
+.theme-light .falconi-logo-standby,
 .theme-light .falconi-logo-login {
-  filter: brightness(0) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.18)) !important;
-  opacity: 0.92;
+  filter: brightness(0) drop-shadow(0 4px 14px rgba(0, 0, 0, 0.22)) !important;
+  opacity: 0.95;
 }
 
 .theme-light .falconi-title {
   background: none !important;
   -webkit-background-clip: unset !important;
   color: #0F172A !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  text-shadow: none !important;
 }
 
 .theme-light .falconi-subtitle {
-  color: #946E26 !important;
+  color: #784909 !important;
+  font-weight: 800 !important;
+}
+
+/* --------------------------------------------------------------------------
+   10. MODALES (Fondo semitransparente oscuro y tarjeta blanca impecable)
+   -------------------------------------------------------------------------- */
+.theme-light .fixed.inset-0.bg-black\/80,
+.theme-light .fixed.inset-0.bg-black\/85 {
+  background-color: rgba(15, 23, 42, 0.65) !important;
 }
