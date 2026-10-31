@@ -21,6 +21,7 @@ import {
   Sparkles,
   RefreshCw,
   AlertCircle,
+  Smartphone,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -60,9 +61,30 @@ export const CheckoutDialog: React.FC<CheckoutDialogProps> = ({
   const [customerName, setCustomerName] = useState(
     assignedClient ? assignedClient.fullName : 'Consumidor Final'
   );
+  const [payphoneLaunched, setPayphoneLaunched] = useState(false);
+  const [showManualVoucher, setShowManualVoucher] = useState(false);
 
   const discountAmount = subtotal * (discountPct / 100);
   const total = Math.max(0, subtotal - discountAmount);
+
+  const handleLaunchPayphoneTap = () => {
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(total.toFixed(2));
+      }
+    } catch (_) {}
+
+    const autoRef = `PAYPHONE-TAP-${Date.now().toString().slice(-6)}`;
+    setReference(autoRef);
+    setPayphoneLaunched(true);
+
+    const intentUrl = 'intent://#Intent;package=com.payphone.personal;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end';
+    try {
+      window.location.href = intentUrl;
+    } catch (_) {
+      window.open('https://play.google.com/store/apps/details?id=com.payphone.personal', '_blank');
+    }
+  };
 
   const cash = parseFloat(cashText) || 0;
   const card = parseFloat(cardText) || 0;
@@ -379,18 +401,104 @@ export const CheckoutDialog: React.FC<CheckoutDialogProps> = ({
                   </div>
                 )}
 
-                {/* Card or Transfer Method UI */}
-                {(method === 'card' || method === 'transfer') && (
+                {/* Card Method UI (Payphone TAP Contactless) */}
+                {method === 'card' && (
+                  <div className="p-5 rounded-2xl bg-[#22262E] border border-orange-500/40 space-y-4 shadow-xl shadow-orange-500/5">
+                    {/* Header Payphone TAP */}
+                    <div className="flex items-center justify-between border-b border-slate-700/80 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-slate-950 shadow-md shadow-orange-500/25">
+                          <Smartphone size={22} className="stroke-[2.5]" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-black text-white tracking-wide block">
+                            Payphone TAP (Contactless NFC)
+                          </span>
+                          <span className="text-[10px] text-orange-400 font-bold uppercase tracking-wider">
+                            El cliente acerca la tarjeta a la tablet
+                          </span>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                        SIN DICTAR DATOS
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      El cliente <strong>acerca su tarjeta física Visa o Mastercard</strong> a la parte posterior de esta tablet. No requiere dictar números ni ingresar clave.
+                    </p>
+
+                    {/* Botón principal para abrir Payphone TAP */}
+                    <button
+                      type="button"
+                      onClick={handleLaunchPayphoneTap}
+                      className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:brightness-110 active:scale-[0.98] text-slate-950 font-black text-sm sm:text-base flex items-center justify-center gap-2.5 shadow-xl shadow-orange-500/25 transition cursor-pointer"
+                    >
+                      <Smartphone size={22} className="text-slate-950" />
+                      <span>📲 Abrir Payphone TAP (${total.toFixed(2)})</span>
+                    </button>
+
+                    {/* Estado o confirmación */}
+                    {payphoneLaunched && (
+                      <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                          <span>
+                            Monto listo ($<strong>{total.toFixed(2)}</strong>) &bull; Ref:{' '}
+                            <strong className="font-mono text-white">{reference}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Referencia / Voucher opcional */}
+                    <div className="pt-2 border-t border-slate-700/60">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[11px] font-semibold text-slate-400">
+                          Nº de Referencia / Voucher:
+                        </label>
+                        {!showManualVoucher && (
+                          <button
+                            type="button"
+                            onClick={() => setShowManualVoucher(true)}
+                            className="text-[10px] text-amber-400 hover:underline"
+                          >
+                            ¿Cobraste con otro datáfono? Editar voucher
+                          </button>
+                        )}
+                      </div>
+                      {showManualVoucher ? (
+                        <input
+                          type="text"
+                          value={reference}
+                          onChange={(e) => setReference(e.target.value)}
+                          placeholder="Ej: PAYPHONE-TAP-482910 o voucher de datáfono"
+                          className="w-full h-10 px-3.5 rounded-xl bg-[#181B20] border border-slate-700 text-white text-xs focus:outline-none focus:border-amber-400 font-mono"
+                        />
+                      ) : (
+                        <div className="px-3.5 py-2.5 rounded-xl bg-[#181B20] border border-slate-800 text-xs text-slate-300 font-mono flex items-center justify-between">
+                          <span>{reference || 'Se generará automáticamente al pulsar Abrir Payphone'}</span>
+                          {reference && (
+                            <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                              ✓ Listo
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Transfer Method UI */}
+                {method === 'transfer' && (
                   <div className="p-5 rounded-2xl bg-[#22262E] border border-slate-700 space-y-4">
                     <p className="text-xs text-slate-300">
-                      {method === 'card'
-                        ? 'Cobra el valor en el datáfono y registra el número de voucher/aprobación.'
-                        : 'Verifica el comprobante bancario antes de confirmar la venta.'}
+                      Verifica el comprobante bancario (DeUna, Banco Pichincha, etc.) antes de confirmar la venta.
                     </p>
 
                     <div>
                       <label className="text-xs font-semibold text-slate-400 block mb-1">
-                        Nº de referencia / voucher:
+                        Nº de comprobante / transferencia:
                       </label>
                       <input
                         type="text"

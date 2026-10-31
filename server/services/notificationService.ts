@@ -1,26 +1,4 @@
-import * as admin from 'firebase-admin';
-
-// Inicializar Firebase Admin
-// Se asume que las credenciales están configuradas en las variables de entorno de Railway
-// o que se proporciona un archivo serviceAccount.json
-try {
-    if (!admin.apps.length) {
-        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-            ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-            : null;
-
-        if (serviceAccount) {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
-            });
-            console.log('✅ Firebase Admin inicializado correctamente');
-        } else {
-            console.warn('⚠️ No se encontró FIREBASE_SERVICE_ACCOUNT. Las notificaciones push no funcionarán.');
-        }
-    }
-} catch (error) {
-    console.error('❌ Error inicializando Firebase Admin:', error);
-}
+import { admin } from './firebaseAdmin';
 
 export const notificationService = {
     /**

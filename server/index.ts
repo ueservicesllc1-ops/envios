@@ -9,7 +9,7 @@ import { posRouter } from './routes/pos';
 import { perfumeAdvisorRouter } from './routes/perfumeAdvisor';
 
 const app = express();
-const PORT = Number(process.env.PORT) || Number(process.env.SERVER_PORT) || 3000;
+const PORT = process.env.RAILWAY_ENVIRONMENT ? (Number(process.env.PORT) || 5000) : (Number(process.env.SERVER_PORT) || 5000);
 
 // Dominios permitidos
 const defaultDomains = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'http://192.168.1.240:5000', 'http://192.168.1.240:3000', 'https://localhost', 'capacitor://localhost'];
@@ -411,25 +411,86 @@ app.get('/puntodeventa/*', (req, res) => {
 app.get('/pos', (req, res) => res.redirect('/puntodeventa'));
 app.get('/punto-de-venta', (req, res) => res.redirect('/puntodeventa'));
 
-// Servir archivos estáticos de React en producción
-if (process.env.NODE_ENV === 'production') {
-  // Servir archivos estáticos del build
-  app.use(express.static(path.join(__dirname, '../build')));
+// Servir archivos estáticos de React (build)
+const fs = require('fs');
+const buildPath = path.join(__dirname, '../build');
 
-  // Todas las rutas que no sean API sirven el index.html
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../build', 'index.html'));
+if (fs.existsSync(buildPath)) {
+  // Servir estáticos de React (/static/js, /static/css, logos, favicon, etc.)
+  app.use(express.static(buildPath));
+
+  // SPA fallback para rutas web (dashboard, inventario, etc.) preservando APIs y subapps
+  app.get('*', (req, res, next) => {
+    if (
+      req.path.startsWith('/api/') ||
+      req.path.startsWith('/puntodeventa') ||
+      req.path.startsWith('/catalogoasesor') ||
+      req.path === '/health'
+    ) {
+      return next();
+    }
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+} else {
+  // Fallback si no existe la carpeta build
+  app.get('/', (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Falcon Express / Envíos Server</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #0b1120; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box;">
+          <div style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #22c55e;"></div>
+              <h2 style="margin: 0; font-size: 20px; color: #38bdf8;">Servidor Envíos Activo</h2>
+            </div>
+            <p style="color: #94a3b8; font-size: 14px; margin: 0 0 24px 0; line-height: 1.5;">El servidor backend está operativo en los puertos configurados.</p>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <a href="/puntodeventa" style="display: block; padding: 12px 16px; background: #0284c7; color: white; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center;">📱 Punto de Venta (POS)</a>
+              <a href="/catalogoasesor" style="display: block; padding: 12px 16px; background: #334155; color: #f8fafc; border-radius: 10px; text-decoration: none; font-weight: 600; text-align: center;">🧴 Catálogo Asesores</a>
+              <a href="/health" style="display: block; padding: 10px 16px; color: #94a3b8; text-decoration: none; font-size: 13px; text-align: center;">🩺 Health Check</a>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+const mainServer = app.listen(PORT, () => {
+  console.log(`🚀 Servidor principal corriendo en puerto ${PORT}`);
   console.log(`📸 Proxy de imágenes: http://localhost:${PORT}/api/b2/image`);
   console.log(`🛍️  Importación: http://localhost:${PORT}/api/shopify/import`);
+  console.log(`📱 Punto de Venta: http://localhost:${PORT}/puntodeventa`);
+  console.log(`🧴 Catálogo Asesores: http://localhost:${PORT}/catalogoasesor`);
   if (process.env.NODE_ENV === 'production') {
     console.log(`🌐 Frontend React servido desde /build`);
   }
 });
+
+// En desarrollo local, habilitar también puerto 3000 para POS y Catálogo si está libre
+if (!process.env.RAILWAY_ENVIRONMENT && PORT !== 3000) {
+  try {
+    const secondaryPort = 3000;
+    const secondaryServer = app.listen(secondaryPort, () => {
+      console.log(`🌐 Servidor secundario también activo en puerto ${secondaryPort} (http://localhost:${secondaryPort}/puntodeventa)`);
+    });
+    secondaryServer.on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`ℹ️ Puerto ${secondaryPort} en uso por frontend React o dev server, backend activo en puerto ${PORT}`);
+      } else {
+        console.warn(`Aviso puerto ${secondaryPort}:`, err.message);
+      }
+    });
+  } catch (err) {
+    // ignorar error en puerto secundario
+  }
+}
+
 
 
 

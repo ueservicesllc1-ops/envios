@@ -1,5 +1,5 @@
-:HL["/_next/static/chunks/02adfp_0t_ywu.css","style"]
+:HL["/_next/static/chunks/1v75piuwjs5pp.css","style"]
 :HL["https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap","style"]
 2:[["children",{"s":"__PAGE__","h":160}]]
 1:[["children",{"s":"/_not-found","h":96,"c":"$Q2"}]]
-0:{"b":"Ke5oHSVQfXXnHGZO9Iqnu","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"8QLNfbgu1tE7bsDCF6RhI","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
