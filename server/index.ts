@@ -9,7 +9,7 @@ import { posRouter } from './routes/pos';
 import { perfumeAdvisorRouter } from './routes/perfumeAdvisor';
 
 const app = express();
-const PORT = process.env.RAILWAY_ENVIRONMENT ? (Number(process.env.PORT) || 5000) : (Number(process.env.SERVER_PORT) || 5000);
+const PORT = Number(process.env.PORT) || Number(process.env.SERVER_PORT) || 3000;
 
 // Dominios permitidos
 const defaultDomains = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'http://192.168.1.240:5000', 'http://192.168.1.240:3000', 'https://localhost', 'capacitor://localhost'];

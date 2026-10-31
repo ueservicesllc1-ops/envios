@@ -1,0 +1,63 @@
+{
+  "id": "/catalogoasesor/",
+  "name": "Falconi Perfumes • Asesor",
+  "short_name": "Falconi Asesor",
+  "description": "Catálogo inteligente de perfumes, dupes, pirámide olfativa e inventario en tiempo real para asesores de venta.",
+  "start_url": "/catalogoasesor/",
+  "scope": "/catalogoasesor/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "lang": "es-EC",
+  "categories": ["business", "shopping", "lifestyle"],
+  "icons": [
+    {
+      "src": "/catalogoasesor/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/catalogoasesor/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/catalogoasesor/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/catalogoasesor/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/catalogoasesor/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Catálogo Completo",
+      "url": "/catalogoasesor/",
+      "icons": [{ "src": "/catalogoasesor/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Buscar Fragancia",
+      "url": "/catalogoasesor/?tab=buscar",
+      "icons": [{ "src": "/catalogoasesor/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Escanear Código",
+      "url": "/catalogoasesor/?tab=escanear",
+      "icons": [{ "src": "/catalogoasesor/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

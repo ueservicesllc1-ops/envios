@@ -29,8 +29,10 @@ export const posAuth = getAuth(app);
 class PosApiClient {
   private baseUrls = [
     '/api/pos',
+    'http://127.0.0.1:3000/api/pos',
+    'http://localhost:3000/api/pos',
     'http://127.0.0.1:5000/api/pos',
-    'http://192.168.1.240:5000/api/pos',
+    'http://192.168.1.240:3000/api/pos',
   ];
 
   private async getIdToken(): Promise<string | null> {
