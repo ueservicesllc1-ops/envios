@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { PackageCheck, Search, Plus, Minus, Send, X, Loader2, Eye, Printer, Download, CheckCircle2, Package, Clock } from 'lucide-react';
+import { PackageCheck, Search, Plus, Minus, Send, X, Loader2, Eye, Printer, Download, CheckCircle2, Package, Clock, Pencil } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { inventoryService } from '../services/inventoryService';
@@ -31,6 +31,7 @@ const LocalReceipts: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<LocalReceipt | null>(null);
   const [modalSearch, setModalSearch] = useState('');
+  const [editingReceipt, setEditingReceipt] = useState<LocalReceipt | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -71,13 +72,54 @@ const LocalReceipts: React.FC = () => {
   }, [stock, search]);
 
   const setQty = (s: EcuadorStock, qty: number) => {
-    const q = Math.max(0, Math.min(s.available, qty));
+    const maxQty = editingReceipt ? Math.max(s.available, 9999) : s.available;
+    const q = Math.max(0, Math.min(maxQty, qty));
     setCart(prev => {
       const next = { ...prev };
       if (q === 0) delete next[s.productId];
       else next[s.productId] = q;
       return next;
     });
+  };
+
+  const startEdit = (r: LocalReceipt) => {
+    setEditingReceipt(r);
+    setNotes(r.notes || '');
+
+    const newCart: Record<string, number> = {};
+    (r.items || []).forEach(it => {
+      newCart[it.productId] = it.expectedQty || 0;
+    });
+    setCart(newCart);
+
+    // Asegurarse de que todos los productos de la nota aparezcan en la lista de stock
+    setStock(prev => {
+      const map = new Map(prev.map(s => [s.productId, { ...s }]));
+      (r.items || []).forEach(it => {
+        const existing = map.get(it.productId);
+        if (existing) {
+          existing.available = Math.max(existing.available, it.expectedQty || 0);
+        } else {
+          map.set(it.productId, {
+            productId: it.productId,
+            name: it.name,
+            barcode: it.barcode,
+            imageUrl: it.imageUrl,
+            available: it.expectedQty || 0
+          });
+        }
+      });
+      return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    setSelectedReceipt(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingReceipt(null);
+    setCart({});
+    setNotes('');
   };
 
   const cartItems = stock.filter(s => cart[s.productId]);
@@ -87,16 +129,20 @@ const LocalReceipts: React.FC = () => {
     if (!cartItems.length) return;
     setSaving(true);
     try {
-      await localReceiptService.create(
-        cartItems.map(s => ({
-          productId: s.productId,
-          name: s.name,
-          barcode: s.barcode,
-          imageUrl: s.imageUrl,
-          quantity: cart[s.productId]
-        })),
-        notes
-      );
+      const payload = cartItems.map(s => ({
+        productId: s.productId,
+        name: s.name,
+        barcode: s.barcode,
+        imageUrl: s.imageUrl,
+        quantity: cart[s.productId]
+      }));
+
+      if (editingReceipt) {
+        await localReceiptService.update(editingReceipt, payload, notes);
+        setEditingReceipt(null);
+      } else {
+        await localReceiptService.create(payload, notes);
+      }
       setCart({});
       setNotes('');
       await load();
@@ -274,7 +320,27 @@ const LocalReceipts: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-lg shadow p-4 h-fit">
-          <h2 className="font-semibold mb-3">Nota de ingreso</h2>
+          {editingReceipt ? (
+            <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wide text-amber-800 flex items-center gap-1">
+                  <Pencil size={13} /> Editando nota
+                </span>
+                <button
+                  onClick={cancelEdit}
+                  className="text-xs text-amber-700 hover:text-amber-900 underline font-medium"
+                >
+                  Cancelar
+                </button>
+              </div>
+              <p className="font-bold text-gray-900 mt-1">{editingReceipt.number}</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Modifica cantidades, quita o añade perfumes. Al guardar, se actualizará la nota.
+              </p>
+            </div>
+          ) : (
+            <h2 className="font-semibold mb-3">Nota de ingreso</h2>
+          )}
           {cartItems.length === 0 ? (
             <p className="text-sm text-gray-400">Agrega perfumes de la lista.</p>
           ) : (
@@ -300,11 +366,27 @@ const LocalReceipts: React.FC = () => {
           <button
             disabled={!cartItems.length || saving}
             onClick={submit}
-            className="w-full flex items-center justify-center gap-2 bg-primary-600 text-white py-2 rounded-lg disabled:opacity-50"
+            className={`w-full flex items-center justify-center gap-2 text-white py-2 rounded-lg font-medium disabled:opacity-50 transition ${
+              editingReceipt ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary-600 hover:bg-primary-700'
+            }`}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Enviar al local ({totalUnits} uds)
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : editingReceipt ? (
+              <Pencil className="h-4 w-4" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            {editingReceipt ? `Guardar cambios (${totalUnits} uds)` : `Enviar al local (${totalUnits} uds)`}
           </button>
+          {editingReceipt && (
+            <button
+              onClick={cancelEdit}
+              className="w-full mt-2 py-1.5 text-xs text-gray-600 hover:text-gray-800 border rounded-lg transition"
+            >
+              Cancelar edición
+            </button>
+          )}
         </div>
       </div>
 
@@ -367,6 +449,15 @@ const LocalReceipts: React.FC = () => {
                     </td>
                     <td className="px-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {(r.status === 'pending' || r.status === 'partial') && (
+                          <button
+                            onClick={() => startEdit(r)}
+                            className="px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-md flex items-center gap-1 transition"
+                            title="Editar perfumes o cantidades de la nota"
+                          >
+                            <Pencil size={13} /> Editar
+                          </button>
+                        )}
                         <button
                           onClick={() => { setSelectedReceipt(r); setModalSearch(''); }}
                           className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center gap-1 transition"
@@ -434,6 +525,14 @@ const LocalReceipts: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                {(selectedReceipt.status === 'pending' || selectedReceipt.status === 'partial') && (
+                  <button
+                    onClick={() => startEdit(selectedReceipt)}
+                    className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold flex items-center gap-1.5 shadow-sm transition"
+                  >
+                    <Pencil size={16} /> Editar nota
+                  </button>
+                )}
                 <button
                   onClick={() => printReceiptPdf(selectedReceipt)}
                   className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold flex items-center gap-1.5 shadow-sm transition"

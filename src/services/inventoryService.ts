@@ -309,7 +309,14 @@ export const inventoryService = {
       let existingItem: InventoryItem | null = null;
 
       if (location) {
-        existingItem = await this.getByProductIdAndLocation(productId, location);
+        // Puede haber varios registros del mismo producto en la misma ubicación:
+        // elegir el que realmente tiene stock suficiente.
+        const all = await this.getStockByProduct(productId);
+        const atLocation = all.filter(i => i.location === location);
+        existingItem =
+          atLocation.find(i => (i.quantity || 0) >= quantity) ||
+          atLocation.sort((a, b) => (b.quantity || 0) - (a.quantity || 0))[0] ||
+          null;
         // Si no está en la ubicación específica y no se requiere estricto, podría buscar fallback, 
         // pero para removeStock es mejor ser específico si se pide.
         if (!existingItem) {
@@ -329,8 +336,9 @@ export const inventoryService = {
 
       if (existingItem && (existingItem.quantity >= quantity || force)) {
         const newQuantity = existingItem.quantity - quantity;
-        const newTotalCost = (existingItem.totalCost / existingItem.quantity) * newQuantity;
-        const newTotalPrice = (existingItem.totalPrice / existingItem.quantity) * newQuantity;
+        const ratioBase = existingItem.quantity || 0;
+        const newTotalCost = ratioBase > 0 ? ((existingItem.totalCost || 0) / ratioBase) * newQuantity : 0;
+        const newTotalPrice = ratioBase > 0 ? ((existingItem.totalPrice || 0) / ratioBase) * newQuantity : 0;
         const newTotalValue = newTotalCost;
 
         await this.update(existingItem.id, {

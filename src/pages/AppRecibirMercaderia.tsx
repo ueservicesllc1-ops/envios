@@ -437,7 +437,24 @@ const AppRecibirMercaderia: React.FC = () => {
         items[idx] = { ...items[idx], receivedQty: (items[idx].receivedQty || 0) + 1 };
         const complete = items.every(i => (i.receivedQty || 0) >= (i.expectedQty || 0));
 
-        // Update inventory
+        // 1. Descontar 1 de Bodega Ecuador al momento de ser recibido y escaneado
+        const ecuadorInvQ = query(
+          collection(db, 'inventory'),
+          where('productId', '==', item.productId),
+          where('location', '==', data.fromLocation || 'Bodega Ecuador')
+        );
+        const ecuadorInvSnap = await getDocs(ecuadorInvQ);
+        if (!ecuadorInvSnap.empty) {
+          const ecuadorDoc = ecuadorInvSnap.docs[0];
+          const ecuadorData = ecuadorDoc.data() as any;
+          const currentEcuQty = Number(ecuadorData.quantity) || 0;
+          tx.update(ecuadorDoc.ref, {
+            quantity: Math.max(0, currentEcuQty - 1),
+            lastUpdated: Timestamp.now(),
+          });
+        }
+
+        // 2. Sumar 1 al inventario del destino (Tienda)
         const invQ = query(
           collection(db, 'inventory'),
           where('productId', '==', item.productId),

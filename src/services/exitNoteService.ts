@@ -524,10 +524,7 @@ export const exitNoteService = {
         createdBy: 'system'
       };
 
-      // 3. Crear la nota en Firestore
-      const noteId = await this.create(exitNoteData);
-
-      // 4. Actualizar inventarios
+      // 3. Actualizar inventarios (primero, para no dejar notas fantasma si falla)
       const { inventoryService } = await import('./inventoryService');
 
       for (const item of items) {
@@ -554,6 +551,9 @@ export const exitNoteService = {
           item.unitPrice
         );
       }
+
+      // 4. Crear la nota en Firestore
+      const noteId = await this.create(exitNoteData);
 
       toast.success(`Transferencia de Bodega Ecuador a ${seller.name} completada`);
       return noteId;

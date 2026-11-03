@@ -809,6 +809,10 @@ posRouter.post('/receipts/:id/scan', requirePos, async (req, res) => {
             const invSnap = await tx.get(
                 db().collection('inventory').where('productId', '==', item.productId).where('location', '==', r.toLocation || settings.location).limit(1)
             );
+            // Origen: el stock sigue en Bodega Ecuador hasta este escaneo
+            const srcSnap = await tx.get(
+                db().collection('inventory').where('productId', '==', item.productId).where('location', '==', r.fromLocation || 'Bodega Ecuador')
+            );
             const productSnap = await tx.get(db().collection('products').doc(item.productId));
             const headSnap = await tx.get(db().collection('pos_meta').doc('audit_head'));
             const prod = (productSnap.exists ? productSnap.data() : {}) as any;
@@ -816,6 +820,23 @@ posRouter.post('/receipts/:id/scan', requirePos, async (req, res) => {
             const unitPrice = Number(prod.salePrice1) || 0;
 
             // ---- ESCRITURAS ----
+            // Descontar 1 de Bodega Ecuador (registro con stock disponible)
+            const srcDoc = srcSnap.docs.find((d) => (Number((d.data() as any).quantity) || 0) >= 1);
+            if (srcDoc) {
+                const sd = srcDoc.data() as any;
+                const sq = Number(sd.quantity) || 0;
+                const unitCost = sq > 0 ? (Number(sd.totalCost) || 0) / sq : 0;
+                const unitTot = sq > 0 ? (Number(sd.totalPrice) || 0) / sq : 0;
+                const newCost = Math.max(0, (Number(sd.totalCost) || 0) - unitCost);
+                tx.update(srcDoc.ref, {
+                    quantity: sq - 1,
+                    totalCost: newCost,
+                    totalValue: newCost,
+                    totalPrice: Math.max(0, (Number(sd.totalPrice) || 0) - unitTot),
+                    updatedAt: ts(),
+                });
+            }
+
             if (!invSnap.empty) {
                 const inv = invSnap.docs[0];
                 const q = (Number((inv.data() as any).quantity) || 0) + 1;
@@ -884,19 +905,11 @@ posRouter.post('/receipts/:id/close', requirePos, async (req, res) => {
             if (r.status === 'received' || r.status === 'cancelled' || r.status === 'closed') {
                 throw Object.assign(new Error('La nota ya está cerrada'), { http: 409 });
             }
+            // El stock nunca se descontó de Bodega Ecuador al crear la nota (solo al escanear),
+            // por lo que el faltante simplemente permanece allí: no hay nada que devolver.
             const missing = (r.items || [])
                 .map((i: any) => ({ productId: i.productId, qty: (Number(i.expectedQty) || 0) - (Number(i.receivedQty) || 0) }))
                 .filter((m: any) => m.qty > 0);
-            const invs: any[] = [];
-            for (const m of missing) {
-                invs.push(await tx.get(db().collection('inventory').where('productId', '==', m.productId).where('location', '==', r.fromLocation || 'Bodega Ecuador').limit(1)));
-            }
-            missing.forEach((m: any, k: number) => {
-                if (!invs[k].empty) {
-                    const inv = invs[k].docs[0];
-                    tx.update(inv.ref, { quantity: (Number((inv.data() as any).quantity) || 0) + m.qty, updatedAt: ts() });
-                }
-            });
             tx.update(receiptRef, {
                 status: 'closed',
                 closedAt: ts(),

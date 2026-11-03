@@ -277,6 +277,16 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Reglas para inventario de Luis
+    match /luisInventory/{item=**} {
+      allow read, write: if true;
+    }
+
+    // Reglas para pagos de Luis
+    match /luisPayments/{payment=**} {
+      allow read, write: if true;
+    }
+
 
     // Reglas para Billetera Gamificada (Wallets)
     match /wallets/{userId} {
