@@ -472,8 +472,8 @@ const mainServer = app.listen(PORT, () => {
   }
 });
 
-// En desarrollo local, habilitar también puerto 3000 para POS y Catálogo si está libre
-if (!process.env.RAILWAY_ENVIRONMENT && PORT !== 3000) {
+// En desarrollo local, mantener backend únicamente en PORT (5000) para no competir con el dev server de React en 3000
+if (false && !process.env.RAILWAY_ENVIRONMENT && PORT !== 3000) {
   try {
     const secondaryPort = 3000;
     const secondaryServer = app.listen(secondaryPort, () => {
@@ -490,6 +490,15 @@ if (!process.env.RAILWAY_ENVIRONMENT && PORT !== 3000) {
     // ignorar error en puerto secundario
   }
 }
+
+// Manejadores globales para evitar caídas imprevistas del proceso
+process.on('uncaughtException', (err) => {
+  console.error('❌ Excepción no capturada en el servidor:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promesa rechazada no manejada:', reason);
+});
 
 
 

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const OnlineTracker: React.FC = () => {
     const { user } = useAuth();
@@ -12,11 +12,10 @@ const OnlineTracker: React.FC = () => {
         const updateOnlineStatus = async () => {
             try {
                 const userRef = doc(db, 'userPreferences', user.uid);
-                // Actualizamos solo el timestamp, es una operación ligera
-                await updateDoc(userRef, {
+                await setDoc(userRef, {
                     lastActiveAt: serverTimestamp(),
-                    isOnline: true // Flag explícito útil para consultas simples
-                });
+                    isOnline: true
+                }, { merge: true });
             } catch (error) {
                 // Silencioso para no molestar al usuario si falla tracking
                 console.error("Error updating online status", error);

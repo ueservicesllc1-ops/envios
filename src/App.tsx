@@ -51,6 +51,7 @@ import AppAnnabel from './pages/AppAnnabel';
 import AppMaria from './pages/AppMaria';
 import AppYuri from './pages/AppYuri';
 import AppLuis from './pages/AppLuis';
+import AppRecibirMercaderia from './pages/AppRecibirMercaderia';
 
 import { VibeConfigProvider } from './contexts/VibeConfigContext';
 import PdfEditor from './pages/PdfEditor';
@@ -187,6 +188,7 @@ function App() {
 
               {/* Ruta para App Mobile - sin Layout ni AuthWrapper */}
               <Route path="/app" element={<AppMobile />} />
+              <Route path="/app/mobile" element={<AppMobile />} />
               <Route path="/app/en-camino" element={<AppEnCamino />} />
               <Route path="/app/en-camino/:id" element={<AppEnCaminoDetalle />} />
               <Route path="/app/bodega-usa" element={<AppBodegaUSA />} />
@@ -198,6 +200,7 @@ function App() {
               <Route path="/app/annabel" element={<AppAnnabel />} />
               <Route path="/app/yuri" element={<AppYuri />} />
               <Route path="/app/luis" element={<AppLuis />} />
+              <Route path="/app/recibir" element={<AppRecibirMercaderia />} />
 
 
               {/* Landing de instalación de App */}
@@ -216,7 +219,7 @@ function App() {
               <Route path="/inventory" element={<AuthWrapper><Layout><Inventory /></Layout></AuthWrapper>} />
               <Route path="/entry-notes" element={<AuthWrapper><Layout><EntryNotes /></Layout></AuthWrapper>} />
               <Route path="/exit-notes" element={<AuthWrapper><Layout><ExitNotes /></Layout></AuthWrapper>} />
-              <Route path="/local-receipts" element={<AuthWrapper><Layout><LocalReceipts /></Layout></AuthWrapper>} />
+              <Route path="/local-receipts" element={<Layout><LocalReceipts /></Layout>} />
               <Route path="/payment-notes" element={<AuthWrapper><Layout><PaymentNotes /></Layout></AuthWrapper>} />
               <Route path="/shipping" element={<AuthWrapper><Layout><Shipping /></Layout></AuthWrapper>} />
               <Route path="/accounting" element={<AuthWrapper><Layout><Accounting /></Layout></AuthWrapper>} />
