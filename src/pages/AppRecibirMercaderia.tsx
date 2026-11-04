@@ -24,8 +24,11 @@ import {
   Printer,
   RefreshCw,
   ScanLine,
+  Minus,
+  Plus,
   X,
 } from 'lucide-react';
+import { getApiUrl } from '../config/api.config';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -350,6 +353,12 @@ const AppRecibirMercaderia: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
+  // Recepción manual (sin escáner)
+  const [manualItem, setManualItem] = useState<ReceiptItem | null>(null);
+  const [manualQty, setManualQty] = useState(1);
+  const [manualPhoto, setManualPhoto] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
   const addToast = (msg: string, ok: boolean) => {
     const id = Date.now();
     setToasts(prev => [...prev, { msg, ok, id }]);
@@ -515,6 +524,181 @@ const AppRecibirMercaderia: React.FC = () => {
       await loadReceipts(activeReceipt);
     } catch (e: any) {
       addToast(e.message || 'Error al procesar el escaneo', false);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // ── Manual receive (foto de evidencia -> B2) ───────────────────────────────
+
+  const openManual = (item: ReceiptItem) => {
+    const remaining = (item.expectedQty || 0) - (item.receivedQty || 0);
+    if (remaining <= 0) return;
+    setManualItem(item);
+    setManualQty(1);
+    setManualPhoto(null);
+  };
+
+  const closeManual = () => {
+    if (processing) return;
+    setManualItem(null);
+    setManualPhoto(null);
+  };
+
+  // Reduce la foto (máx 1280px, JPEG 0.8) para subirla rápido desde el celular
+  const onPhotoPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1280;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setManualPhoto(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const confirmManual = async () => {
+    if (!activeReceipt || !manualItem || !manualPhoto) return;
+    const item = manualItem;
+    const qty = manualQty;
+    setProcessing(true);
+    try {
+      // 1. Guardar la foto de evidencia en B2
+      const resp = await fetch(getApiUrl('/api/b2/upload-receipt-photo'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: manualPhoto,
+          receiptNumber: activeReceipt.number,
+          productId: item.productId,
+        }),
+      });
+      const up = await resp.json();
+      if (!resp.ok || !up.success) throw new Error(up.error || 'No se pudo guardar la foto');
+
+      // 2. Aplicar recepción y mover stock
+      const receiptRef = doc(db, 'localReceipts', activeReceipt.id);
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(receiptRef);
+        if (!snap.exists()) throw new Error('Nota no encontrada');
+        const data = snap.data() as any;
+        if (['received', 'cancelled', 'closed'].includes(data.status)) {
+          throw new Error('La nota ya está cerrada');
+        }
+
+        const items: ReceiptItem[] = [...(data.items || [])];
+        const idx = items.findIndex(i => i.productId === item.productId);
+        if (idx < 0) throw new Error('Perfume no encontrado en la nota');
+        const pending = (items[idx].expectedQty || 0) - (items[idx].receivedQty || 0);
+        if (qty > pending) throw new Error(`Solo faltan ${pending} por recibir`);
+
+        items[idx] = { ...items[idx], receivedQty: (items[idx].receivedQty || 0) + qty };
+        const complete = items.every(i => (i.receivedQty || 0) >= (i.expectedQty || 0));
+
+        // Descontar de Bodega Ecuador (registro con stock suficiente)
+        const ecuSnap = await getDocs(query(
+          collection(db, 'inventory'),
+          where('productId', '==', item.productId),
+          where('location', '==', data.fromLocation || 'Bodega Ecuador')
+        ));
+        const ecuDoc = ecuSnap.docs.find(d => (Number((d.data() as any).quantity) || 0) >= qty) || ecuSnap.docs[0];
+        if (ecuDoc) {
+          const ed = ecuDoc.data() as any;
+          const eq = Number(ed.quantity) || 0;
+          const unitCost = eq > 0 ? (Number(ed.totalCost) || 0) / eq : 0;
+          const unitTot = eq > 0 ? (Number(ed.totalPrice) || 0) / eq : 0;
+          const newQ = Math.max(0, eq - qty);
+          tx.update(ecuDoc.ref, {
+            quantity: newQ,
+            totalCost: Math.max(0, (Number(ed.totalCost) || 0) - unitCost * qty),
+            totalValue: Math.max(0, (Number(ed.totalCost) || 0) - unitCost * qty),
+            totalPrice: Math.max(0, (Number(ed.totalPrice) || 0) - unitTot * qty),
+            lastUpdated: Timestamp.now(),
+          });
+        }
+
+        // Sumar al destino (Tienda)
+        const destSnap = await getDocs(query(
+          collection(db, 'inventory'),
+          where('productId', '==', item.productId),
+          where('location', '==', data.toLocation || 'Bodega Principal')
+        ));
+        const prodSnap = await getDoc(doc(db, 'products', item.productId));
+        const prod: any = prodSnap.exists() ? prodSnap.data() : {};
+        const cost = Number(prod.cost) || 0;
+        const unitPrice = Number(prod.salePrice1) || 0;
+
+        if (!destSnap.empty) {
+          const dd = destSnap.docs[0];
+          const inv = dd.data() as any;
+          tx.update(dd.ref, {
+            quantity: (Number(inv.quantity) || 0) + qty,
+            totalCost: (Number(inv.totalCost) || 0) + cost * qty,
+            totalValue: (Number(inv.totalCost) || 0) + cost * qty,
+            totalPrice: (Number(inv.totalPrice) || 0) + unitPrice * qty,
+            status: 'stock',
+            lastUpdated: Timestamp.now(),
+          });
+        } else {
+          tx.set(doc(collection(db, 'inventory')), {
+            productId: item.productId,
+            product: {
+              id: item.productId,
+              name: item.name,
+              barcode: item.barcode,
+              imageUrl: item.imageUrl || '',
+              ...prod,
+            },
+            quantity: qty,
+            cost,
+            unitPrice,
+            totalCost: cost * qty,
+            totalPrice: unitPrice * qty,
+            totalValue: cost * qty,
+            location: data.toLocation || 'Bodega Principal',
+            status: 'stock',
+            lastUpdated: Timestamp.now(),
+          });
+        }
+
+        const update: any = {
+          items,
+          status: complete ? 'received' : 'partial',
+          manualReceipts: [
+            ...(data.manualReceipts || []),
+            {
+              productId: item.productId,
+              name: item.name,
+              quantity: qty,
+              photoUrl: up.url,
+              photoPath: up.path,
+              at: Timestamp.now(),
+              method: 'manual',
+            },
+          ],
+        };
+        if (complete) update.receivedAt = Timestamp.now();
+        tx.update(receiptRef, update);
+      });
+
+      triggerBeep();
+      triggerHaptic();
+      addToast(`✓ ${item.name} ×${qty} recibido (foto guardada)`, true);
+      setManualItem(null);
+      setManualPhoto(null);
+      await loadReceipts(activeReceipt);
+    } catch (e: any) {
+      addToast(e.message || 'Error al recibir manualmente', false);
     } finally {
       setProcessing(false);
     }
@@ -781,12 +965,14 @@ const AppRecibirMercaderia: React.FC = () => {
                 const remaining = (item.expectedQty || 0) - (item.receivedQty || 0);
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={idx}
-                    className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
+                    onClick={() => !done && openManual(item)}
+                    className={`w-full text-left flex items-center gap-3 p-3.5 rounded-xl border transition-all ${
                       done
-                        ? 'bg-emerald-900/20 border-emerald-500/25 opacity-80'
-                        : 'bg-[#13161C] border-white/8'
+                        ? 'bg-emerald-900/20 border-emerald-500/25 opacity-80 cursor-default'
+                        : 'bg-[#13161C] border-white/8 hover:border-amber-500/40 active:scale-[0.99]'
                     }`}
                   >
                     {/* Image */}
@@ -834,7 +1020,7 @@ const AppRecibirMercaderia: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -848,6 +1034,107 @@ const AppRecibirMercaderia: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* ── Modal recepción manual ── */}
+      {manualItem && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-white font-bold text-sm truncate pr-2">Recibir manualmente</span>
+            <button
+              onClick={closeManual}
+              disabled={processing}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-4">
+            <div className="w-full bg-[#13161C] rounded-2xl overflow-hidden flex items-center justify-center" style={{ minHeight: 240 }}>
+              {manualItem.imageUrl ? (
+                <img src={manualItem.imageUrl} alt={manualItem.name} className="w-full max-h-[50vh] object-contain" />
+              ) : (
+                <Package size={64} className="text-slate-600" />
+              )}
+            </div>
+
+            <div>
+              <p className="text-white font-bold text-lg leading-tight">{manualItem.name}</p>
+              {manualItem.barcode && <p className="text-slate-500 text-xs font-mono mt-1">{manualItem.barcode}</p>}
+              <p className="text-amber-400 text-sm font-semibold mt-1">
+                Pendientes: {(manualItem.expectedQty || 0) - (manualItem.receivedQty || 0)} de {manualItem.expectedQty}
+              </p>
+            </div>
+
+            {/* Cantidad */}
+            <div className="bg-[#13161C] border border-white/8 rounded-2xl p-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-3 text-center">Cantidad recibida</p>
+              <div className="flex items-center justify-center gap-6">
+                <button
+                  onClick={() => setManualQty(q => Math.max(1, q - 1))}
+                  className="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center active:scale-95"
+                >
+                  <Minus size={20} />
+                </button>
+                <span className="text-4xl font-black text-white w-16 text-center">{manualQty}</span>
+                <button
+                  onClick={() => setManualQty(q => Math.min((manualItem.expectedQty || 0) - (manualItem.receivedQty || 0), q + 1))}
+                  className="w-12 h-12 rounded-full bg-amber-500 text-black flex items-center justify-center active:scale-95"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Foto evidencia */}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onPhotoPicked}
+              className="hidden"
+            />
+            {manualPhoto ? (
+              <div className="space-y-2">
+                <img src={manualPhoto} alt="Evidencia" className="w-full max-h-64 object-contain rounded-2xl border border-emerald-500/40 bg-black" />
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={processing}
+                  className="w-full py-2.5 rounded-xl bg-white/10 text-slate-200 text-sm font-semibold flex items-center justify-center gap-2"
+                >
+                  <Camera size={16} /> Volver a tomar foto
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                className="w-full py-4 rounded-2xl border-2 border-dashed border-amber-500/50 text-amber-400 font-bold flex items-center justify-center gap-2 active:scale-95"
+              >
+                <Camera size={20} /> Tomar foto del producto recibido
+              </button>
+            )}
+          </div>
+
+          <div className="px-4 pb-6 pt-2 bg-[#0A0D12] border-t border-white/10">
+            <button
+              onClick={confirmManual}
+              disabled={!manualPhoto || processing}
+              className="w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none active:scale-95 transition"
+              style={{ background: 'linear-gradient(to right, #10b981, #34d399)', color: '#04120c' }}
+            >
+              {processing ? (
+                <><Loader2 className="animate-spin" size={20} /> Guardando...</>
+              ) : (
+                <><CheckCircle2 size={20} /> Recibir este producto ({manualQty})</>
+              )}
+            </button>
+            {!manualPhoto && (
+              <p className="text-center text-xs text-slate-500 mt-2">La foto es obligatoria como comprobante.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes slideDown {

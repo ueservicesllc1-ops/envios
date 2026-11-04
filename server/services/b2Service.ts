@@ -133,3 +133,22 @@ export async function getImageFromB2(path: string): Promise<Buffer> {
   }
 }
 
+/**
+ * Sube un buffer (p. ej. foto de evidencia de recepción) a B2 bajo la ruta indicada.
+ */
+export async function uploadBufferToB2(
+  buffer: Buffer,
+  key: string,
+  contentType: string = 'image/jpeg'
+): Promise<ImageUploadResult> {
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: B2_CONFIG.bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    })
+  );
+  return { url: `${B2_CONFIG.publicUrl}/${key}`, path: key, size: buffer.length };
+}
+

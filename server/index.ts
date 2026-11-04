@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { getProductsFromCollection, getProductStats } from './services/shopifyScraper';
-import { getImageFromB2, uploadImageToB2 } from './services/b2Service';
+import { getImageFromB2, uploadImageToB2, uploadBufferToB2 } from './services/b2Service';
 import { getVisits, recordVisit } from './services/visitService';
 import { notificationService } from './services/notificationService';
 import { posRouter } from './routes/pos';
@@ -97,6 +97,28 @@ app.get('/api/proxy-image', async (req, res) => {
   } catch (error) {
     console.error('Error in proxy-image:', error);
     res.status(500).json({ error: 'Failed to proxy image' });
+  }
+});
+
+// Foto de evidencia al recibir mercadería manualmente en tienda -> B2
+app.post('/api/b2/upload-receipt-photo', async (req, res) => {
+  try {
+    const { imageBase64, receiptNumber, productId } = req.body || {};
+    if (!imageBase64 || !receiptNumber) {
+      return res.status(400).json({ error: 'Missing required parameters: imageBase64, receiptNumber' });
+    }
+    const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(imageBase64);
+    const contentType = match ? match[1] : 'image/jpeg';
+    const buffer = Buffer.from(match ? match[2] : imageBase64, 'base64');
+    if (buffer.length < 100) return res.status(400).json({ error: 'Imagen inválida' });
+    const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+    const safe = (s: string) => String(s).replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60);
+    const key = `recepciones/${safe(receiptNumber)}/${safe(productId || 'item')}-${Date.now()}.${ext}`;
+    const result = await uploadBufferToB2(buffer, key, contentType);
+    res.json({ success: true, url: result.url, path: result.path });
+  } catch (error: any) {
+    console.error('Error uploading receipt photo:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
