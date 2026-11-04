@@ -413,26 +413,27 @@ const AppRecibirMercaderia: React.FC = () => {
       const scanned = norm(barcode);
 
       // 1) Coincidencia directa con el código guardado en la nota
-      let item = activeReceipt.items.find(i => i.barcode && norm(i.barcode) === scanned);
+      let found: ReceiptItem | undefined = activeReceipt.items.find(i => i.barcode && norm(i.barcode) === scanned);
 
       // 2) Fallback: el código actual del producto (la nota pudo guardarse con código vacío o antiguo)
-      if (!item) {
+      if (!found) {
         for (const it of activeReceipt.items) {
           try {
             const pSnap = await getDoc(doc(db, 'products', it.productId));
             if (!pSnap.exists()) continue;
             const p: any = pSnap.data();
             const candidates = [p.barcode, p.sku, p.upc, p.ean].filter(Boolean);
-            if (candidates.some((c: string) => norm(c) === scanned)) { item = it; break; }
+            if (candidates.some((c: string) => norm(c) === scanned)) { found = it; break; }
           } catch { /* ignore */ }
         }
       }
 
-      if (!item) {
+      if (!found) {
         addToast(`Código ${barcode} no pertenece a esta nota. Toca el perfume en la lista para recibirlo manualmente.`, false);
         setProcessing(false);
         return;
       }
+      const item: ReceiptItem = found;
       const matched = item;
 
       if ((item.receivedQty || 0) >= (item.expectedQty || 0)) {
