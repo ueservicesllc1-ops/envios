@@ -29,7 +29,7 @@ const navigation = [
   { name: 'Productos', href: '/products', icon: Package },
   { name: 'Bodega', href: '/warehouse', icon: Warehouse },
   { name: 'Bodega Ecuador', href: '/warehouse-ecuador', icon: Flag },
-  { name: 'Tienda Ecuador', href: '/store-ecuador', icon: Store },
+  { name: 'Tienda Local', href: '/store-ecuador', icon: Store },
   { name: 'Inventario', href: '/inventory', icon: TrendingUp },
   { name: 'Notas de Entrada', href: '/entry-notes', icon: FileText },
   { name: 'Notas de Salida', href: '/exit-notes', icon: FileText },

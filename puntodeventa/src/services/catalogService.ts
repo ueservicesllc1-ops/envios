@@ -82,9 +82,10 @@ export class CatalogService {
           const qty = Number(d.quantity) || 0;
 
           if (
-            loc.includes('principal') ||
-            loc.includes('local') ||
-            loc.includes('tienda') ||
+            loc === 'tienda local' ||
+            loc === 'tienda' ||
+            (loc.includes('tienda') && !loc.includes('bodega')) ||
+            (loc.includes('local') && !loc.includes('bodega')) ||
             loc.includes('mostrador')
           ) {
             mLocal.set(pid, (mLocal.get(pid) || 0) + qty);
@@ -97,11 +98,7 @@ export class CatalogService {
             loc.includes('bodegausa')
           ) {
             mUsa.set(pid, (mUsa.get(pid) || 0) + qty);
-          } else if (
-            loc.includes('ecuador') ||
-            loc.includes('babahoyo') ||
-            loc.includes('bodega')
-          ) {
+          } else {
             mEc.set(pid, (mEc.get(pid) || 0) + qty);
           }
         });

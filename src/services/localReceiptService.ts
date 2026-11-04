@@ -46,9 +46,9 @@ export const localReceiptService = {
   async getPosLocation(): Promise<string> {
     try {
       const snap = await getDoc(doc(db, 'settings', 'posSettings'));
-      return (snap.exists() && (snap.data() as any).location) || 'Bodega Principal';
+      return (snap.exists() && (snap.data() as any).location) || 'Tienda Local';
     } catch {
-      return 'Bodega Principal';
+      return 'Tienda Local';
     }
   },
 

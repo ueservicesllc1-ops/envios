@@ -486,13 +486,29 @@ const AppRecibirMercaderia: React.FC = () => {
         items[idx] = { ...items[idx], receivedQty: (items[idx].receivedQty || 0) + 1 };
         const complete = items.every(i => (i.receivedQty || 0) >= (i.expectedQty || 0));
 
-        // 1. Descontar 1 de Bodega Ecuador al momento de ser recibido y escaneado
+        // 1. TODAS LAS LECTURAS (READS) PRIMERO
         const ecuadorInvQ = query(
           collection(db, 'inventory'),
           where('productId', '==', item.productId),
           where('location', '==', data.fromLocation || 'Bodega Ecuador')
         );
-        const ecuadorInvSnap = await getDocs(ecuadorInvQ);
+        const invQ = query(
+          collection(db, 'inventory'),
+          where('productId', '==', item.productId),
+          where('location', '==', data.toLocation || 'Tienda Local')
+        );
+
+        const [ecuadorInvSnap, invSnap, prodSnap] = await Promise.all([
+          getDocs(ecuadorInvQ),
+          getDocs(invQ),
+          getDoc(doc(db, 'products', item.productId))
+        ]);
+
+        const prod: any = prodSnap.exists() ? prodSnap.data() : {};
+        const cost = Number(prod.cost) || 0;
+        const unitPrice = Number(prod.salePrice1) || 0;
+
+        // 2. TODAS LAS ESCRITURAS (WRITES) DESPUÉS
         if (!ecuadorInvSnap.empty) {
           const ecuadorDoc = ecuadorInvSnap.docs[0];
           const ecuadorData = ecuadorDoc.data() as any;
@@ -502,19 +518,6 @@ const AppRecibirMercaderia: React.FC = () => {
             lastUpdated: Timestamp.now(),
           });
         }
-
-        // 2. Sumar 1 al inventario del destino (Tienda)
-        const invQ = query(
-          collection(db, 'inventory'),
-          where('productId', '==', item.productId),
-          where('location', '==', data.toLocation || 'Bodega Principal')
-        );
-        const invSnap = await getDocs(invQ);
-
-        const prodSnap = await getDoc(doc(db, 'products', item.productId));
-        const prod: any = prodSnap.exists() ? prodSnap.data() : {};
-        const cost = Number(prod.cost) || 0;
-        const unitPrice = Number(prod.salePrice1) || 0;
 
         if (!invSnap.empty) {
           const invDoc = invSnap.docs[0];
@@ -544,7 +547,7 @@ const AppRecibirMercaderia: React.FC = () => {
             totalCost: cost,
             totalPrice: unitPrice,
             totalValue: cost,
-            location: data.toLocation || 'Bodega Principal',
+            location: data.toLocation || 'Tienda Local',
             status: 'stock',
             lastUpdated: Timestamp.now(),
           });
@@ -681,12 +684,29 @@ const AppRecibirMercaderia: React.FC = () => {
         items[idx] = { ...items[idx], receivedQty: (items[idx].receivedQty || 0) + qty };
         const complete = items.every(i => (i.receivedQty || 0) >= (i.expectedQty || 0));
 
-        // Descontar de Bodega Ecuador (registro con stock suficiente)
-        const ecuSnap = await getDocs(query(
+        // 1. TODAS LAS LECTURAS (READS) PRIMERO
+        const ecuSnapQ = query(
           collection(db, 'inventory'),
           where('productId', '==', item.productId),
           where('location', '==', data.fromLocation || 'Bodega Ecuador')
-        ));
+        );
+        const destSnapQ = query(
+          collection(db, 'inventory'),
+          where('productId', '==', item.productId),
+          where('location', '==', data.toLocation || 'Tienda Local')
+        );
+
+        const [ecuSnap, destSnap, prodSnap] = await Promise.all([
+          getDocs(ecuSnapQ),
+          getDocs(destSnapQ),
+          getDoc(doc(db, 'products', item.productId))
+        ]);
+
+        const prod: any = prodSnap.exists() ? prodSnap.data() : {};
+        const cost = Number(prod.cost) || 0;
+        const unitPrice = Number(prod.salePrice1) || 0;
+
+        // 2. TODAS LAS ESCRITURAS (WRITES) DESPUÉS
         const ecuDoc = ecuSnap.docs.find(d => (Number((d.data() as any).quantity) || 0) >= qty) || ecuSnap.docs[0];
         if (ecuDoc) {
           const ed = ecuDoc.data() as any;
@@ -702,17 +722,6 @@ const AppRecibirMercaderia: React.FC = () => {
             lastUpdated: Timestamp.now(),
           });
         }
-
-        // Sumar al destino (Tienda)
-        const destSnap = await getDocs(query(
-          collection(db, 'inventory'),
-          where('productId', '==', item.productId),
-          where('location', '==', data.toLocation || 'Bodega Principal')
-        ));
-        const prodSnap = await getDoc(doc(db, 'products', item.productId));
-        const prod: any = prodSnap.exists() ? prodSnap.data() : {};
-        const cost = Number(prod.cost) || 0;
-        const unitPrice = Number(prod.salePrice1) || 0;
 
         if (!destSnap.empty) {
           const dd = destSnap.docs[0];
@@ -741,7 +750,7 @@ const AppRecibirMercaderia: React.FC = () => {
             totalCost: cost * qty,
             totalPrice: unitPrice * qty,
             totalValue: cost * qty,
-            location: data.toLocation || 'Bodega Principal',
+            location: data.toLocation || 'Tienda Local',
             status: 'stock',
             lastUpdated: Timestamp.now(),
           });

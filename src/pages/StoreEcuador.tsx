@@ -16,8 +16,9 @@ import {
   Eye,
   X
 } from 'lucide-react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../firebase/config';
 import { Product, InventoryItem } from '../types';
-import { inventoryService } from '../services/inventoryService';
 import { productService } from '../services/productService';
 import toast from 'react-hot-toast';
 
@@ -48,39 +49,36 @@ const StoreEcuador: React.FC = () => {
   const loadStoreInventory = async () => {
     try {
       setLoading(true);
-      const [allProducts, allInventory] = await Promise.all([
+
+      const [allProducts, invSnap] = await Promise.all([
         productService.getAll(),
-        inventoryService.getAll()
+        getDocs(query(
+          collection(db, 'inventory'),
+          where('location', 'in', ['Tienda Local', 'Tienda', 'tienda local'])
+        ))
       ]);
 
       const productMap = new Map<string, Product>();
       allProducts.forEach(p => productMap.set(p.id, p));
 
-      // Filtrar items cuyo location corresponda a Tienda Ecuador / Bodega Principal / Local
       const itemsByProduct = new Map<string, StoreProductItem>();
 
-      allInventory.forEach(inv => {
-        const loc = (inv.location || '').toLowerCase().trim();
-        const isStoreLocation =
-          loc === 'bodega principal' ||
-          loc.includes('principal') ||
-          loc.includes('tienda') ||
-          loc.includes('local') ||
-          loc.includes('mostrador');
-
-        if (isStoreLocation && inv.quantity > 0) {
+      invSnap.docs.forEach(docSnap => {
+        const inv: any = docSnap.data();
+        const qty = Number(inv.quantity) || 0;
+        if (qty > 0 && inv.productId) {
           const prod = productMap.get(inv.productId);
           if (prod) {
             const existing = itemsByProduct.get(inv.productId);
             if (existing) {
-              existing.quantity += inv.quantity;
+              existing.quantity += qty;
             } else {
               itemsByProduct.set(inv.productId, {
-                id: inv.id,
+                id: docSnap.id,
                 productId: inv.productId,
                 product: prod,
-                quantity: inv.quantity,
-                location: inv.location || 'Bodega Principal',
+                quantity: qty,
+                location: inv.location || 'Tienda Local',
                 unitPrice: inv.unitPrice || prod.salePrice2 || prod.salePrice1,
                 cost: inv.cost || prod.cost
               });
@@ -93,8 +91,8 @@ const StoreEcuador: React.FC = () => {
       list.sort((a, b) => (a.product.name || '').localeCompare(b.product.name || ''));
       setStoreItems(list);
     } catch (err) {
-      console.error('Error cargando inventario de Tienda Ecuador:', err);
-      toast.error('Error al cargar inventario de Tienda Ecuador');
+      console.error('Error cargando inventario de Tienda Local:', err);
+      toast.error('Error al cargar inventario de Tienda Local');
     } finally {
       setLoading(false);
     }
@@ -163,9 +161,9 @@ const StoreEcuador: React.FC = () => {
               <Store className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Tienda Ecuador</h1>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Tienda Local</h1>
               <p className="text-emerald-100 text-sm">
-                Stock físico en mostrador y tienda local (Bodega Principal)
+                Stock físico en mostrador y vitrina para venta
               </p>
             </div>
           </div>
