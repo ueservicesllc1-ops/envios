@@ -407,16 +407,33 @@ const AppRecibirMercaderia: React.FC = () => {
     setProcessing(true);
 
     try {
-      // Find which item matches this barcode
-      const item = activeReceipt.items.find(
-        i => i.barcode && i.barcode.trim() === barcode.trim()
-      );
+      // Normaliza: solo dígitos/letras, sin ceros a la izquierda (UPC-A 12 vs EAN-13 13)
+      const norm = (s?: string) =>
+        String(s || '').trim().replace(/[^0-9a-zA-Z]/g, '').replace(/^0+/, '').toLowerCase();
+      const scanned = norm(barcode);
+
+      // 1) Coincidencia directa con el código guardado en la nota
+      let item = activeReceipt.items.find(i => i.barcode && norm(i.barcode) === scanned);
+
+      // 2) Fallback: el código actual del producto (la nota pudo guardarse con código vacío o antiguo)
+      if (!item) {
+        for (const it of activeReceipt.items) {
+          try {
+            const pSnap = await getDoc(doc(db, 'products', it.productId));
+            if (!pSnap.exists()) continue;
+            const p: any = pSnap.data();
+            const candidates = [p.barcode, p.sku, p.upc, p.ean].filter(Boolean);
+            if (candidates.some((c: string) => norm(c) === scanned)) { item = it; break; }
+          } catch { /* ignore */ }
+        }
+      }
 
       if (!item) {
-        addToast(`Código ${barcode} no pertenece a esta nota`, false);
+        addToast(`Código ${barcode} no pertenece a esta nota. Toca el perfume en la lista para recibirlo manualmente.`, false);
         setProcessing(false);
         return;
       }
+      const matched = item;
 
       if ((item.receivedQty || 0) >= (item.expectedQty || 0)) {
         addToast(`${item.name}: ya está completo ✓`, false);
@@ -436,8 +453,8 @@ const AppRecibirMercaderia: React.FC = () => {
         }
 
         const items: ReceiptItem[] = [...(data.items || [])];
-        const idx = items.findIndex(i => i.barcode?.trim() === barcode.trim());
-        if (idx < 0) throw new Error('Código no encontrado en la nota');
+        const idx = items.findIndex(i => i.productId === matched.productId);
+        if (idx < 0) throw new Error('Perfume no encontrado en la nota');
 
         if ((items[idx].receivedQty || 0) >= (items[idx].expectedQty || 0)) {
           throw new Error(`${items[idx].name}: ya está completo`);
