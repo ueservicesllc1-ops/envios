@@ -15,6 +15,7 @@ import PaymentNotes from './pages/PaymentNotes';
 import Shipping from './pages/Shipping';
 import Accounting from './pages/Accounting';
 import BillingDashboard from './pages/BillingDashboard';
+import PointOfSale from './pages/PointOfSale';
 import Sellers from './pages/Sellers';
 import SellerBalances from './pages/SellerBalances';
 import SellerBalanceDetails from './pages/SellerBalanceDetails';
@@ -224,6 +225,8 @@ function App() {
               <Route path="/shipping" element={<AuthWrapper><Layout><Shipping /></Layout></AuthWrapper>} />
               <Route path="/accounting" element={<AuthWrapper><Layout><Accounting /></Layout></AuthWrapper>} />
               <Route path="/billing" element={<AuthWrapper><Layout><BillingDashboard /></Layout></AuthWrapper>} />
+              <Route path="/pos" element={<AuthWrapper><Layout><PointOfSale /></Layout></AuthWrapper>} />
+              <Route path="/point-of-sale" element={<AuthWrapper><Layout><PointOfSale /></Layout></AuthWrapper>} />
               <Route path="/sellers" element={<AuthWrapper><Layout><Sellers /></Layout></AuthWrapper>} />
               <Route path="/sellers/:id" element={<AuthWrapper><Layout><SellerDetails /></Layout></AuthWrapper>} />
               <Route path="/seller-balances" element={<AuthWrapper><Layout><SellerBalances /></Layout></AuthWrapper>} />

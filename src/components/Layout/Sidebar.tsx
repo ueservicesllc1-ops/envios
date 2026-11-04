@@ -35,6 +35,7 @@ const navigation = [
   { name: 'Notas de Pago', href: '/payment-notes', icon: CreditCard },
   { name: 'Paquetería', href: '/shipping', icon: Truck },
   { name: 'Contabilidad', href: '/accounting', icon: Calculator },
+  { name: 'Punto de Venta (POS)', href: '/pos', icon: ShoppingCart },
   { name: 'Facturación', href: '/billing', icon: Receipt },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
   { name: 'Admin Tienda', href: '/admin-store', icon: ShoppingBag },

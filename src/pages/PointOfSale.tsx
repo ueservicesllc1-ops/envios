@@ -313,16 +313,26 @@ const PointOfSale: React.FC = () => {
         }
     };
 
-    // Buscar producto por código de barras
+    // Buscar producto por código de barras o SKU
     const searchByBarcode = async () => {
         if (!barcodeInput.trim()) return;
+        const clean = barcodeInput.trim();
+        const cleanNoLeading = clean.replace(/^0+/, '');
 
-        const product = products.find(p => p.barcode === barcodeInput.trim() || p.sku === barcodeInput.trim());
+        const product = products.find(p => {
+            const pBarcode = (p.barcode || '').trim();
+            const pSku = (p.sku || '').trim();
+            return pBarcode === clean ||
+                   pBarcode.replace(/^0+/, '') === cleanNoLeading ||
+                   pSku === clean ||
+                   pSku.replace(/^0+/, '') === cleanNoLeading;
+        });
+
         if (product) {
             await addToCart(product);
             setBarcodeInput('');
         } else {
-            toast.error('Producto no encontrado');
+            toast.error(`Producto con código ${clean} no encontrado`);
         }
     };
 
