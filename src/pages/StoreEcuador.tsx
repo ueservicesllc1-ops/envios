@@ -14,9 +14,13 @@ import {
   RefreshCw,
   PackageCheck,
   Eye,
-  X
+  X,
+  Edit3,
+  Save,
+  Loader2,
+  Check
 } from 'lucide-react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, updateDoc, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Product, InventoryItem } from '../types';
 import { productService } from '../services/productService';
@@ -41,6 +45,14 @@ const StoreEcuador: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Edit Prices State
+  const [editingItem, setEditingItem] = useState<StoreProductItem | null>(null);
+  const [editPrice1, setEditPrice1] = useState<string>(''); // Mayorista (salePrice1)
+  const [editPrice2, setEditPrice2] = useState<string>(''); // Tienda / Minorista (salePrice2)
+  const [editPvp, setEditPvp] = useState<string>(''); // PVP
+  const [editCost, setEditCost] = useState<string>(''); // Costo
+  const [savingPrices, setSavingPrices] = useState(false);
 
   useEffect(() => {
     loadStoreInventory();
@@ -95,6 +107,104 @@ const StoreEcuador: React.FC = () => {
       toast.error('Error al cargar inventario de Tienda Local');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenEditPrice = (item: StoreProductItem) => {
+    setEditingItem(item);
+    setEditPrice1(String(item.product.salePrice1 ?? 0));
+    setEditPrice2(String(item.product.salePrice2 ?? 0));
+    setEditPvp(String(item.product.pvp ?? item.product.salePrice2 ?? 0));
+    setEditCost(String(item.product.cost ?? 0));
+  };
+
+  const handleSavePrices = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+
+    const p1 = parseFloat(editPrice1);
+    const p2 = parseFloat(editPrice2);
+    const pvp = parseFloat(editPvp);
+    const cost = parseFloat(editCost);
+
+    if (isNaN(p1) || p1 < 0) {
+      toast.error('Precio mayorista inválido');
+      return;
+    }
+    if (isNaN(p2) || p2 < 0) {
+      toast.error('Precio tienda inválido');
+      return;
+    }
+
+    try {
+      setSavingPrices(true);
+      const productId = editingItem.productId;
+
+      // 1. Actualizar catálogo maestro products/{productId}
+      const productRef = doc(db, 'products', productId);
+      await updateDoc(productRef, {
+        salePrice1: p1,
+        salePrice2: p2,
+        pvp: !isNaN(pvp) ? pvp : p2,
+        cost: !isNaN(cost) ? cost : (editingItem.product.cost || 0),
+        updatedAt: Timestamp.now()
+      });
+
+      // 2. Actualizar inventarios en todo el sistema (Tienda Local, Bodega Ecuador, Bodega USA)
+      const invQ = query(collection(db, 'inventory'), where('productId', '==', productId));
+      const invSnap = await getDocs(invQ);
+
+      if (!invSnap.empty) {
+        const batch = writeBatch(db);
+        invSnap.docs.forEach(docSnap => {
+          const d = docSnap.data() as any;
+          const qty = Number(d.quantity) || 0;
+          const loc = String(d.location || '').toLowerCase();
+          const isTienda = loc.includes('tienda') || loc.includes('local') || loc.includes('mostrador');
+          const unitPrice = isTienda ? p2 : p1;
+
+          batch.update(docSnap.ref, {
+            unitPrice,
+            totalPrice: unitPrice * qty,
+            cost: !isNaN(cost) ? cost : (d.cost || 0),
+            totalCost: (!isNaN(cost) ? cost : (d.cost || 0)) * qty,
+            totalValue: (!isNaN(cost) ? cost : (d.cost || 0)) * qty,
+            'product.salePrice1': p1,
+            'product.salePrice2': p2,
+            'product.pvp': !isNaN(pvp) ? pvp : p2,
+            'product.cost': !isNaN(cost) ? cost : (d.cost || 0),
+            lastUpdated: Timestamp.now()
+          });
+        });
+        await batch.commit();
+      }
+
+      // 3. Actualizar estado local
+      setStoreItems(prev => prev.map(item => {
+        if (item.productId === productId) {
+          const updatedProduct = {
+            ...item.product,
+            salePrice1: p1,
+            salePrice2: p2,
+            pvp: !isNaN(pvp) ? pvp : p2,
+            cost: !isNaN(cost) ? cost : item.product.cost
+          };
+          return {
+            ...item,
+            product: updatedProduct,
+            unitPrice: p2
+          };
+        }
+        return item;
+      }));
+
+      toast.success('¡Precios actualizados en todo el sistema (Productos y Bodegas)!');
+      setEditingItem(null);
+    } catch (err) {
+      console.error('Error guardando precios:', err);
+      toast.error('Error al actualizar precios en el sistema');
+    } finally {
+      setSavingPrices(false);
     }
   };
 
@@ -386,13 +496,22 @@ const StoreEcuador: React.FC = () => {
 
                       {/* Acciones */}
                       <td className="py-4 px-6 text-center">
-                        <button
-                          onClick={() => window.open('/puntodeventa', '_blank')}
-                          className="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all"
-                          title="Facturar en POS"
-                        >
-                          <ShoppingCart className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditPrice(item)}
+                            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-all"
+                            title="Editar Precios (Actualiza en todo el sistema)"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => window.open('/puntodeventa', '_blank')}
+                            className="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all"
+                            title="Facturar en POS"
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -424,6 +543,160 @@ const StoreEcuador: React.FC = () => {
               alt="Producto"
               className="w-full h-96 object-contain rounded-2xl"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Precios del Producto */}
+      {editingItem && (
+        <div
+          onClick={() => !savingPrices && setEditingItem(null)}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="relative bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-slate-100 space-y-6"
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
+                  <img
+                    src={editingItem.product.imageUrl || '/logo_falconi.png'}
+                    alt={editingItem.product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-lg line-clamp-1">
+                    {editingItem.product.name}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    SKU: <span className="font-mono text-slate-600">{editingItem.product.sku}</span> | Marca: {editingItem.product.brand || 'Falconi'}
+                  </p>
+                </div>
+              </div>
+              <button
+                disabled={savingPrices}
+                onClick={() => setEditingItem(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Formulario de Precios */}
+            <form onSubmit={handleSavePrices} className="space-y-4">
+              <div className="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-4 space-y-1">
+                <label className="block text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                  Precio Tienda / Minorista (salePrice2) *
+                </label>
+                <p className="text-[11px] text-emerald-600 mb-1.5">
+                  Precio de mostrador y POS para venta local.
+                </p>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-700 font-bold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={editPrice2}
+                    onChange={e => setEditPrice2(e.target.value)}
+                    className="w-full pl-8 pr-4 py-2.5 bg-white border border-emerald-300 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Precio PVP (Etiqueta)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={editPvp}
+                      onChange={e => setEditPvp(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+                  <label className="block text-xs font-bold text-purple-700 uppercase tracking-wider">
+                    Precio Mayorista (salePrice1) *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-600 font-bold">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={editPrice1}
+                      onChange={e => setEditPrice1(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                  Costo de Compra
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editCost}
+                    onChange={e => setEditCost(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  />
+                </div>
+              </div>
+
+              {/* Nota de actualización global */}
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-2xl text-[11px] text-blue-700 flex items-start gap-2">
+                <span className="font-bold">Nota:</span>
+                <span>Al guardar, estos precios se actualizarán en el catálogo maestro y en todos los inventarios (Tienda Local, Bodega Ecuador y Bodega USA).</span>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={savingPrices}
+                  onClick={() => setEditingItem(null)}
+                  className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPrices}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-lg hover:shadow-emerald-200 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {savingPrices ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Actualizando en todo el sistema...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Guardar Precios</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
