@@ -49,7 +49,7 @@ const LocalReceipts: React.FC = () => {
           map.set(i.productId, {
             productId: i.productId,
             name: i.product?.name || 'Producto',
-            barcode: i.product?.barcode,
+            barcode: i.product?.barcode || i.product?.sku || '',
             imageUrl: i.product?.imageUrl,
             available: i.quantity
           });

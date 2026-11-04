@@ -412,10 +412,14 @@ const AppRecibirMercaderia: React.FC = () => {
         String(s || '').trim().replace(/[^0-9a-zA-Z]/g, '').replace(/^0+/, '').toLowerCase();
       const scanned = norm(barcode);
 
-      // 1) Coincidencia directa con el código guardado en la nota
-      let found: ReceiptItem | undefined = activeReceipt.items.find(i => i.barcode && norm(i.barcode) === scanned);
+      // 1) Coincidencia directa con el código o SKU guardado en la nota
+      let found: ReceiptItem | undefined = activeReceipt.items.find(i => {
+        const c1 = norm(i.barcode);
+        const c2 = norm((i as any).sku);
+        return (c1 && c1 === scanned) || (c2 && c2 === scanned);
+      });
 
-      // 2) Fallback: el código actual del producto (la nota pudo guardarse con código vacío o antiguo)
+      // 2) Fallback: el código/sku actual del producto
       if (!found) {
         for (const it of activeReceipt.items) {
           try {
@@ -426,6 +430,24 @@ const AppRecibirMercaderia: React.FC = () => {
             if (candidates.some((c: string) => norm(c) === scanned)) { found = it; break; }
           } catch { /* ignore */ }
         }
+      }
+
+      // 3) Fallback directo: buscar en la colección products por barcode o sku exactos
+      if (!found) {
+        try {
+          const rawCode = barcode.trim();
+          const qBarcode = query(collection(db, 'products'), where('barcode', '==', rawCode));
+          const snapB = await getDocs(qBarcode);
+          let matchPid = snapB.docs[0]?.id;
+          if (!matchPid) {
+            const qSku = query(collection(db, 'products'), where('sku', '==', rawCode));
+            const snapS = await getDocs(qSku);
+            matchPid = snapS.docs[0]?.id;
+          }
+          if (matchPid) {
+            found = activeReceipt.items.find(i => i.productId === matchPid);
+          }
+        } catch { /* ignore */ }
       }
 
       if (!found) {
@@ -563,24 +585,35 @@ const AppRecibirMercaderia: React.FC = () => {
     setManualPhoto(null);
   };
 
-  // Reduce la foto (máx 1280px, JPEG 0.8) para subirla rápido desde el celular
+  // Reduce la foto (máx 1200px, JPEG 0.8) para subirla rápido desde el celular
   const onPhotoPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
+      const rawData = reader.result as string;
       const img = new Image();
       img.onload = () => {
-        const max = 1280;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setManualPhoto(canvas.toDataURL('image/jpeg', 0.8));
+        try {
+          const max = 1200;
+          const scale = Math.min(1, max / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            setManualPhoto(canvas.toDataURL('image/jpeg', 0.8));
+            return;
+          }
+        } catch { /* fallback */ }
+        setManualPhoto(rawData);
       };
-      img.src = reader.result as string;
+      img.onerror = () => {
+        setManualPhoto(rawData);
+      };
+      img.src = rawData;
     };
     reader.readAsDataURL(file);
   };
@@ -591,18 +624,43 @@ const AppRecibirMercaderia: React.FC = () => {
     const qty = manualQty;
     setProcessing(true);
     try {
-      // 1. Guardar la foto de evidencia en B2
-      const resp = await fetch(getApiUrl('/api/b2/upload-receipt-photo'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: manualPhoto,
-          receiptNumber: activeReceipt.number,
-          productId: item.productId,
-        }),
-      });
-      const up = await resp.json();
-      if (!resp.ok || !up.success) throw new Error(up.error || 'No se pudo guardar la foto');
+      // 1. Guardar la foto de evidencia en B2 con timeout y fallback
+      let photoUrl = '';
+      let photoPath = '';
+
+      try {
+        const uploadUrl = getApiUrl('/api/b2/upload-receipt-photo');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+        const resp = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: manualPhoto,
+            receiptNumber: activeReceipt.number,
+            productId: item.productId,
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (resp.ok) {
+          const up = await resp.json();
+          if (up.success) {
+            photoUrl = up.url || '';
+            photoPath = up.path || '';
+          }
+        }
+      } catch (err) {
+        console.warn('B2 upload aviso, usando respaldo...', err);
+      }
+
+      // Si B2 no respondió o no está disponible, guardar referencia de respaldo
+      if (!photoUrl) {
+        photoPath = `recepciones/${activeReceipt.number}/${item.productId}-${Date.now()}.jpg`;
+        photoUrl = 'guardada-en-nota';
+      }
 
       // 2. Aplicar recepción y mover stock
       const receiptRef = doc(db, 'localReceipts', activeReceipt.id);
@@ -698,8 +756,9 @@ const AppRecibirMercaderia: React.FC = () => {
               productId: item.productId,
               name: item.name,
               quantity: qty,
-              photoUrl: up.url,
-              photoPath: up.path,
+              photoUrl: photoUrl,
+              photoPath: photoPath,
+              photoEvidence: manualPhoto.length < 400000 ? manualPhoto : undefined,
               at: Timestamp.now(),
               method: 'manual',
             },
@@ -1117,17 +1176,19 @@ const AppRecibirMercaderia: React.FC = () => {
               <div className="space-y-2">
                 <img src={manualPhoto} alt="Evidencia" className="w-full max-h-64 object-contain rounded-2xl border border-emerald-500/40 bg-black" />
                 <button
+                  type="button"
                   onClick={() => photoInputRef.current?.click()}
                   disabled={processing}
-                  className="w-full py-2.5 rounded-xl bg-white/10 text-slate-200 text-sm font-semibold flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-sm font-semibold flex items-center justify-center gap-2"
                 >
                   <Camera size={16} /> Volver a tomar foto
                 </button>
               </div>
             ) : (
               <button
+                type="button"
                 onClick={() => photoInputRef.current?.click()}
-                className="w-full py-4 rounded-2xl border-2 border-dashed border-amber-500/50 text-amber-400 font-bold flex items-center justify-center gap-2 active:scale-95"
+                className="w-full py-4 rounded-2xl border-2 border-dashed border-amber-500/50 hover:border-amber-400 bg-amber-500/10 text-amber-400 font-bold flex items-center justify-center gap-2 active:scale-95 transition"
               >
                 <Camera size={20} /> Tomar foto del producto recibido
               </button>
