@@ -81,14 +81,25 @@ export class CatalogService {
           const loc = String(d.location || '').trim().toLowerCase();
           const qty = Number(d.quantity) || 0;
 
-          if (loc.includes('local') || loc.includes('tienda') || loc.includes('mostrador')) {
+          if (
+            loc.includes('principal') ||
+            loc.includes('local') ||
+            loc.includes('tienda') ||
+            loc.includes('mostrador')
+          ) {
             mLocal.set(pid, (mLocal.get(pid) || 0) + qty);
-          } else if (loc.includes('usa') || loc.includes('eeuu') || loc.includes('estados unidos')) {
+          } else if (
+            loc.includes('usa') ||
+            loc.includes('eeuu') ||
+            loc.includes('estados unidos') ||
+            loc.includes('bodega usa') ||
+            loc.includes('bodeha usa') ||
+            loc.includes('bodegausa')
+          ) {
             mUsa.set(pid, (mUsa.get(pid) || 0) + qty);
           } else if (
             loc.includes('ecuador') ||
             loc.includes('babahoyo') ||
-            loc.includes('principal') ||
             loc.includes('bodega')
           ) {
             mEc.set(pid, (mEc.get(pid) || 0) + qty);

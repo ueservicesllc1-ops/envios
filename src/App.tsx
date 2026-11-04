@@ -16,6 +16,7 @@ import Shipping from './pages/Shipping';
 import Accounting from './pages/Accounting';
 import BillingDashboard from './pages/BillingDashboard';
 import PointOfSale from './pages/PointOfSale';
+import StoreEcuador from './pages/StoreEcuador';
 import Sellers from './pages/Sellers';
 import SellerBalances from './pages/SellerBalances';
 import SellerBalanceDetails from './pages/SellerBalanceDetails';
@@ -217,6 +218,8 @@ function App() {
               <Route path="/products" element={<AuthWrapper><Layout><Products /></Layout></AuthWrapper>} />
               <Route path="/warehouse" element={<AuthWrapper><Layout><Warehouse /></Layout></AuthWrapper>} />
               <Route path="/warehouse-ecuador" element={<AuthWrapper><Layout><WarehouseEcuador /></Layout></AuthWrapper>} />
+              <Route path="/store-ecuador" element={<AuthWrapper><Layout><StoreEcuador /></Layout></AuthWrapper>} />
+              <Route path="/tienda-ecuador" element={<AuthWrapper><Layout><StoreEcuador /></Layout></AuthWrapper>} />
               <Route path="/inventory" element={<AuthWrapper><Layout><Inventory /></Layout></AuthWrapper>} />
               <Route path="/entry-notes" element={<AuthWrapper><Layout><EntryNotes /></Layout></AuthWrapper>} />
               <Route path="/exit-notes" element={<AuthWrapper><Layout><ExitNotes /></Layout></AuthWrapper>} />

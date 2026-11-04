@@ -18,7 +18,7 @@ async function getStockForProduct(productId: string) {
       const loc = (data.location || '').trim().toLowerCase();
       const qty = Number(data.quantity) || 0;
 
-      if (loc.includes('local') || loc.includes('tienda') || loc.includes('mostrador')) {
+      if (loc.includes('principal') || loc.includes('local') || loc.includes('tienda') || loc.includes('mostrador')) {
         stockLocal += qty;
       } else if (loc.includes('usa') || loc.includes('eeuu') || loc.includes('estados unidos')) {
         stockBodegaUsa += qty;
@@ -563,7 +563,7 @@ perfumeAdvisorRouter.get('/catalog', async (_req: Request, res: Response) => {
       const loc = (d.location || '').toLowerCase();
       const qty = Number(d.quantity) || 0;
 
-      if (loc.includes('local') || loc.includes('tienda') || loc.includes('mostrador')) {
+      if (loc.includes('principal') || loc.includes('local') || loc.includes('tienda') || loc.includes('mostrador')) {
         stockLocalMap.set(pid, (stockLocalMap.get(pid) || 0) + qty);
       } else if (loc.includes('usa') || loc.includes('eeuu') || loc.includes('estados unidos')) {
         stockUsaMap.set(pid, (stockUsaMap.get(pid) || 0) + qty);
@@ -660,7 +660,7 @@ perfumeAdvisorRouter.post('/find-dupe', async (req: Request, res: Response) => {
       const loc = (d.location || '').toLowerCase();
       const qty = Number(d.quantity) || 0;
 
-      if (loc.includes('local') || loc.includes('tienda') || loc.includes('mostrador') || loc.includes('babahoyo')) {
+      if (loc.includes('principal') || loc.includes('local') || loc.includes('tienda') || loc.includes('mostrador') || loc.includes('babahoyo')) {
         stockLocalMap.set(pid, (stockLocalMap.get(pid) || 0) + qty);
       } else if (loc.includes('usa') || loc.includes('eeuu') || loc.includes('estados unidos')) {
         stockUsaMap.set(pid, (stockUsaMap.get(pid) || 0) + qty);
