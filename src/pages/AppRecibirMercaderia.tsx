@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   collection,
@@ -9,6 +9,7 @@ import {
   runTransaction,
   Timestamp,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
@@ -27,7 +28,9 @@ import {
   Minus,
   Plus,
   X,
+  Search,
 } from 'lucide-react';
+import { productService } from '../services/productService';
 import { getApiUrl } from '../config/api.config';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import jsPDF from 'jspdf';
@@ -359,6 +362,28 @@ const AppRecibirMercaderia: React.FC = () => {
   const [manualPhoto, setManualPhoto] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Recepción directa / manual sin orden ───────────────────────────────────
+  const [showDirectReceive, setShowDirectReceive] = useState(false);
+  const [directScannerOpen, setDirectScannerOpen] = useState(false);
+  const [directSearch, setDirectSearch] = useState('');
+  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [directSelectedProduct, setDirectSelectedProduct] = useState<any | null>(null);
+  const [directQty, setDirectQty] = useState(1);
+  const [autoTransferOnScan, setAutoTransferOnScan] = useState(true);
+  const [lastTransferredProduct, setLastTransferredProduct] = useState<any | null>(null);
+  const [directSessionItems, setDirectSessionItems] = useState<Array<{
+    id: string;
+    productId: string;
+    name: string;
+    barcode: string;
+    imageUrl?: string;
+    quantity: number;
+    time: string;
+    ecuadorRemaining: number;
+    tiendaStock: number;
+  }>>([]);
+
   const addToast = (msg: string, ok: boolean) => {
     const id = Date.now();
     setToasts(prev => [...prev, { msg, ok, id }]);
@@ -398,6 +423,262 @@ const AppRecibirMercaderia: React.FC = () => {
   useEffect(() => {
     if (!authLoading && user) loadReceipts(null);
   }, [authLoading, user, loadReceipts]);
+
+  // ── Funciones de Recepción Directa (Sin Orden) ────────────────────────────
+
+  const openDirectReceive = async () => {
+    setShowDirectReceive(true);
+    setDirectSearch('');
+    setDirectSelectedProduct(null);
+    setDirectQty(1);
+    if (catalogProducts.length === 0) {
+      try {
+        setLoadingCatalog(true);
+        const prods = await productService.getAll();
+        setCatalogProducts(prods);
+      } catch (err) {
+        console.error('Error cargando catálogo:', err);
+      } finally {
+        setLoadingCatalog(false);
+      }
+    }
+  };
+
+  const filteredDirectProducts = useMemo(() => {
+    if (!directSearch.trim()) return [];
+    const q = directSearch.trim().toLowerCase();
+    const cleanNoLeading = q.replace(/^0+/, '');
+
+    return catalogProducts.filter(p => {
+      const name = (p.name || '').toLowerCase();
+      const sku = (p.sku || '').toLowerCase();
+      const barcode = (p.barcode || '').toLowerCase();
+      const brand = (p.brand || '').toLowerCase();
+      return (
+        name.includes(q) ||
+        sku.includes(q) ||
+        (cleanNoLeading && sku.includes(cleanNoLeading)) ||
+        barcode.includes(q) ||
+        (cleanNoLeading && barcode.includes(cleanNoLeading)) ||
+        brand.includes(q)
+      );
+    }).slice(0, 20);
+  }, [catalogProducts, directSearch]);
+
+  const findProductByCode = async (rawCode: string): Promise<any | null> => {
+    const norm = (s?: string) =>
+      String(s || '').trim().replace(/[^0-9a-zA-Z]/g, '').replace(/^0+/, '').toLowerCase();
+    const clean = rawCode.trim();
+    const scanned = norm(clean);
+
+    // 1. Buscar en catálogo en memoria si ya está cargado
+    if (catalogProducts.length > 0) {
+      const found = catalogProducts.find(p => {
+        const candidates = [p.barcode, p.sku, (p as any).upc, (p as any).ean].filter(Boolean);
+        return candidates.some((c: string) => norm(c) === scanned);
+      });
+      if (found) return found;
+    }
+
+    // 2. Consulta directa a Firestore por barcode exacto
+    try {
+      const q1 = query(collection(db, 'products'), where('barcode', '==', clean));
+      const snap1 = await getDocs(q1);
+      if (!snap1.empty) {
+        return { id: snap1.docs[0].id, ...snap1.docs[0].data() };
+      }
+    } catch {}
+
+    // 3. Consulta directa por SKU
+    try {
+      const q2 = query(collection(db, 'products'), where('sku', '==', clean));
+      const snap2 = await getDocs(q2);
+      if (!snap2.empty) {
+        return { id: snap2.docs[0].id, ...snap2.docs[0].data() };
+      }
+    } catch {}
+
+    // 4. Fallback: cargar catálogo completo
+    try {
+      const allSnap = await getDocs(collection(db, 'products'));
+      for (const d of allSnap.docs) {
+        const data: any = d.data();
+        const candidates = [data.barcode, data.sku, data.upc, data.ean].filter(Boolean);
+        if (candidates.some((c: string) => norm(c) === scanned)) {
+          return { id: d.id, ...data };
+        }
+      }
+    } catch {}
+
+    return null;
+  };
+
+  const handleDirectTransfer = async (prod: any, qty: number = 1) => {
+    if (!prod || qty <= 0) return;
+    setProcessing(true);
+
+    try {
+      const productId = prod.id;
+      const cost = Number(prod.cost) || 0;
+      const unitPrice = Number(prod.salePrice2 || prod.salePrice1) || 0;
+
+      const invQ = query(
+        collection(db, 'inventory'),
+        where('productId', '==', productId)
+      );
+      const invSnap = await getDocs(invQ);
+
+      const ecuDoc = invSnap.docs.find(d => {
+        const loc = String((d.data() as any).location || '').toLowerCase();
+        return loc.includes('ecuador') && !loc.includes('tienda') && !loc.includes('local');
+      });
+
+      const tiendaDoc = invSnap.docs.find(d => {
+        const loc = String((d.data() as any).location || '').toLowerCase();
+        return loc.includes('tienda') || loc.includes('local') || loc.includes('mostrador');
+      });
+
+      const batch = writeBatch(db);
+
+      let ecuCurrentQty = 0;
+      let ecuNewQty = 0;
+
+      if (ecuDoc) {
+        const ed = ecuDoc.data() as any;
+        ecuCurrentQty = Number(ed.quantity) || 0;
+        ecuNewQty = Math.max(0, ecuCurrentQty - qty);
+        batch.update(ecuDoc.ref, {
+          quantity: ecuNewQty,
+          totalCost: ecuNewQty * (Number(ed.cost) || cost),
+          totalValue: ecuNewQty * (Number(ed.cost) || cost),
+          lastUpdated: Timestamp.now()
+        });
+      }
+
+      let tiendaCurrentQty = 0;
+      let tiendaNewQty = qty;
+
+      if (tiendaDoc) {
+        const td = tiendaDoc.data() as any;
+        tiendaCurrentQty = Number(td.quantity) || 0;
+        tiendaNewQty = tiendaCurrentQty + qty;
+        batch.update(tiendaDoc.ref, {
+          quantity: tiendaNewQty,
+          totalCost: tiendaNewQty * cost,
+          totalValue: tiendaNewQty * cost,
+          totalPrice: tiendaNewQty * unitPrice,
+          status: 'stock',
+          lastUpdated: Timestamp.now()
+        });
+      } else {
+        const newRef = doc(collection(db, 'inventory'));
+        batch.set(newRef, {
+          productId,
+          product: {
+            id: productId,
+            name: prod.name,
+            barcode: prod.barcode || prod.sku || '',
+            sku: prod.sku || '',
+            imageUrl: prod.imageUrl || (Array.isArray(prod.images) ? prod.images[0] : '') || '',
+            salePrice1: prod.salePrice1 || 0,
+            salePrice2: unitPrice,
+            cost: cost,
+            dupeOf: prod.dupeOf || '',
+            dupeBrand: prod.dupeBrand || ''
+          },
+          quantity: qty,
+          unitPrice,
+          cost,
+          totalPrice: qty * unitPrice,
+          totalCost: qty * cost,
+          totalValue: qty * cost,
+          location: 'Tienda Local',
+          status: 'stock',
+          lastUpdated: Timestamp.now()
+        });
+      }
+
+      // Registrar nota automática de traslado para auditoría
+      const receiptLogRef = doc(collection(db, 'localReceipts'));
+      batch.set(receiptLogRef, {
+        number: `REC-DIR-${Date.now().toString().slice(-6)}`,
+        status: 'received',
+        fromLocation: 'Bodega Ecuador',
+        toLocation: 'Tienda Local',
+        items: [
+          {
+            productId,
+            name: prod.name,
+            barcode: prod.barcode || prod.sku || '',
+            imageUrl: prod.imageUrl || '',
+            expectedQty: qty,
+            receivedQty: qty
+          }
+        ],
+        notes: 'Recepción manual directa sin orden (Asesor)',
+        createdAt: Timestamp.now(),
+        receivedAt: Timestamp.now()
+      });
+
+      await batch.commit();
+
+      triggerBeep();
+      triggerHaptic();
+
+      const transferredItem = {
+        id: `${productId}-${Date.now()}`,
+        productId,
+        name: prod.name,
+        barcode: prod.barcode || prod.sku || '-',
+        imageUrl: prod.imageUrl || '',
+        quantity: qty,
+        time: new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        ecuadorRemaining: ecuNewQty,
+        tiendaStock: tiendaNewQty
+      };
+
+      setLastTransferredProduct(transferredItem);
+      setDirectSessionItems(prev => [transferredItem, ...prev]);
+      addToast(`✓ ${prod.name} (+${qty}) trasladado a Tienda Local`, true);
+
+      setDirectSelectedProduct(null);
+      setDirectQty(1);
+    } catch (err: any) {
+      console.error('Error al transferir:', err);
+      addToast(err.message || 'Error al trasladar producto', false);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDirectScan = async (scannedCode: string) => {
+    setDirectScannerOpen(false);
+    setProcessing(true);
+
+    try {
+      const prod = await findProductByCode(scannedCode);
+      if (!prod) {
+        triggerBeep();
+        addToast(`Código ${scannedCode} no encontrado. Búscalo por nombre.`, false);
+        setDirectSearch(scannedCode);
+        return;
+      }
+
+      if (autoTransferOnScan) {
+        await handleDirectTransfer(prod, 1);
+      } else {
+        setDirectSelectedProduct(prod);
+        setDirectQty(1);
+        triggerBeep();
+        triggerHaptic();
+      }
+    } catch (err: any) {
+      console.error('Error en escaneo directo:', err);
+      addToast(err.message || 'Error al procesar escaneo', false);
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   // ── Scan handler ───────────────────────────────────────────────────────────
 
@@ -861,13 +1142,23 @@ const AppRecibirMercaderia: React.FC = () => {
         </div>
 
         {activeReceipt && (
-          <button
-            onClick={() => printReceiptPdf(activeReceipt)}
-            className="p-2 rounded-xl bg-white/8 hover:bg-white/14 text-slate-300 hover:text-blue-400 transition"
-            title="Imprimir nota en PDF"
-          >
-            <Printer size={18} />
-          </button>
+          <>
+            <button
+              onClick={openDirectReceive}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-bold text-xs flex items-center gap-1.5 border border-amber-500/30"
+              title="Recibir perfume sin orden"
+            >
+              <ScanLine size={16} />
+              <span className="hidden sm:inline">Sin orden</span>
+            </button>
+            <button
+              onClick={() => printReceiptPdf(activeReceipt)}
+              className="p-2 rounded-xl bg-white/8 hover:bg-white/14 text-slate-300 hover:text-blue-400 transition"
+              title="Imprimir nota en PDF"
+            >
+              <Printer size={18} />
+            </button>
+          </>
         )}
 
         <button
@@ -885,6 +1176,28 @@ const AppRecibirMercaderia: React.FC = () => {
         {/* LIST VIEW */}
         {!activeReceipt && (
           <>
+            {/* ── BOTÓN PRINCIPAL: RECIBIR DIRECTO SIN ORDEN ── */}
+            <div className="mb-4">
+              <button
+                onClick={openDirectReceive}
+                className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-black font-extrabold shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-between border border-amber-300"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-black/10 flex items-center justify-center shrink-0">
+                    <ScanLine size={24} className="text-black stroke-[2.5]" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-sm font-black uppercase tracking-tight text-black">
+                      Recibir Manual (Sin Orden)
+                    </span>
+                    <span className="block text-xs font-semibold text-amber-950/90 mt-0.5">
+                      Escanea códigos de barra: Bodega Ecuador → Tienda Local
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight size={22} className="text-black/70 shrink-0" />
+              </button>
+            </div>
             {loading ? (
               <div className="flex flex-col items-center justify-center h-48 gap-3">
                 <Loader2 className="animate-spin text-amber-400" size={32} />
@@ -901,12 +1214,20 @@ const AppRecibirMercaderia: React.FC = () => {
                     Cuando el administrador envíe productos desde Bodega Ecuador, aparecerán aquí.
                   </p>
                 </div>
-                <button
-                  onClick={() => loadReceipts(null)}
-                  className="mt-2 px-5 py-2.5 bg-amber-500/20 border border-amber-500/40 text-amber-400 font-bold rounded-xl text-sm flex items-center gap-2 hover:bg-amber-500/30 transition"
-                >
-                  <RefreshCw size={15} /> Actualizar
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-2 mt-2">
+                  <button
+                    onClick={openDirectReceive}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 text-black font-extrabold rounded-xl text-sm flex items-center justify-center gap-2 shadow active:scale-95 transition"
+                  >
+                    <ScanLine size={16} /> Recibir Manual sin Orden
+                  </button>
+                  <button
+                    onClick={() => loadReceipts(null)}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-white/10 text-slate-300 font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-white/15 transition"
+                  >
+                    <RefreshCw size={15} /> Actualizar
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -1222,6 +1543,273 @@ const AppRecibirMercaderia: React.FC = () => {
             </button>
             {!manualPhoto && (
               <p className="text-center text-xs text-slate-500 mt-2">La foto es obligatoria como comprobante.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Escáner para Recepción Directa ── */}
+      {directScannerOpen && (
+        <Scanner
+          onDetected={handleDirectScan}
+          onClose={() => setDirectScannerOpen(false)}
+        />
+      )}
+
+      {/* ── Vista / Modal Recepción Directa (Sin Orden) ── */}
+      {showDirectReceive && (
+        <div className="fixed inset-0 z-50 bg-[#0A0D12] flex flex-col text-white" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+          {/* Header */}
+          <div className="sticky top-0 z-30 bg-[#0A0D12]/95 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowDirectReceive(false)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/15 text-white active:scale-95 transition"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div>
+                <h2 className="font-extrabold text-base text-white flex items-center gap-2">
+                  <span>Recepción Directa</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    Sin Orden
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400">Bodega Ecuador → Tienda Local</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowDirectReceive(false)}
+              className="p-2 rounded-xl bg-white/10 text-slate-400 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 max-w-lg mx-auto w-full pb-12">
+            {/* Botón Principal Escanear con Cámara */}
+            <button
+              onClick={() => setDirectScannerOpen(true)}
+              disabled={processing}
+              className="w-full py-5 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 border border-amber-300"
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                color: '#000',
+                boxShadow: '0 8px 25px rgba(245, 158, 11, 0.35)',
+              }}
+            >
+              <Camera size={26} className="text-black stroke-[2.5]" />
+              <span>Escanear Código de Barras</span>
+            </button>
+
+            {/* Toggle Auto-transferir */}
+            <div className="bg-[#13161C] border border-white/8 rounded-2xl p-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-white">Auto-ingreso al escanear</p>
+                <p className="text-[11px] text-slate-400">Transfiere 1 unidad apenas lee el código</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoTransferOnScan}
+                  onChange={e => setAutoTransferOnScan(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+
+            {/* Buscador de catálogo manual */}
+            <div className="space-y-2">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                O buscar perfume manualmente:
+              </p>
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, código de barras o SKU..."
+                  value={directSearch}
+                  onChange={e => setDirectSearch(e.target.value)}
+                  className="w-full bg-[#13161C] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                />
+                {directSearch && (
+                  <button
+                    onClick={() => setDirectSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* Resultados de búsqueda */}
+              {directSearch.trim().length > 1 && (
+                <div className="max-h-60 overflow-y-auto bg-[#181B22] border border-white/10 rounded-2xl divide-y divide-white/5 shadow-2xl">
+                  {filteredDirectProducts.length === 0 ? (
+                    <p className="p-4 text-center text-xs text-slate-400">No se encontraron productos coincidentes</p>
+                  ) : (
+                    filteredDirectProducts.map(p => (
+                      <div
+                        key={p.id}
+                        onClick={() => {
+                          if (autoTransferOnScan) {
+                            handleDirectTransfer(p, 1);
+                            setDirectSearch('');
+                          } else {
+                            setDirectSelectedProduct(p);
+                            setDirectQty(1);
+                            setDirectSearch('');
+                          }
+                        }}
+                        className="p-3 flex items-center justify-between hover:bg-white/5 active:bg-white/10 cursor-pointer transition"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={p.imageUrl || '/logo_falconi.png'}
+                            alt={p.name}
+                            className="w-10 h-10 object-cover rounded-xl bg-white/10 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-bold text-xs text-white truncate">{p.name}</p>
+                            <p className="text-[11px] text-slate-400 font-mono">
+                              {p.barcode || p.sku || '-'} {p.brand ? `· ${p.brand}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold text-amber-400 shrink-0 ml-2">
+                          {autoTransferOnScan ? '+1 Trasladar' : 'Seleccionar'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Producto seleccionado para confirmar cantidad si autoTransfer es false */}
+            {directSelectedProduct && (
+              <div className="bg-[#181B22] border border-amber-500/40 rounded-2xl p-4 space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={directSelectedProduct.imageUrl || '/logo_falconi.png'}
+                      alt={directSelectedProduct.name}
+                      className="w-14 h-14 object-cover rounded-2xl bg-white/10 shrink-0 border border-white/10"
+                    />
+                    <div>
+                      <p className="font-extrabold text-sm text-white">{directSelectedProduct.name}</p>
+                      <p className="text-xs text-slate-400 font-mono mt-0.5">{directSelectedProduct.barcode || directSelectedProduct.sku}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setDirectSelectedProduct(null)}
+                    className="text-slate-400 hover:text-white p-1"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Stepper Cantidad */}
+                <div className="flex items-center justify-between bg-[#13161C] p-3 rounded-xl border border-white/5">
+                  <span className="text-xs font-bold text-slate-300">Cantidad a trasladar:</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setDirectQty(q => Math.max(1, q - 1))}
+                      className="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <span className="text-xl font-black text-amber-400 w-10 text-center">{directQty}</span>
+                    <button
+                      onClick={() => setDirectQty(q => q + 1)}
+                      className="w-9 h-9 rounded-lg bg-amber-500 hover:bg-amber-400 text-black flex items-center justify-center font-bold"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleDirectTransfer(directSelectedProduct, directQty)}
+                  disabled={processing}
+                  className="w-full py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 active:scale-95 transition"
+                >
+                  {processing ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      <span>Trasladando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={18} />
+                      <span>Confirmar Traslado a Tienda ({directQty} uds)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Último producto recibido destacado */}
+            {lastTransferredProduct && !directSelectedProduct && (
+              <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-emerald-400 font-bold uppercase tracking-wider">¡Recibido con éxito!</p>
+                    <p className="font-bold text-sm text-white truncate">{lastTransferredProduct.name}</p>
+                    <p className="text-[11px] text-slate-400">
+                      Ahora tiene {lastTransferredProduct.tiendaStock} en Tienda (Quedan {lastTransferredProduct.ecuadorRemaining} en Bodega)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDirectScannerOpen(true)}
+                  className="px-3 py-2 bg-amber-400 hover:bg-amber-300 text-black font-extrabold text-xs rounded-xl shrink-0 shadow active:scale-95 transition"
+                >
+                  + Escanear otro
+                </button>
+              </div>
+            )}
+
+            {/* Historial de la sesión actual */}
+            {directSessionItems.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                    Recibidos en esta sesión ({directSessionItems.reduce((s, i) => s + i.quantity, 0)} uds)
+                  </p>
+                  <span className="text-[11px] text-amber-400 font-semibold">
+                    {directSessionItems.length} perfume{directSessionItems.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div className="bg-[#13161C] border border-white/8 rounded-2xl divide-y divide-white/5 overflow-hidden">
+                  {directSessionItems.map((item, idx) => (
+                    <div key={item.id || idx} className="p-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={item.imageUrl || '/logo_falconi.png'}
+                          alt={item.name}
+                          className="w-9 h-9 object-cover rounded-lg bg-white/5 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-white truncate">{item.name}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            {item.time} · Bodega: {item.ecuadorRemaining} | Tienda: <span className="text-emerald-400 font-semibold">{item.tiendaStock}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-black text-xs shrink-0 ml-2">
+                        +{item.quantity} ud{item.quantity !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
