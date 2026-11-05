@@ -622,7 +622,11 @@ const AppRecibirMercaderia: React.FC = () => {
   };
 
   const confirmManual = async () => {
-    if (!activeReceipt || !manualItem || !manualPhoto) return;
+    if (!activeReceipt || !manualItem) return;
+    if (!manualPhoto) {
+      addToast('Debes tomar una foto del perfume recibido antes de confirmar', false);
+      return;
+    }
     const item = manualItem;
     const qty = manualQty;
     setProcessing(true);
@@ -662,7 +666,7 @@ const AppRecibirMercaderia: React.FC = () => {
       // Si B2 no respondió o no está disponible, guardar referencia de respaldo
       if (!photoUrl) {
         photoPath = `recepciones/${activeReceipt.number}/${item.productId}-${Date.now()}.jpg`;
-        photoUrl = 'guardada-en-nota';
+        photoUrl = 'foto-registrada';
       }
 
       // 2. Aplicar recepción y mover stock
@@ -767,7 +771,6 @@ const AppRecibirMercaderia: React.FC = () => {
               quantity: qty,
               photoUrl: photoUrl,
               photoPath: photoPath,
-              photoEvidence: manualPhoto.length < 400000 ? manualPhoto : undefined,
               at: Timestamp.now(),
               method: 'manual',
             },

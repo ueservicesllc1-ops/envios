@@ -12,7 +12,7 @@ const getResolvedBaseUrl = (): string => {
       !host.startsWith('192.168.') &&
       !host.startsWith('10.')
     ) {
-      return 'https://api-comprasexpress.up.railway.app';
+      return window.location.origin;
     }
   }
   return 'http://localhost:5000';
