@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ShoppingCart, Search, Menu, X, LogIn, Star, Truck, Shield, Heart, MapPin, CheckCircle, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Copy, Wallet, DollarSign, Users, Clock, Ticket, Mail, Phone, MessageSquare, Send, Bell, Settings } from 'lucide-react';
+import { Package, ShoppingCart, Search, Menu, X, LogIn, Star, Truck, Shield, Heart, MapPin, CheckCircle, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Copy, Wallet, DollarSign, Users, Clock, Ticket, Mail, Phone, MessageSquare, Send, Bell, Settings, Store } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageSelector from '../components/LanguageSelector';
 import { productService } from '../services/productService';
@@ -468,35 +468,39 @@ const Home: React.FC = () => {
   }, []);
 
   const getInventoryForProduct = (productId: string): InventoryItem | null => {
-    return inventory.find(item => item.productId === productId) || null;
+    const items = inventory.filter(item => item.productId === productId || item.product?.sku === productId);
+    const withStock = items.find(i => (i.quantity || 0) > 0);
+    return withStock || items[0] || null;
   };
 
   const getAvailableQuantity = (productId: string): number => {
-    const inventoryItem = getInventoryForProduct(productId);
-    if (!inventoryItem) {
-      return 0;
-    }
-    // Mostrar stock disponible si está en 'stock' o 'in-transit' (disponible para venta)
-    if (inventoryItem.status === 'stock' || inventoryItem.status === 'in-transit') {
-      return inventoryItem.quantity;
-    }
-    return 0;
+    const items = inventory.filter(item =>
+      (item.productId === productId || item.product?.sku === productId) &&
+      (item.status === 'stock' || item.status === 'in-transit')
+    );
+    if (items.length === 0) return 0;
+    return items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
   };
 
   const getProductLocation = (productId: string): string | null => {
-    const inventoryItem = getInventoryForProduct(productId);
-    if (!inventoryItem || inventoryItem.quantity === 0) return null;
-    // Incluir productos con status 'stock' o 'in-transit'
-    if (inventoryItem.status !== 'stock' && inventoryItem.status !== 'in-transit') return null;
+    const items = inventory.filter(item =>
+      (item.productId === productId || item.product?.sku === productId) &&
+      (item.quantity || 0) > 0 &&
+      (item.status === 'stock' || item.status === 'in-transit')
+    );
+    if (items.length === 0) return null;
 
-    const location = inventoryItem.location?.toLowerCase() || '';
-    if (location.includes('ecuador') || location === 'bodega ecuador') {
-      return 'Bodega Ecuador';
-    }
-    if (location.includes('usa') || location.includes('principal') || location.includes('bodega')) {
-      return 'Bodega USA';
-    }
-    return inventoryItem.location || 'Bodega USA';
+    // Priorizar Tienda Local / Ecuador para retiro o envío inmediato
+    const tienda = items.find(i => {
+      const loc = (i.location || '').toLowerCase();
+      return loc.includes('tienda') || loc.includes('local');
+    });
+    if (tienda) return 'Tienda Local';
+
+    const ecuador = items.find(i => (i.location || '').toLowerCase().includes('ecuador'));
+    if (ecuador) return 'Bodega Ecuador';
+
+    return 'Bodega USA';
   };
 
   // Categorías principales fijas (mapeadas a traducciones)
@@ -579,7 +583,7 @@ const Home: React.FC = () => {
         // Es un producto consolidado con variantes - verificar ubicación de variantes
         isValidLocation = variants.some(variant => {
           const variantLocation = getProductLocation(variant.id)?.toLowerCase() || '';
-          return variantLocation.includes('usa') || variantLocation.includes('general') || variantLocation.includes('ecuador');
+          return variantLocation.includes('usa') || variantLocation.includes('general') || variantLocation.includes('ecuador') || variantLocation.includes('tienda') || variantLocation.includes('local');
         });
       } else {
         // Producto normal - verificar su propia ubicación
@@ -588,7 +592,7 @@ const Home: React.FC = () => {
           isValidLocation = true;
         } else {
           const location = getProductLocation(product.id)?.toLowerCase() || '';
-          isValidLocation = location.includes('usa') || location.includes('general') || location.includes('ecuador');
+          isValidLocation = location.includes('usa') || location.includes('general') || location.includes('ecuador') || location.includes('tienda') || location.includes('local');
         }
       }
     } else {
@@ -1437,11 +1441,24 @@ const Home: React.FC = () => {
                                   {isProduct && product?.isConsolidated && (
                                     <span className="px-2 py-0.5 text-[10px] bg-blue-100 text-blue-700 rounded font-bold">{t('home.variants')}</span>
                                   )}
-                                  {isProduct && product && getProductLocation(product.id)?.toLowerCase().includes('ecuador') && (
-                                    <span className="px-2 py-0.5 text-[10px] bg-green-100 text-green-800 rounded flex items-center gap-1 font-bold border border-green-200">
-                                      <Truck className="h-3 w-3" /> 24h
-                                    </span>
-                                  )}
+                                  {isProduct && product && (() => {
+                                    const loc = getProductLocation(product.id)?.toLowerCase() || '';
+                                    if (loc.includes('tienda') || loc.includes('local')) {
+                                      return (
+                                        <span className="px-2 py-0.5 text-[10px] bg-purple-100 text-purple-800 rounded flex items-center gap-1 font-bold border border-purple-200" title="Disponible en Tienda Local">
+                                          <Store className="h-3 w-3" /> Tienda Local
+                                        </span>
+                                      );
+                                    }
+                                    if (loc.includes('ecuador')) {
+                                      return (
+                                        <span className="px-2 py-0.5 text-[10px] bg-green-100 text-green-800 rounded flex items-center gap-1 font-bold border border-green-200">
+                                          <Truck className="h-3 w-3" /> 24h
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                   {!isProduct && perfume && (
                                     <span className="px-2 py-0.5 text-[10px] bg-purple-100 text-purple-700 rounded font-bold">Perfume</span>
                                   )}

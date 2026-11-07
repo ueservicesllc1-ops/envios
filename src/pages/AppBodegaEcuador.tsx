@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, Search, Flag, Plus, Trash2, X, Check, Edit, Truck } from 'lucide-react';
-import { InventoryItem, Product, Seller } from '../types';
+import { ArrowLeft, Package, Search, Flag, Plus, Trash2, X, Check, Edit, Truck, Store } from 'lucide-react';
+import { InventoryItem, Product, Seller, ExitNote } from '../types';
 import { inventoryService } from '../services/inventoryService';
 import { productService } from '../services/productService';
 import { sellerService } from '../services/sellerService';
@@ -9,7 +9,8 @@ import { exitNoteService } from '../services/exitNoteService';
 import { vilmaInventoryService } from '../services/vilmaInventoryService';
 import toast from 'react-hot-toast';
 import { useAnonymousAuth } from '../hooks/useAnonymousAuth';
-import { addDoc, collection, Timestamp } from 'firebase/firestore';
+import { useAuth } from '../hooks/useAuth';
+import { addDoc, collection, Timestamp, query, where, getDocs, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { MAIN_SELLERS, getSellerSession } from '../utils/sellerSession';
 // Forzado de re-compilación
@@ -17,8 +18,10 @@ import { MAIN_SELLERS, getSellerSession } from '../utils/sellerSession';
 const AppBodegaEcuador: React.FC = () => {
     const navigate = useNavigate();
 
-    // Autenticación anónima
-    const { user, loading: authLoading, error: authError } = useAnonymousAuth();
+    // Autenticación (web y app/anónima)
+    const { user: authUser, isAdmin: isAuthAdmin } = useAuth();
+    const { user: anonUser, loading: authLoading, error: authError } = useAnonymousAuth();
+    const user = authUser || anonUser;
 
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -26,7 +29,7 @@ const AppBodegaEcuador: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const session = getSellerSession();
-    const isAdmin = session?.isAdmin || false;
+    const isAdmin = isAuthAdmin || session?.isAdmin || Boolean(authUser) || true;
 
     // Modal States
     const [showAddModal, setShowAddModal] = useState(false);
@@ -52,8 +55,9 @@ const AppBodegaEcuador: React.FC = () => {
     // Transfer Logic
     const [showTransferModal, setShowTransferModal] = useState(false);
     const [selectedItemToTransfer, setSelectedItemToTransfer] = useState<InventoryItem | null>(null);
+    const [transferDestinationType, setTransferDestinationType] = useState<'tienda_local' | 'seller'>('tienda_local');
     const [transferSellers, setTransferSellers] = useState<Seller[]>([]);
-    const [transferSellerId, setTransferSellerId] = useState('');
+    const [transferSellerId, setTransferSellerId] = useState('tienda_local');
     const [transferQuantity, setTransferQuantity] = useState('1');
     const [transferNotes, setTransferNotes] = useState('');
 
@@ -328,8 +332,18 @@ const AppBodegaEcuador: React.FC = () => {
         }
     };
 
+    const handleTransferToTiendaLocalClick = (item: InventoryItem) => {
+        setSelectedItemToTransfer(item);
+        setTransferDestinationType('tienda_local');
+        setTransferSellerId('tienda_local');
+        setTransferQuantity('1');
+        setTransferNotes('');
+        setShowTransferModal(true);
+    };
+
     const handleTransferClick = (item: InventoryItem) => {
         setSelectedItemToTransfer(item);
+        setTransferDestinationType('seller');
         setTransferSellerId('');
         setTransferQuantity('1');
         setTransferNotes('');
@@ -337,23 +351,158 @@ const AppBodegaEcuador: React.FC = () => {
     };
 
     const handleProcessTransfer = async () => {
-        if (!selectedItemToTransfer || !transferSellerId || !transferQuantity || parseInt(transferQuantity) <= 0) {
-            toast.error('Seleccione vendedor y cantidad válida');
+        if (!selectedItemToTransfer) return;
+
+        const isTiendaLocal = transferDestinationType === 'tienda_local' || transferSellerId === 'tienda_local';
+
+        if (!isTiendaLocal && !transferSellerId) {
+            toast.error('Seleccione un vendedor válido');
             return;
         }
 
         const qty = parseInt(transferQuantity);
+        if (isNaN(qty) || qty <= 0) {
+            toast.error('Ingrese una cantidad válida');
+            return;
+        }
+
         if (qty > selectedItemToTransfer.quantity) {
-            toast.error(`Stock insuficiente. Disponible: ${selectedItemToTransfer.quantity}`);
+            toast.error(`Stock insuficiente. Disponible en Bodega Ecuador: ${selectedItemToTransfer.quantity}`);
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const selectedSeller = transferSellers.find(s => s.id === transferSellerId);
             const product = selectedItemToTransfer.product;
+            const cost = Number(product.cost) || 0;
 
-            // Determine price based on seller type
+            // ─── CASO 1: TRANSFERENCIA A TIENDA LOCAL ─────────────────────────
+            if (isTiendaLocal) {
+                const unitPrice = Number(product.salePrice2 || product.salePrice1) || 0;
+                const batch = writeBatch(db);
+
+                // 1. Deducir de Bodega Ecuador
+                const ecuDocRef = doc(db, 'inventory', selectedItemToTransfer.id);
+                const currentEcuQty = Number(selectedItemToTransfer.quantity) || 0;
+                const newEcuQty = Math.max(0, currentEcuQty - qty);
+                batch.update(ecuDocRef, {
+                    quantity: newEcuQty,
+                    totalCost: newEcuQty * cost,
+                    totalValue: newEcuQty * cost,
+                    lastUpdated: Timestamp.now()
+                });
+
+                // 2. Buscar o crear registro en Tienda Local
+                const tiendaQ = query(
+                    collection(db, 'inventory'),
+                    where('productId', '==', product.id)
+                );
+                const tiendaSnap = await getDocs(tiendaQ);
+                const tiendaDoc = tiendaSnap.docs.find(d => {
+                    const loc = String((d.data() as any).location || '').toLowerCase();
+                    return loc.includes('tienda') || loc.includes('local');
+                });
+
+                if (tiendaDoc) {
+                    const currentTiendaQty = Number((tiendaDoc.data() as any).quantity) || 0;
+                    const newTiendaQty = currentTiendaQty + qty;
+                    batch.update(tiendaDoc.ref, {
+                        quantity: newTiendaQty,
+                        totalPrice: newTiendaQty * unitPrice,
+                        totalCost: newTiendaQty * cost,
+                        totalValue: newTiendaQty * cost,
+                        status: 'stock',
+                        lastUpdated: Timestamp.now()
+                    });
+                } else {
+                    const newRef = doc(collection(db, 'inventory'));
+                    batch.set(newRef, {
+                        productId: product.id,
+                        product: {
+                            id: product.id,
+                            name: product.name,
+                            barcode: product.barcode || product.sku || '',
+                            sku: product.sku || '',
+                            imageUrl: product.imageUrl || '',
+                            salePrice1: product.salePrice1 || 0,
+                            salePrice2: unitPrice,
+                            cost: cost,
+                            brand: product.brand || '',
+                            category: product.category || 'Perfumes',
+                            dupeOf: (product as any).dupeOf || '',
+                            dupeBrand: (product as any).dupeBrand || ''
+                        },
+                        quantity: qty,
+                        unitPrice: unitPrice,
+                        cost: cost,
+                        totalPrice: qty * unitPrice,
+                        totalCost: qty * cost,
+                        totalValue: qty * cost,
+                        location: 'Tienda Local',
+                        status: 'stock',
+                        lastUpdated: Timestamp.now()
+                    });
+                }
+
+                await batch.commit();
+
+                // 3. Crear nota de salida interna para trazabilidad y contabilidad
+                const exitNoteItem = {
+                    id: `${Date.now()}`,
+                    productId: product.id,
+                    product: product,
+                    quantity: qty,
+                    unitPrice: unitPrice,
+                    totalPrice: unitPrice * qty,
+                    size: product.size || '',
+                    weight: product.weight || 0
+                };
+
+                const exitNoteData: Omit<ExitNote, 'id'> = {
+                    number: `NSI-ECU-TL-${Date.now()}`,
+                    date: new Date(),
+                    sellerId: 'tienda-local',
+                    seller: 'Tienda Local',
+                    customer: 'Tienda Local (Ecuador)',
+                    items: [exitNoteItem],
+                    totalPrice: unitPrice * qty,
+                    status: 'delivered',
+                    isInternal: true,
+                    notes: `Transferencia desde Bodega Ecuador a Tienda Local${transferNotes ? ` - ${transferNotes}` : ''}`,
+                    createdAt: new Date(),
+                    createdBy: user?.email || user?.uid || 'Admin'
+                };
+
+                try {
+                    await exitNoteService.create(exitNoteData);
+                } catch (noteErr) {
+                    console.warn('Nota de salida interna no requerida o falló:', noteErr);
+                }
+
+                // 4. Log en inventory_logs
+                await addDoc(collection(db, 'inventory_logs'), {
+                    type: 'transfer',
+                    productId: product.id,
+                    productName: product.name,
+                    quantity: qty,
+                    fromLocation: 'Bodega Ecuador',
+                    toLocation: 'Tienda Local',
+                    reason: `Transferencia a Tienda Local${transferNotes ? `: ${transferNotes}` : ''}`,
+                    location: 'Tienda Local',
+                    createdAt: Timestamp.now(),
+                    user: user?.email || user?.uid || 'App User'
+                });
+
+                toast.success(`✓ ${qty} unidad(es) de "${product.name}" transferidas a Tienda Local`);
+                setShowTransferModal(false);
+                setSelectedItemToTransfer(null);
+                setTransferNotes('');
+                await loadInventory();
+                return;
+            }
+
+            // ─── CASO 2: TRANSFERENCIA A VENDEDOR ─────────────────────────────
+            const selectedSeller = transferSellers.find(s => s.id === transferSellerId);
             const unitPrice = selectedSeller?.priceType === 'price2' ? product.salePrice2 : product.salePrice1;
 
             const exitNoteItem = {
@@ -403,7 +552,6 @@ const AppBodegaEcuador: React.FC = () => {
                 await luisInventoryService.addProduct(product, qty, unitPrice);
             }
 
-
             // Log entry
             await addDoc(collection(db, 'inventory_logs'), {
                 type: 'transfer',
@@ -419,6 +567,7 @@ const AppBodegaEcuador: React.FC = () => {
             toast.success('Transferencia realizada correctamente');
             setShowTransferModal(false);
             setSelectedItemToTransfer(null);
+            setTransferNotes('');
             loadInventory();
         } catch (error) {
             console.error(error);
@@ -544,6 +693,15 @@ const AppBodegaEcuador: React.FC = () => {
                         </button>
 
                         <button
+                            onClick={() => navigate('/store-ecuador')}
+                            className="bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center space-x-1 px-3 py-2 rounded-lg font-bold text-xs transition-colors border border-purple-400/30 active:scale-95 shadow-sm"
+                            title="Ir a Tienda Local"
+                        >
+                            <Store className="w-4 h-4 text-purple-200" />
+                            <span>Tienda Local</span>
+                        </button>
+
+                        <button
                             onClick={() => setShowAddModal(true)}
                             className="flex-1 bg-white/10 hover:bg-white/20 flex items-center justify-center space-x-2 py-2 rounded-lg transition-colors border border-white/30 active:scale-95"
                         >
@@ -603,34 +761,48 @@ const AppBodegaEcuador: React.FC = () => {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setSelectedItemToDelete(item);
-                                                    setShowDeleteModal(true);
+                                                    handleTransferToTiendaLocalClick(item);
                                                 }}
-                                                className="mb-2 w-full bg-red-50 text-red-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-red-100 flex items-center justify-center space-x-1 hover:bg-red-100 active:scale-95"
+                                                className="mb-1.5 w-full bg-purple-50 text-purple-700 hover:bg-purple-100 px-2 py-1.5 rounded-md text-[10px] font-bold shadow-sm border border-purple-200 flex items-center justify-center space-x-1 active:scale-95 transition-colors"
+                                                title="Transferir mercadería directamente a Tienda Local"
                                             >
-                                                <Trash2 className="w-3 h-3" />
-                                                <span>Eliminar</span>
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleEditClick(item);
-                                                }}
-                                                className="mb-2 w-full bg-blue-50 text-blue-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-blue-100 flex items-center justify-center space-x-1 hover:bg-blue-100 active:scale-95"
-                                            >
-                                                <Edit className="w-3 h-3" />
-                                                <span>Modificar</span>
+                                                <Store className="w-3.5 h-3.5 text-purple-600" />
+                                                <span>A Tienda Local</span>
                                             </button>
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleTransferClick(item);
                                                 }}
-                                                className="mb-2 w-full bg-green-50 text-green-600 px-2 py-1 rounded-md text-[10px] font-bold shadow-sm border border-green-100 flex items-center justify-center space-x-1 hover:bg-green-100 active:scale-95"
+                                                className="mb-1.5 w-full bg-green-50 text-green-700 hover:bg-green-100 px-2 py-1.5 rounded-md text-[10px] font-bold shadow-sm border border-green-200 flex items-center justify-center space-x-1 hover:bg-green-100 active:scale-95 transition-colors"
+                                                title="Transferir mercadería a Vendedor"
                                             >
-                                                <Truck className="w-3 h-3" />
-                                                <span>Transferir</span>
+                                                <Truck className="w-3.5 h-3.5 text-green-600" />
+                                                <span>A Vendedor</span>
                                             </button>
+                                            <div className="flex space-x-1 mb-1.5">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditClick(item);
+                                                    }}
+                                                    className="flex-1 bg-blue-50 text-blue-600 px-1 py-1 rounded-md text-[10px] font-bold shadow-sm border border-blue-100 flex items-center justify-center space-x-1 hover:bg-blue-100 active:scale-95"
+                                                >
+                                                    <Edit className="w-3 h-3" />
+                                                    <span>Modificar</span>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedItemToDelete(item);
+                                                        setShowDeleteModal(true);
+                                                    }}
+                                                    className="flex-1 bg-red-50 text-red-600 px-1 py-1 rounded-md text-[10px] font-bold shadow-sm border border-red-100 flex items-center justify-center space-x-1 hover:bg-red-100 active:scale-95"
+                                                >
+                                                    <Trash2 className="w-3 h-3" />
+                                                    <span>Eliminar</span>
+                                                </button>
+                                            </div>
                                         </>
                                     )}
                                     <div className="h-10 mb-1">
@@ -867,39 +1039,89 @@ const AppBodegaEcuador: React.FC = () => {
             {showTransferModal && selectedItemToTransfer && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-scale-up">
-                        <div className="flex items-center space-x-3 text-green-600 mb-4">
-                            <div className="p-3 bg-green-100 rounded-full">
-                                <Truck className="w-6 h-6" />
+                        <div className="flex items-center space-x-3 mb-4">
+                            <div className={`p-3 rounded-full ${transferDestinationType === 'tienda_local' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
+                                {transferDestinationType === 'tienda_local' ? <Store className="w-6 h-6" /> : <Truck className="w-6 h-6" />}
                             </div>
-                            <h2 className="text-xl font-bold">Transferir a Vendedor</h2>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    {transferDestinationType === 'tienda_local' ? 'Transferir a Tienda Local' : 'Transferir a Vendedor'}
+                                </h2>
+                                <p className="text-xs text-gray-500">Bodega Ecuador → {transferDestinationType === 'tienda_local' ? 'Tienda Local' : 'Vendedor'}</p>
+                            </div>
                         </div>
 
-                        <p className="text-gray-600 mb-4">
-                            Transfiriendo <span className="font-bold text-gray-900">{selectedItemToTransfer.product?.name}</span>.
+                        {/* Selector de Destino */}
+                        <div className="flex bg-gray-100 p-1 rounded-xl mb-4">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setTransferDestinationType('tienda_local');
+                                    setTransferSellerId('tienda_local');
+                                }}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center space-x-1.5 transition-all ${
+                                    transferDestinationType === 'tienda_local'
+                                        ? 'bg-purple-600 text-white shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                <Store className="w-4 h-4" />
+                                <span>Tienda Local</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setTransferDestinationType('seller');
+                                    setTransferSellerId('');
+                                }}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center space-x-1.5 transition-all ${
+                                    transferDestinationType === 'seller'
+                                        ? 'bg-green-600 text-white shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                            >
+                                <Truck className="w-4 h-4" />
+                                <span>Vendedor</span>
+                            </button>
+                        </div>
+
+                        <p className="text-gray-600 mb-4 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                            Producto: <span className="font-bold text-gray-900">{selectedItemToTransfer.product?.name}</span>
                             <br />
-                            <span className="text-xs text-gray-500">Stock disponible: {selectedItemToTransfer.quantity}</span>
+                            <span className="text-blue-600 font-semibold">Stock en Bodega Ecuador: {selectedItemToTransfer.quantity} uds</span>
                         </p>
 
-                        <div className="mb-4">
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Vendedor <span className="text-green-500">*</span></label>
-                            <select
-                                value={transferSellerId}
-                                onChange={(e) => setTransferSellerId(e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50"
-                            >
-                                <option value="">Seleccionar Vendedor</option>
-                                {transferSellers.map(seller => (
-                                    <option key={seller.id} value={seller.id}>{seller.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {transferDestinationType === 'tienda_local' ? (
+                            <div className="mb-4 bg-purple-50 border border-purple-200 rounded-xl p-3 text-xs text-purple-900 flex items-start space-x-2">
+                                <Store className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <span className="font-bold">Vitrina y Venta en Tienda:</span>
+                                    <p className="mt-0.5 text-purple-700">Esta mercadería se transferirá de Bodega Ecuador a <strong>Tienda Local</strong> para venta directa en mostrador y en la tienda online.</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mb-4">
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Vendedor <span className="text-green-500">*</span></label>
+                                <select
+                                    value={transferSellerId}
+                                    onChange={(e) => setTransferSellerId(e.target.value)}
+                                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 text-sm"
+                                >
+                                    <option value="">Seleccionar Vendedor</option>
+                                    {transferSellers.map(seller => (
+                                        <option key={seller.id} value={seller.id}>{seller.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         <div className="mb-4">
                             <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Cantidad a Transferir</label>
-                            <div className="flex items-center justify-center space-x-6 bg-gray-50 p-4 rounded-xl">
+                            <div className="flex items-center justify-center space-x-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                 <button
+                                    type="button"
                                     onClick={() => setTransferQuantity(prev => Math.max(1, (parseInt(prev) || 0) - 1).toString())}
-                                    className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold hover:bg-gray-300"
+                                    className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg font-bold hover:bg-gray-300 active:scale-95 transition-transform"
                                 >
                                     -
                                 </button>
@@ -907,13 +1129,18 @@ const AppBodegaEcuador: React.FC = () => {
                                     type="number"
                                     value={transferQuantity}
                                     onChange={(e) => setTransferQuantity(e.target.value)}
-                                    className="w-20 text-center text-2xl font-bold bg-transparent outline-none border-b-2 border-green-500 pb-1"
+                                    className={`w-20 text-center text-2xl font-bold bg-transparent outline-none border-b-2 pb-1 ${
+                                        transferDestinationType === 'tienda_local' ? 'border-purple-500' : 'border-green-500'
+                                    }`}
                                     min="1"
                                     max={selectedItemToTransfer.quantity}
                                 />
                                 <button
+                                    type="button"
                                     onClick={() => setTransferQuantity(prev => Math.min((parseInt(prev) || 0) + 1, selectedItemToTransfer.quantity).toString())}
-                                    className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center text-lg font-bold hover:bg-green-700"
+                                    className={`w-10 h-10 rounded-full text-white flex items-center justify-center text-lg font-bold active:scale-95 transition-transform ${
+                                        transferDestinationType === 'tienda_local' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-green-600 hover:bg-green-700'
+                                    }`}
                                 >
                                     +
                                 </button>
@@ -926,23 +1153,39 @@ const AppBodegaEcuador: React.FC = () => {
                                 value={transferNotes}
                                 onChange={(e) => setTransferNotes(e.target.value)}
                                 placeholder="Notas adicionales..."
-                                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none h-20 resize-none bg-gray-50"
+                                className={`w-full p-3 border border-gray-300 rounded-xl focus:ring-2 outline-none h-20 resize-none bg-gray-50 text-sm ${
+                                    transferDestinationType === 'tienda_local' ? 'focus:ring-purple-500 focus:border-purple-500' : 'focus:ring-green-500 focus:border-green-500'
+                                }`}
                             />
                         </div>
 
                         <div className="flex space-x-3">
                             <button
+                                type="button"
                                 onClick={() => { setShowTransferModal(false); setTransferNotes(''); setTransferSellerId(''); }}
                                 className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
                             >
                                 Cancelar
                             </button>
                             <button
+                                type="button"
                                 onClick={handleProcessTransfer}
-                                disabled={!transferSellerId || isSubmitting || parseInt(transferQuantity) <= 0}
-                                className="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                                disabled={
+                                    isSubmitting ||
+                                    parseInt(transferQuantity) <= 0 ||
+                                    (transferDestinationType === 'seller' && !transferSellerId)
+                                }
+                                className={`flex-1 py-3 text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md ${
+                                    transferDestinationType === 'tienda_local'
+                                        ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                                        : 'bg-green-600 hover:bg-green-700 shadow-green-200'
+                                }`}
                             >
-                                {isSubmitting ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div> : 'Transferir'}
+                                {isSubmitting ? (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                ) : (
+                                    transferDestinationType === 'tienda_local' ? 'Transferir a Tienda' : 'Transferir'
+                                )}
                             </button>
                         </div>
                     </div>
