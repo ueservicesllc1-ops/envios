@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Warehouse, ShoppingBag, MapPin, Users, Lock, ChevronRight, X, LogOut, PackageCheck } from 'lucide-react';
+import { Truck, Warehouse, ShoppingBag, MapPin, Users, Lock, ChevronRight, X, LogOut, PackageCheck, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sellerService } from '../services/sellerService';
 import { Seller } from '../types';
@@ -283,6 +283,11 @@ const AppMobile: React.FC = () => {
                                 <span className="text-xs text-amber-600 font-semibold">Bodega → Tienda</span>
                             </button>
                         )}
+                        <button onClick={() => navigate('/posmobil')} className={`bg-white rounded-2xl shadow-sm p-5 active:scale-95 transition-all hover:shadow-md border border-purple-100 flex flex-col items-center space-y-2 relative ${session.isAdmin ? '' : 'col-span-2'}`}>
+                            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md shadow-purple-200"><Receipt className="w-7 h-7 text-white" /></div>
+                            <span className="text-gray-900 font-extrabold text-sm">POS Móvil</span>
+                            <span className="text-xs text-purple-600 font-semibold">Vender Perfumes</span>
+                        </button>
                     </div>
                 </div>
 

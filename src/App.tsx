@@ -54,6 +54,7 @@ import AppMaria from './pages/AppMaria';
 import AppYuri from './pages/AppYuri';
 import AppLuis from './pages/AppLuis';
 import AppRecibirMercaderia from './pages/AppRecibirMercaderia';
+import PosMobile from './pages/PosMobile';
 
 import { VibeConfigProvider } from './contexts/VibeConfigContext';
 import PdfEditor from './pages/PdfEditor';
@@ -204,6 +205,10 @@ function App() {
               <Route path="/app/luis" element={<AppLuis />} />
               <Route path="/app/recibir" element={<AppRecibirMercaderia />} />
 
+              {/* POS Móvil Web para Asesores y Venta en Tienda Local */}
+              <Route path="/posmobil" element={<PosMobile />} />
+              <Route path="/pos-mobil" element={<PosMobile />} />
+              <Route path="/posmobile" element={<PosMobile />} />
 
               {/* Landing de instalación de App */}
               <Route path="/instalar-app" element={<AppInstallPage />} />
