@@ -19,9 +19,11 @@ import EditSaleModal from '../components/POS/EditSaleModal';
 import { posService } from '../services/posService';
 import { PointOfSale } from '../types';
 import { generatePOSReceipt } from '../utils/pdfGenerator';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const BillingDashboard: React.FC = () => {
+    const navigate = useNavigate();
     const [showPOS, setShowPOS] = useState(false);
     const [selectedView, setSelectedView] = useState<string>('dashboard');
     const [sales, setSales] = useState<PointOfSale[]>([]);
@@ -97,6 +99,10 @@ const BillingDashboard: React.FC = () => {
     };
 
     const handleMenuClick = (action: string) => {
+        if (action === 'reports' || action === 'receipts') {
+            navigate('/pos-reportes');
+            return;
+        }
         setSelectedView(action);
     };
 

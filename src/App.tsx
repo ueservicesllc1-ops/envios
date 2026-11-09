@@ -55,6 +55,7 @@ import AppYuri from './pages/AppYuri';
 import AppLuis from './pages/AppLuis';
 import AppRecibirMercaderia from './pages/AppRecibirMercaderia';
 import PosMobile from './pages/PosMobile';
+import PosSalesReport from './pages/PosSalesReport';
 
 import { VibeConfigProvider } from './contexts/VibeConfigContext';
 import PdfEditor from './pages/PdfEditor';
@@ -233,6 +234,9 @@ function App() {
               <Route path="/shipping" element={<AuthWrapper><Layout><Shipping /></Layout></AuthWrapper>} />
               <Route path="/accounting" element={<AuthWrapper><Layout><Accounting /></Layout></AuthWrapper>} />
               <Route path="/billing" element={<AuthWrapper><Layout><BillingDashboard /></Layout></AuthWrapper>} />
+              <Route path="/pos-reportes" element={<AuthWrapper><Layout><PosSalesReport /></Layout></AuthWrapper>} />
+              <Route path="/pos-ventas" element={<AuthWrapper><Layout><PosSalesReport /></Layout></AuthWrapper>} />
+              <Route path="/pos-sales" element={<AuthWrapper><Layout><PosSalesReport /></Layout></AuthWrapper>} />
               <Route path="/pos" element={<AuthWrapper><Layout><PointOfSale /></Layout></AuthWrapper>} />
               <Route path="/point-of-sale" element={<AuthWrapper><Layout><PointOfSale /></Layout></AuthWrapper>} />
               <Route path="/sellers" element={<AuthWrapper><Layout><Sellers /></Layout></AuthWrapper>} />

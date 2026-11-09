@@ -39,6 +39,7 @@ const navigation = [
   { name: 'Contabilidad', href: '/accounting', icon: Calculator },
   { name: 'Punto de Venta (POS)', href: '/pos', icon: ShoppingCart },
   { name: 'Facturación', href: '/billing', icon: Receipt },
+  { name: 'Ventas POS y Devoluciones', href: '/pos-reportes', icon: RotateCcw },
   { name: 'Pedidos', href: '/orders', icon: ShoppingCart },
   { name: 'Admin Tienda', href: '/admin-store', icon: ShoppingBag },
   { name: 'Editor PDF', href: '/pdf', icon: FileText },

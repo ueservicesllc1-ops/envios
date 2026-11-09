@@ -203,7 +203,7 @@ export const posService = {
     },
 
     // Cancelar venta y revertir inventario
-    async cancelSale(id: string, reason: string): Promise<void> {
+    async cancelSale(id: string, reason: string, user: string = 'Admin'): Promise<void> {
         try {
             const sale = await this.getSaleById(id);
             if (!sale) {
@@ -214,24 +214,76 @@ export const posService = {
                 throw new Error('La venta ya está cancelada');
             }
 
+            const targetLocation = (sale as any).location || 'Tienda Local';
+            const now = new Date();
+
             // Revertir inventario
             for (const item of sale.items) {
-                await inventoryService.addStock(
-                    item.productId,
-                    item.quantity,
-                    item.product.cost || 0,
-                    item.unitPrice,
-                    'Bodega Principal'
-                );
+                const qty = item.quantity || 1;
+                const cost = item.product?.cost || 0;
+                const unitPrice = item.unitPrice || item.product?.salePrice1 || 0;
+
+                // Si el item tiene inventoryDocId registrado, intentar actualizar ese documento directamente si existe
+                let stockRestored = false;
+                const itemInvDocId = (item as any).inventoryDocId;
+                if (itemInvDocId) {
+                    try {
+                        const invDocRef = doc(db, 'inventory', itemInvDocId);
+                        const invDocSnap = await getDoc(invDocRef);
+                        if (invDocSnap.exists()) {
+                            const curData = invDocSnap.data();
+                            const curQty = curData.quantity || 0;
+                            const newQty = curQty + qty;
+                            await updateDoc(invDocRef, {
+                                quantity: newQty,
+                                totalCost: newQty * (curData.cost || cost),
+                                totalValue: newQty * (curData.cost || cost),
+                                lastUpdated: Timestamp.fromDate(now)
+                            });
+                            stockRestored = true;
+                        }
+                    } catch (e) {
+                        console.warn(`No se pudo actualizar doc específico ${itemInvDocId}, usando addStock:`, e);
+                    }
+                }
+
+                if (!stockRestored) {
+                    await inventoryService.addStock(
+                        item.productId,
+                        qty,
+                        cost,
+                        unitPrice,
+                        targetLocation
+                    );
+                }
+
+                // Registrar Log de inventario de la devolución / reversión
+                try {
+                    await addDoc(collection(db, 'inventory_logs'), {
+                        type: 'return',
+                        productId: item.productId,
+                        productName: item.product?.name || 'Producto',
+                        quantity: qty,
+                        location: targetLocation,
+                        reason: `Devolución / Reversión Venta #${sale.saleNumber}: ${reason}`,
+                        createdAt: Timestamp.fromDate(now),
+                        user: user
+                    });
+                } catch (logErr) {
+                    console.warn('Error registrando log de inventario para reversión:', logErr);
+                }
             }
 
             // Actualizar estado de la venta
             await updateDoc(doc(db, 'pos_sales', id), {
                 status: 'cancelled',
-                notes: `${sale.notes || ''}\nCancelada: ${reason}`
+                revertedAt: Timestamp.fromDate(now),
+                revertedBy: user,
+                revertReason: reason,
+                notes: `${sale.notes || ''}\n[REVERTIDA ${now.toLocaleString()}]: ${reason}`
             });
 
-            toast.success('Venta cancelada y stock revertido');
+            toast.success(`Venta ${sale.saleNumber} revertida y productos devueltos a ${targetLocation}`);
         } catch (error) {
             console.error('Error cancelling sale:', error);
             toast.error(error instanceof Error ? error.message : 'Error al cancelar la venta');

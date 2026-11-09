@@ -342,11 +342,18 @@ export interface PointOfSale {
   cashRegisterId?: string; // ID de la caja que procesó la venta
   createdBy: string; // Usuario que realizó la venta
   createdAt: Date;
+  location?: string;
+  source?: string;
+  customerCedula?: string;
+  revertedAt?: Date;
+  revertedBy?: string;
+  revertReason?: string;
 }
 
 export interface POSItem {
   id: string;
   productId: string;
+  inventoryDocId?: string;
   product: Product;
   quantity: number;
   unitPrice: number;

@@ -388,6 +388,25 @@ const PosMobile: React.FC = () => {
         });
       }
 
+      // Helper recursivo para eliminar propiedades undefined antes de Firestore
+      const sanitizeData = (data: any): any => {
+        if (data === null || data === undefined) return null;
+        if (Array.isArray(data)) return data.map(sanitizeData);
+        if (typeof data === 'object') {
+          if (data.toDate || data._methodName || (data.constructor && data.constructor.name === 'Timestamp')) {
+            return data;
+          }
+          const clean: Record<string, any> = {};
+          for (const [k, v] of Object.entries(data)) {
+            if (v !== undefined) {
+              clean[k] = sanitizeData(v);
+            }
+          }
+          return clean;
+        }
+        return data;
+      };
+
       // 2. Crear documento de Venta en pos_sales
       const saleRef = doc(collection(db, 'pos_sales'));
       const saleData: PointOfSale = {
@@ -397,21 +416,25 @@ const PosMobile: React.FC = () => {
         createdAt: now,
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim().toLowerCase(),
-        customerPhone: customerPhone.trim() || undefined,
-        customerAddress: customerCedula.trim() ? `C.I./RUC: ${customerCedula.trim()}` : undefined,
+        customerPhone: customerPhone.trim() || '',
+        customerAddress: customerCedula.trim() ? `C.I./RUC: ${customerCedula.trim()}` : '',
+        customerCedula: customerCedula.trim() || '',
+        location: 'Tienda Local',
+        source: 'pos-mobil',
         items: cart.map(item => ({
           id: item.id,
           productId: item.productId,
+          inventoryDocId: item.inventoryDocId,
           product: {
             id: item.productId,
-            name: item.name,
-            brand: item.brand,
-            sku: item.sku,
-            barcode: item.barcode,
-            imageUrl: item.imageUrl,
-            salePrice1: item.originalPrice,
-            salePrice2: item.unitPrice,
-            cost: item.cost
+            name: item.name || '',
+            brand: item.brand || '',
+            sku: item.sku || '',
+            barcode: item.barcode || '',
+            imageUrl: item.imageUrl || '',
+            salePrice1: item.originalPrice || 0,
+            salePrice2: item.unitPrice || 0,
+            cost: item.cost || 0
           } as Product,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -423,35 +446,32 @@ const PosMobile: React.FC = () => {
         discount: cart.reduce((sum, item) => sum + (item.isPriceEdited ? Math.max(0, (item.originalPrice - item.unitPrice) * item.quantity) : 0), 0),
         total,
         paymentMethod,
-        cashReceived: paymentMethod === 'cash' ? cashReceived : undefined,
-        change: paymentMethod === 'cash' ? change : undefined,
+        cashReceived: paymentMethod === 'cash' ? cashReceived : 0,
+        change: paymentMethod === 'cash' ? change : 0,
         status: 'completed',
         createdBy: sellerName,
         notes: `Venta POS Móvil - Local Falconi`
       };
 
-      batch.set(saleRef, {
+      batch.set(saleRef, sanitizeData({
         ...saleData,
         date: Timestamp.fromDate(now),
-        createdAt: Timestamp.fromDate(now),
-        customerCedula: customerCedula.trim() || undefined,
-        location: 'Tienda Local',
-        source: 'pos-mobil'
-      });
+        createdAt: Timestamp.fromDate(now)
+      }));
 
       // 3. Registrar Log de inventario
       for (const item of cart) {
         const logRef = doc(collection(db, 'inventory_logs'));
-        batch.set(logRef, {
+        batch.set(logRef, sanitizeData({
           type: 'sale',
           productId: item.productId,
-          productName: item.name,
+          productName: item.name || '',
           quantity: item.quantity,
           location: 'Tienda Local',
           reason: `Venta POS Móvil #${saleNumber} a ${customerName.trim()}`,
           createdAt: Timestamp.fromDate(now),
           user: sellerName
-        });
+        }));
       }
 
       // Ejecutar lote de escrituras en Firestore
@@ -462,8 +482,8 @@ const PosMobile: React.FC = () => {
         await posCustomerService.create({
           name: customerName.trim(),
           email: customerEmail.trim().toLowerCase(),
-          phone: customerPhone.trim() || undefined,
-          address: customerCedula.trim() ? `C.I: ${customerCedula.trim()}` : undefined,
+          phone: customerPhone.trim() || '',
+          address: customerCedula.trim() ? `C.I: ${customerCedula.trim()}` : '',
           totalPurchases: total,
           lastPurchaseDate: now,
           isActive: true
@@ -480,7 +500,7 @@ const PosMobile: React.FC = () => {
         const emailPayload = {
           toEmail: customerEmail.trim().toLowerCase(),
           customerName: customerName.trim(),
-          customerCedula: customerCedula.trim() || undefined,
+          customerCedula: customerCedula.trim() || '',
           saleNumber,
           date: now.toISOString(),
           items: cart.map(it => ({
