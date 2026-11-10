@@ -24,7 +24,19 @@ import {
   Trash2,
   Undo2,
   ArrowUpDown,
-  AlertTriangle
+  AlertTriangle,
+  FileText,
+  RotateCcw,
+  Lock,
+  Banknote,
+  Smartphone,
+  CreditCard,
+  CheckCircle,
+  XCircle,
+  Clock,
+  User,
+  Download,
+  Calendar
 } from 'lucide-react';
 import {
   collection,
@@ -39,8 +51,14 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Product, InventoryItem } from '../types';
+import { Product, InventoryItem, PointOfSale, CashClosure } from '../types';
 import { productService } from '../services/productService';
+import { posService } from '../services/posService';
+import { cashClosureService } from '../services/cashClosureService';
+import { generatePOSReceipt } from '../utils/pdfGenerator';
+import AdminManualSaleModal from '../components/POS/AdminManualSaleModal';
+import EditSaleModal from '../components/POS/EditSaleModal';
+import CashClosureModal from '../components/POS/CashClosureModal';
 import toast from 'react-hot-toast';
 
 interface StoreProductItem {
@@ -93,8 +111,63 @@ const StoreEcuador: React.FC = () => {
   const [syncWithBodegaOnAdjust, setSyncWithBodegaOnAdjust] = useState<boolean>(true);
   const [savingAdjust, setSavingAdjust] = useState(false);
 
+  // ─── Pestañas y Gestión de Ventas / Cierres ────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'inventory' | 'sales' | 'closures'>('inventory');
+  const [showManualSaleModal, setShowManualSaleModal] = useState(false);
+  const [editingSale, setEditingSale] = useState<PointOfSale | null>(null);
+  const [showClosureModal, setShowClosureModal] = useState(false);
+
+  const [sales, setSales] = useState<PointOfSale[]>([]);
+  const [loadingSales, setLoadingSales] = useState(false);
+  const [salesSearch, setSalesSearch] = useState('');
+  const [salesStatusFilter, setSalesStatusFilter] = useState<'all' | 'completed' | 'cancelled'>('all');
+
+  const [closures, setClosures] = useState<CashClosure[]>([]);
+  const [loadingClosures, setLoadingClosures] = useState(false);
+
+  const loadSales = async () => {
+    try {
+      setLoadingSales(true);
+      const data = await posService.getAll();
+      setSales(data);
+    } catch (err) {
+      console.error('Error cargando ventas:', err);
+    } finally {
+      setLoadingSales(false);
+    }
+  };
+
+  const loadClosures = async () => {
+    try {
+      setLoadingClosures(true);
+      const data = await cashClosureService.getAllClosures();
+      setClosures(data);
+    } catch (err) {
+      console.error('Error cargando cierres de caja:', err);
+    } finally {
+      setLoadingClosures(false);
+    }
+  };
+
+  const handleRevertSale = async (sale: PointOfSale) => {
+    const reason = window.prompt(
+      `¿Deseas revertir la venta ${sale.saleNumber}?\n\nLos perfumes vendidos volverán automáticamente al inventario de Tienda Local.\n\nEscribe el motivo de la devolución / reversión:`,
+      'Devolución de cliente'
+    );
+    if (!reason || !reason.trim()) return;
+
+    try {
+      await posService.cancelSale(sale.id, reason.trim(), 'Admin');
+      await Promise.all([loadSales(), loadStoreInventory()]);
+    } catch (err: any) {
+      console.error('Error al revertir venta:', err);
+    }
+  };
+
   useEffect(() => {
     loadStoreInventory();
+    loadSales();
+    loadClosures();
   }, []);
 
   const loadStoreInventory = async () => {
@@ -875,6 +948,60 @@ const StoreEcuador: React.FC = () => {
     return sum + (price * i.quantity);
   }, 0);
 
+  // Filtro y estadísticas de Ventas
+  const filteredSales = useMemo(() => {
+    return sales.filter(s => {
+      if (salesStatusFilter !== 'all' && s.status !== salesStatusFilter) return false;
+      if (!salesSearch.trim()) return true;
+      const q = salesSearch.toLowerCase().trim();
+      const num = (s.saleNumber || '').toLowerCase();
+      const client = (s.customerName || '').toLowerCase();
+      const email = (s.customerEmail || '').toLowerCase();
+      const phone = (s.customerPhone || '').toLowerCase();
+      const ced = ((s as any).customerCedula || '').toLowerCase();
+      const seller = (s.createdBy || '').toLowerCase();
+      const hasProd = s.items?.some(it => (it.product?.name || '').toLowerCase().includes(q));
+      return num.includes(q) || client.includes(q) || email.includes(q) || phone.includes(q) || ced.includes(q) || seller.includes(q) || hasProd;
+    });
+  }, [sales, salesSearch, salesStatusFilter]);
+
+  const salesStats = useMemo(() => {
+    let totalSalesAmt = 0;
+    let completedCount = 0;
+    let revertedCount = 0;
+    let cashTotal = 0;
+    let transferTotal = 0;
+    let cardTotal = 0;
+    let perfumesSold = 0;
+
+    for (const s of filteredSales) {
+      if (s.status === 'completed') {
+        const tot = Number(s.total) || 0;
+        totalSalesAmt += tot;
+        completedCount++;
+        if (s.paymentMethod === 'cash') cashTotal += tot;
+        else if (s.paymentMethod === 'transfer') transferTotal += tot;
+        else if (s.paymentMethod === 'card') cardTotal += tot;
+
+        for (const it of s.items || []) {
+          perfumesSold += (it.quantity || 1);
+        }
+      } else if (s.status === 'cancelled') {
+        revertedCount++;
+      }
+    }
+
+    return { totalSalesAmt, completedCount, revertedCount, cashTotal, transferTotal, cardTotal, perfumesSold };
+  }, [filteredSales]);
+
+  // Estadísticas de Cierres
+  const closuresStats = useMemo(() => {
+    const totalDeposited = closures.reduce((sum, c) => sum + (Number(c.amountToDeposit) || 0), 0);
+    const totalCashSales = closures.reduce((sum, c) => sum + (Number(c.expectedCash) || 0), 0);
+    const totalCounted = closures.reduce((sum, c) => sum + (Number(c.cashCounted) || 0), 0);
+    return { totalDeposited, totalCashSales, totalCounted, count: closures.length };
+  }, [closures]);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Top Header */}
@@ -894,43 +1021,106 @@ const StoreEcuador: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Botón principal para agregar productos directamente */}
+          {/* Botón Registrar Venta Manual (Ventas no reportadas) */}
+          <button
+            onClick={() => setShowManualSaleModal(true)}
+            className="flex items-center gap-2 px-5 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm rounded-2xl shadow-xl active:scale-95 transition-all"
+            title="Registrar una venta manual o venta pasada no reportada"
+          >
+            <Plus className="w-5 h-5 text-slate-950 stroke-[3]" />
+            <span>+ Registrar Venta</span>
+          </button>
+
+          {/* Botón Cierre de Caja */}
+          <button
+            onClick={() => setShowClosureModal(true)}
+            className="flex items-center gap-2 px-4 py-3 bg-white/20 hover:bg-white/30 text-white font-bold text-sm rounded-2xl border border-white/30 backdrop-blur-md active:scale-95 transition-all"
+            title="Realizar o revisar corte / cierre de caja"
+          >
+            <Lock className="w-4 h-4 text-amber-300 stroke-[2.5]" />
+            <span>Cierre de Caja</span>
+          </button>
+
+          {/* Botón Agregar Perfumes */}
           <button
             onClick={handleOpenAddModal}
-            className="flex items-center gap-2.5 px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-black text-sm sm:text-base rounded-2xl shadow-xl active:scale-95 transition-all"
-            title="Agregar un perfume o producto a Tienda Local"
+            className="flex items-center gap-2 px-4 py-3 bg-emerald-950/40 hover:bg-emerald-950/60 text-white font-bold text-sm rounded-2xl border border-white/20 backdrop-blur-md active:scale-95 transition-all"
+            title="Agregar producto del catálogo a Tienda Local"
           >
-            <Plus className="w-6 h-6 text-slate-900 stroke-[3]" />
-            <span>+ Agregar Perfumes a Tienda</span>
+            <Package className="w-4 h-4 text-emerald-300" />
+            <span>+ Ingresar Perfumes</span>
           </button>
 
           <button
-            onClick={() => window.open('/puntodeventa', '_blank')}
-            className="flex items-center gap-2 px-5 py-3 bg-white text-emerald-800 font-bold rounded-2xl shadow-lg hover:bg-emerald-50 active:scale-95 transition-all"
+            onClick={() => navigate('/posmobil')}
+            className="flex items-center gap-2 px-4 py-3 bg-white text-emerald-800 font-bold text-sm rounded-2xl shadow-lg hover:bg-emerald-50 active:scale-95 transition-all"
           >
-            <ShoppingCart className="w-5 h-5 text-emerald-600" />
-            <span>Abrir POS Tienda</span>
-            <ExternalLink className="w-4 h-4 text-emerald-500" />
-          </button>
-
-          <button
-            onClick={() => navigate('/local-receipts')}
-            className="flex items-center gap-2 px-5 py-3 bg-emerald-950/40 border border-white/20 hover:bg-emerald-950/60 text-white font-semibold rounded-2xl backdrop-blur-md active:scale-95 transition-all"
-          >
-            <PackageCheck className="w-5 h-5 text-emerald-200" />
-            <span>Notas de Traslado</span>
+            <ShoppingCart className="w-4 h-4 text-emerald-600" />
+            <span>POS Móvil</span>
           </button>
 
           <button
             onClick={loadStoreInventory}
             disabled={loading}
             className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl border border-white/20 text-white transition-all active:scale-95"
-            title="Actualizar stock"
+            title="Actualizar datos"
           >
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
+
+      {/* ─── TAB NAVIGATION BAR ─────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+            activeTab === 'inventory'
+              ? 'bg-white text-emerald-800 shadow-md shadow-emerald-900/5'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <Package className="w-4 h-4" />
+          <span>Inventario en Tienda</span>
+          <span className="text-xs bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full">
+            {totalDistinct}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('sales')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+            activeTab === 'sales'
+              ? 'bg-white text-indigo-700 shadow-md shadow-indigo-900/5'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Ventas Tienda Local</span>
+          <span className="text-xs bg-indigo-100 text-indigo-800 font-extrabold px-2 py-0.5 rounded-full">
+            {sales.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('closures')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+            activeTab === 'closures'
+              ? 'bg-white text-amber-700 shadow-md shadow-amber-900/5'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <Lock className="w-4 h-4" />
+          <span>Cierres de Caja & Depósitos</span>
+          <span className="text-xs bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full">
+            {closures.length}
+          </span>
+        </button>
+      </div>
+
+      {/* ─── PESTAÑA 1: INVENTARIO EN TIENDA ───────────────────────────── */}
+      {activeTab === 'inventory' && (
+        <div className="space-y-6">
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1195,6 +1385,376 @@ const StoreEcuador: React.FC = () => {
           </div>
         )}
       </div>
+    </div>
+  )}
+
+      {/* ─── PESTAÑA 2: VENTAS DE TIENDA LOCAL ────────────────────────────── */}
+      {activeTab === 'sales' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* KPI Cards Ventas */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase text-emerald-600 tracking-wider">Ventas Totales</p>
+                <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">${salesStats.totalSalesAmt.toFixed(2)}</p>
+                <p className="text-xs text-slate-400 mt-1">{salesStats.completedCount} nota(s) completadas</p>
+              </div>
+              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+                <DollarSign className="w-6 h-6" />
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase text-blue-600 tracking-wider">Perfumes Vendidos</p>
+                <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">{salesStats.perfumesSold}</p>
+                <p className="text-xs text-slate-400 mt-1">unidades en Tienda Local</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                <Package className="w-6 h-6" />
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm">
+              <p className="text-xs font-bold uppercase text-amber-600 tracking-wider mb-2">Cobros por Método</p>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between items-center text-slate-600">
+                  <span className="flex items-center gap-1"><Banknote className="w-3.5 h-3.5 text-emerald-500" /> Efectivo:</span>
+                  <span className="font-bold text-slate-900">${salesStats.cashTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600">
+                  <span className="flex items-center gap-1"><Smartphone className="w-3.5 h-3.5 text-blue-500" /> Transf.:</span>
+                  <span className="font-bold text-slate-900">${salesStats.transferTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600">
+                  <span className="flex items-center gap-1"><CreditCard className="w-3.5 h-3.5 text-purple-500" /> Tarjeta:</span>
+                  <span className="font-bold text-slate-900">${salesStats.cardTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-amber-500 to-yellow-500 rounded-2xl p-5 text-slate-950 flex flex-col justify-between shadow-lg">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-slate-900/80">Acción Rápida</p>
+                <p className="font-black text-base mt-1">¿Ventas no reportadas?</p>
+                <p className="text-[11px] font-semibold text-slate-900/80 mt-0.5">Crea ventas pasadas ajustando precio y fecha</p>
+              </div>
+              <button
+                onClick={() => setShowManualSaleModal(true)}
+                className="mt-3 w-full py-2 bg-slate-950 hover:bg-black text-white font-black text-xs rounded-xl shadow transition active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4 text-amber-400 stroke-[3]" />
+                <span>+ Crear Venta Manual</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Filtros y Buscador de Ventas */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar venta por nota, cliente, cédula, perfume..."
+                value={salesSearch}
+                onChange={e => setSalesSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+                <button
+                  onClick={() => setSalesStatusFilter('all')}
+                  className={`px-3 py-1 rounded-lg transition ${salesStatusFilter === 'all' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600'}`}
+                >
+                  Todas ({sales.length})
+                </button>
+                <button
+                  onClick={() => setSalesStatusFilter('completed')}
+                  className={`px-3 py-1 rounded-lg transition ${salesStatusFilter === 'completed' ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600'}`}
+                >
+                  Completadas
+                </button>
+                <button
+                  onClick={() => setSalesStatusFilter('cancelled')}
+                  className={`px-3 py-1 rounded-lg transition ${salesStatusFilter === 'cancelled' ? 'bg-rose-600 text-white font-bold' : 'text-slate-600'}`}
+                >
+                  Revertidas
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowManualSaleModal(true)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span className="hidden sm:inline">Nueva Venta</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tabla de Ventas de Tienda Local */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            {loadingSales ? (
+              <div className="py-16 text-center text-xs text-slate-400">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-indigo-600" />
+                Cargando ventas de Tienda Local...
+              </div>
+            ) : filteredSales.length === 0 ? (
+              <div className="py-16 text-center text-xs text-slate-400">
+                <FileText className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                <p className="font-bold text-slate-700 text-sm">No se encontraron ventas</p>
+                <p className="mt-1">Usa el botón "+ Crear Venta Manual" para registrar ventas no reportadas</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-black tracking-wider border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-3.5">Nota de Venta</th>
+                      <th className="px-4 py-3.5">Fecha</th>
+                      <th className="px-4 py-3.5">Cliente</th>
+                      <th className="px-4 py-3.5">Perfumes Vendidos</th>
+                      <th className="px-4 py-3.5">Total & Cobro</th>
+                      <th className="px-4 py-3.5">Vendedora</th>
+                      <th className="px-4 py-3.5">Estado</th>
+                      <th className="px-4 py-3.5 text-center">Acciones Admin</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {filteredSales.map(sale => {
+                      const isReverted = sale.status === 'cancelled';
+                      const sDate = sale.date ? new Date(sale.date) : new Date(sale.createdAt);
+
+                      return (
+                        <tr key={sale.id} className={`hover:bg-slate-50/70 transition ${isReverted ? 'bg-rose-50/20' : ''}`}>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-mono font-black text-indigo-600 text-sm">{sale.saleNumber}</span>
+                            {(sale as any).source === 'admin-manual' && (
+                              <span className="ml-1.5 bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded">Manual</span>
+                            )}
+                            {(sale as any).source === 'pos-mobil' && (
+                              <span className="ml-1.5 bg-purple-100 text-purple-800 text-[9px] font-bold px-1.5 py-0.5 rounded">Móvil</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-bold text-slate-800">{sDate.toLocaleDateString('es-EC')}</span>
+                            <span className="block text-[10px] text-slate-400">{sDate.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-slate-900">{sale.customerName || 'Cliente General'}</p>
+                            {(sale as any).customerCedula && (
+                              <p className="text-[10px] text-slate-400">C.I: {(sale as any).customerCedula}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 max-w-xs">
+                            <div className="space-y-1">
+                              {sale.items?.map((it, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-2">
+                                  <span className="font-medium truncate">{it.quantity}x {it.product?.name || 'Perfume'}</span>
+                                  <span className="font-mono font-bold text-slate-600">${it.totalPrice?.toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-black text-sm text-slate-900">${sale.total?.toFixed(2)}</span>
+                            <span className="block text-[10px] text-slate-400 capitalize">{sale.paymentMethod}</span>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-600">
+                            {sale.createdBy || 'Asesor'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {isReverted ? (
+                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                                <XCircle className="w-3 h-3 mr-1" /> Revertida
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                <CheckCircle className="w-3 h-3 mr-1" /> Completada
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className="flex items-center justify-center space-x-1">
+                              {/* Botón Editar Venta */}
+                              <button
+                                onClick={() => setEditingSale(sale)}
+                                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition"
+                                title="Editar Venta (Precios, Cliente, Fecha)"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+
+                              {/* Botón Descargar PDF */}
+                              <button
+                                onClick={() => generatePOSReceipt(sale)}
+                                className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                title="Descargar Comprobante PDF"
+                              >
+                                <Download className="w-4 h-4" />
+                              </button>
+
+                              {/* Botón Revertir Venta (Devolución) */}
+                              {!isReverted && (
+                                <button
+                                  onClick={() => handleRevertSale(sale)}
+                                  className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition"
+                                  title="Revertir Venta y Devolver Productos a Tienda Local"
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── PESTAÑA 3: CIERRES DE CAJA & DEPÓSITOS ───────────────────────── */}
+      {activeTab === 'closures' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* KPI Cards Cierres */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase text-amber-600 tracking-wider">Cierres Realizados</p>
+                <p className="text-3xl font-black text-slate-900 mt-1">{closuresStats.count}</p>
+                <p className="text-xs text-slate-400 mt-0.5">cortes de caja guardados</p>
+              </div>
+              <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600">
+                <Lock className="w-6 h-6" />
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase text-emerald-600 tracking-wider">Total Depositado</p>
+                <p className="text-3xl font-black text-emerald-600 mt-1">${closuresStats.totalDeposited.toFixed(2)}</p>
+                <p className="text-xs text-slate-400 mt-0.5">enviado a banco por vendedoras</p>
+              </div>
+              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+                <DollarSign className="w-6 h-6" />
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase text-blue-600 tracking-wider">Efectivo de Ventas Cerradas</p>
+                <p className="text-3xl font-black text-slate-900 mt-1">${closuresStats.totalCashSales.toFixed(2)}</p>
+                <p className="text-xs text-slate-400 mt-0.5">recaudado en efectivo</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                <Banknote className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla de Cierres */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Historial de Cierres de Caja</h3>
+                <p className="text-xs text-slate-400">Montos depositados por vendedora y arqueos de caja</p>
+              </div>
+              <button
+                onClick={() => setShowClosureModal(true)}
+                className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow active:scale-95 transition"
+              >
+                <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>+ Nuevo Cierre de Caja</span>
+              </button>
+            </div>
+
+            {loadingClosures ? (
+              <div className="py-16 text-center text-xs text-slate-400">
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-amber-500" />
+                Cargando historial de cierres...
+              </div>
+            ) : closures.length === 0 ? (
+              <div className="py-16 text-center text-xs text-slate-400">
+                <Lock className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                <p className="font-bold text-slate-700 text-sm">No hay cierres de caja registrados aún</p>
+                <p className="mt-1">Realiza un cierre usando el botón "+ Nuevo Cierre de Caja" o desde la app móvil</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-black tracking-wider border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-3.5">Nº Cierre</th>
+                      <th className="px-4 py-3.5">Fecha</th>
+                      <th className="px-4 py-3.5">Vendedora</th>
+                      <th className="px-4 py-3.5">Ventas del Corte</th>
+                      <th className="px-4 py-3.5">Efectivo Esperado</th>
+                      <th className="px-4 py-3.5">Monto Depositado</th>
+                      <th className="px-4 py-3.5">Arqueo / Diferencia</th>
+                      <th className="px-4 py-3.5">Referencia Depósito</th>
+                      <th className="px-4 py-3.5">Notas</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {closures.map(c => {
+                      const cDate = c.date ? new Date(c.date) : new Date(c.createdAt);
+                      const diff = Number(c.difference) || 0;
+
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50 transition">
+                          <td className="px-4 py-3 font-mono font-bold text-amber-600 whitespace-nowrap">
+                            {c.closureNumber}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-bold text-slate-800">{cDate.toLocaleDateString('es-EC')}</span>
+                            <span className="block text-[10px] text-slate-400">{cDate.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </td>
+                          <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">
+                            {c.sellerName}
+                          </td>
+                          <td className="px-4 py-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            ${(Number(c.totalSales) || 0).toFixed(2)}
+                            <span className="text-[10px] text-slate-400 block font-sans">({c.salesCount || 0} ventas)</span>
+                          </td>
+                          <td className="px-4 py-3 font-mono font-bold text-amber-700 whitespace-nowrap">
+                            ${(Number(c.expectedCash) || 0).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 font-mono font-black text-emerald-600 text-sm whitespace-nowrap">
+                            ${(Number(c.amountToDeposit) || 0).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              diff === 0
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : diff > 0
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              {diff === 0 ? '✓ Cuadrado' : diff > 0 ? `+${diff.toFixed(2)} Sobrante` : `${diff.toFixed(2)} Faltante`}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-mono text-[11px] text-slate-600 max-w-xs truncate">
+                            {c.depositReference || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-[11px] text-slate-500 max-w-xs truncate">
+                            {c.notes || '-'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ─── MODAL: AGREGAR PRODUCTO A TIENDA LOCAL ─────────────────────────── */}
       {showAddModal && (
@@ -1745,6 +2305,40 @@ const StoreEcuador: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ─── MODAL: REGISTRAR VENTA MANUAL (ADMIN) ─────────────────────────── */}
+      <AdminManualSaleModal
+        isOpen={showManualSaleModal}
+        onClose={() => setShowManualSaleModal(false)}
+        onSuccess={() => {
+          loadStoreInventory();
+          loadSales();
+        }}
+      />
+
+      {/* ─── MODAL: EDITAR VENTA ────────────────────────────────────────────── */}
+      {editingSale && (
+        <EditSaleModal
+          sale={editingSale}
+          onClose={() => setEditingSale(null)}
+          onUpdate={() => {
+            loadSales();
+            loadStoreInventory();
+          }}
+        />
+      )}
+
+      {/* ─── MODAL: CIERRE DE CAJA ─────────────────────────────────────────── */}
+      <CashClosureModal
+        isOpen={showClosureModal}
+        onClose={() => setShowClosureModal(false)}
+        onSuccess={() => {
+          loadClosures();
+          loadSales();
+        }}
+        isAdmin={true}
+        defaultSellerName="Vilma"
+      />
     </div>
   );
 };

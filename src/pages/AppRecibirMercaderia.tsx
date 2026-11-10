@@ -27,14 +27,18 @@ import {
   ScanLine,
   Minus,
   Plus,
-  X,
   Search,
+  DollarSign,
+  Banknote,
+  Lock,
+  X
 } from 'lucide-react';
 import { productService } from '../services/productService';
 import { getApiUrl } from '../config/api.config';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import CashClosureModal from '../components/POS/CashClosureModal';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -355,6 +359,7 @@ const AppRecibirMercaderia: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
+  const [showClosureModal, setShowClosureModal] = useState(false);
 
   // Recepción manual (sin escáner)
   const [manualItem, setManualItem] = useState<ReceiptItem | null>(null);
@@ -1176,26 +1181,48 @@ const AppRecibirMercaderia: React.FC = () => {
         {/* LIST VIEW */}
         {!activeReceipt && (
           <>
-            {/* ── BOTÓN PRINCIPAL: RECIBIR DIRECTO SIN ORDEN ── */}
-            <div className="mb-4">
+            {/* ── BOTONES PRINCIPALES: RECIBIR DIRECTO Y CIERRE DE CAJA ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              {/* Botón Recibir Manual */}
               <button
                 onClick={openDirectReceive}
-                className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-black font-extrabold shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-between border border-amber-300"
+                className="p-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-black font-extrabold shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-between border border-amber-300"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-black/10 flex items-center justify-center shrink-0">
-                    <ScanLine size={24} className="text-black stroke-[2.5]" />
+                  <div className="w-11 h-11 rounded-xl bg-black/10 flex items-center justify-center shrink-0">
+                    <ScanLine size={22} className="text-black stroke-[2.5]" />
                   </div>
                   <div className="text-left">
                     <span className="block text-sm font-black uppercase tracking-tight text-black">
-                      Recibir Manual (Sin Orden)
+                      Recibir Manual
                     </span>
-                    <span className="block text-xs font-semibold text-amber-950/90 mt-0.5">
-                      Escanea códigos de barra: Bodega Ecuador → Tienda Local
+                    <span className="block text-[11px] font-semibold text-amber-950/90 mt-0.5">
+                      Bodega Ecuador → Tienda
                     </span>
                   </div>
                 </div>
-                <ChevronRight size={22} className="text-black/70 shrink-0" />
+                <ChevronRight size={20} className="text-black/70 shrink-0" />
+              </button>
+
+              {/* Botón Cierre de Caja */}
+              <button
+                onClick={() => setShowClosureModal(true)}
+                className="p-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white font-extrabold shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-between border border-emerald-400/40"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <DollarSign size={24} className="text-white stroke-[2.5]" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-sm font-black uppercase tracking-tight text-white">
+                      Cierre de Caja
+                    </span>
+                    <span className="block text-[11px] font-medium text-emerald-100 mt-0.5">
+                      Ventas del turno y depósito
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight size={20} className="text-white/70 shrink-0" />
               </button>
             </div>
             {loading ? (
@@ -1814,6 +1841,14 @@ const AppRecibirMercaderia: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Modal Cierre de Caja ── */}
+      <CashClosureModal
+        isOpen={showClosureModal}
+        onClose={() => setShowClosureModal(false)}
+        defaultSellerName="Vilma"
+        isAdmin={true}
+      />
 
       <style>{`
         @keyframes slideDown {

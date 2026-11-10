@@ -348,6 +348,9 @@ export interface PointOfSale {
   revertedAt?: Date;
   revertedBy?: string;
   revertReason?: string;
+  closureId?: string;
+  closureNumber?: string;
+  closedAt?: Date;
 }
 
 export interface POSItem {
@@ -359,6 +362,28 @@ export interface POSItem {
   unitPrice: number;
   discount: number; // Descuento por item
   totalPrice: number; // (unitPrice * quantity) - discount
+}
+
+// Cierre de Caja (Corte y Depósito)
+export interface CashClosure {
+  id: string;
+  closureNumber: string;
+  date: Date;
+  sellerName: string;
+  totalSales: number;
+  expectedCash: number;
+  totalTransfer: number;
+  totalCard: number;
+  amountToDeposit: number;
+  cashKeptInRegister: number;
+  cashCounted: number;
+  difference: number;
+  depositReference?: string;
+  salesIds: string[];
+  salesCount: number;
+  notes?: string;
+  createdAt: Date;
+  status: 'closed';
 }
 
 // Cash Register - Caja Registradora
