@@ -115,23 +115,30 @@ function MobileRedirect() {
   return null;
 }
 
+const paypalOptions = {
+  clientId: process.env.REACT_APP_PAYPAL_CLIENT_ID || "AfU-04zHwad560P4nU6LVMd7qnrY41c0TOdA9LUbN_6-lmztaHfxJz1p7-ByIt6-uoqSGr6OcdaO3b3m",
+  currency: "USD",
+  intent: "capture",
+  "disable-funding": "venmo,paylater"
+};
+
+// El SDK de PayPal solo se carga en el carrito (único lugar donde se usa)
+const CartWithPayPal: React.FC = () => (
+  <PayPalScriptProvider options={paypalOptions}>
+    <CartPage />
+  </PayPalScriptProvider>
+);
+
 function App() {
   const isLegalPage = ['/terminos', '/politica', '/devoluciones'].includes(window.location.pathname);
   const [showSplash, setShowSplash] = React.useState(!isLegalPage);
-
-  const paypalOptions = {
-    clientId: process.env.REACT_APP_PAYPAL_CLIENT_ID || "AfU-04zHwad560P4nU6LVMd7qnrY41c0TOdA9LUbN_6-lmztaHfxJz1p7-ByIt6-uoqSGr6OcdaO3b3m",
-    currency: "USD",
-    intent: "capture",
-    "disable-funding": "venmo,paylater"
-  };
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
   return (
-    <PayPalScriptProvider options={paypalOptions}>
+    <>
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <MobileRedirect />
         <VibeConfigProvider>
@@ -144,7 +151,7 @@ function App() {
               <Route path="/" element={<Home />} />
 
               {/* Ruta del Carrito */}
-              <Route path="/cart" element={<CartPage />} />
+              <Route path="/cart" element={<CartWithPayPal />} />
               <Route path="/order-success" element={<OrderSuccess />} />
               <Route path="/terminos" element={<TermsPage />} />
               <Route path="/politica" element={<PrivacyPage />} />
@@ -168,7 +175,7 @@ function App() {
               <Route element={<VibeLayout />}>
                 <Route path="/vibe-market" element={<MarketplaceV2 />} />
                 <Route path="/marketplace" element={<VibeMarketplace />} />
-                <Route path="/cart" element={<CartPage />} />
+                <Route path="/cart" element={<CartWithPayPal />} />
                 <Route path="/messages" element={<VibeMessages />} />
                 <Route path="/creator" element={<VibeCreator />} />
                 <Route path="/rewards" element={<VibeRewards />} />
@@ -279,7 +286,7 @@ function App() {
         </CartProvider>
         </VibeConfigProvider>
       </Router>
-    </PayPalScriptProvider>
+    </>
   );
 }
 

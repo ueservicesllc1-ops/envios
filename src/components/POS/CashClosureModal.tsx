@@ -47,7 +47,6 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
 
   // Formulario de cierre
   const [amountToDeposit, setAmountToDeposit] = useState<string>('');
-  const [cashKeptInRegister, setCashKeptInRegister] = useState<string>('0');
   const [sellerName, setSellerName] = useState(defaultSellerName);
   const [depositReference, setDepositReference] = useState('');
   const [notes, setNotes] = useState('');
@@ -77,7 +76,6 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
 
       // Por defecto sugerir depositar todo el efectivo esperado
       setAmountToDeposit(data.expectedCash > 0 ? data.expectedCash.toFixed(2) : '0.00');
-      setCashKeptInRegister('0.00');
     } catch (err: any) {
       console.error(err);
       toast.error('Error al cargar ventas pendientes para el cierre');
@@ -87,9 +85,10 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
   };
 
   const depositNum = parseFloat(amountToDeposit) || 0;
-  const keptNum = parseFloat(cashKeptInRegister) || 0;
-  const totalCounted = depositNum + keptNum;
-  const difference = totalCounted - expectedCash;
+  // Lo que queda en caja se calcula solo: efectivo esperado menos lo que se manda a depositar
+  const keptNum = Math.max(Math.round((expectedCash - depositNum) * 100) / 100, 0);
+  const totalCounted = Math.round((depositNum + keptNum) * 100) / 100;
+  const difference = Math.round((totalCounted - expectedCash) * 100) / 100;
 
   const handleConfirmClosure = async () => {
     if (sales.length === 0 && expectedCash === 0 && depositNum === 0) {
@@ -328,23 +327,23 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
                   </div>
                 </div>
 
-                {/* Efectivo que se queda en caja como base */}
+                {/* Efectivo que se queda en caja: automático */}
                 <div>
                   <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Efectivo que se queda en caja (Fondo base para dar cambio):
+                    Efectivo que queda en caja (automático):
                   </label>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={cashKeptInRegister}
-                      onChange={e => setCashKeptInRegister(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full pl-8 pr-4 py-2 bg-slate-800 border border-white/10 rounded-xl text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      type="text"
+                      readOnly
+                      value={keptNum.toFixed(2)}
+                      className="w-full pl-8 pr-4 py-2 bg-slate-900 border border-white/10 rounded-xl text-sm font-black text-amber-300 cursor-not-allowed focus:outline-none"
                     />
                   </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    ${expectedCash.toFixed(2)} − ${depositNum.toFixed(2)} depositado = ${keptNum.toFixed(2)} en caja
+                  </p>
                 </div>
 
                 {/* Balance de Arqueo / Cuadre */}

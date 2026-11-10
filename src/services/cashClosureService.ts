@@ -56,10 +56,10 @@ export const cashClosureService = {
     salesCount: number;
   }> {
     try {
+      // Solo filtro por status (no requiere índice compuesto); el orden se aplica en el cliente
       const q = query(
         collection(db, 'pos_sales'),
-        where('status', '==', 'completed'),
-        orderBy('createdAt', 'desc')
+        where('status', '==', 'completed')
       );
       const snapshot = await getDocs(q);
 
@@ -69,6 +69,8 @@ export const cashClosureService = {
         date: convertTimestamp(docSnap.data().date),
         createdAt: convertTimestamp(docSnap.data().createdAt)
       })) as PointOfSale[];
+
+      allCompleted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       // Filtrar las que aún no tienen closureId asignado
       const pending = allCompleted.filter(s => !(s as any).closureId);

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X, Save, User, Calendar, CreditCard, Phone, Package, DollarSign, Loader2, FileText } from 'lucide-react';
 import { PointOfSale, POSItem } from '../../types';
 import { posService } from '../../services/posService';
-import clsx from 'clsx';
 import toast from 'react-hot-toast';
 
 interface EditSaleModalProps {
@@ -241,12 +240,11 @@ const EditSaleModal: React.FC<EditSaleModalProps> = ({ sale, onClose, onUpdate }
                     key={value}
                     type="button"
                     onClick={() => setPaymentMethod(value as any)}
-                    className={clsx(
-                      'p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all font-bold text-[10px]',
+                    className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all font-bold text-[10px] ${
                       paymentMethod === value
                         ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
                         : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                    )}
+                    }`}
                   >
                     <Icon className="h-3.5 w-3.5 mb-0.5" />
                     <span>{label}</span>
