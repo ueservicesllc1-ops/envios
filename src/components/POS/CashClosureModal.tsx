@@ -44,6 +44,9 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
   const [expectedCash, setExpectedCash] = useState(0);
   const [totalTransfer, setTotalTransfer] = useState(0);
   const [totalCard, setTotalCard] = useState(0);
+  // Efectivo que quedó en caja del cierre anterior
+  const [carryForwardCash, setCarryForwardCash] = useState(0);
+  const [lastClosureNumber, setLastClosureNumber] = useState<string | null>(null);
 
   // Formulario de cierre
   const [amountToDeposit, setAmountToDeposit] = useState<string>('');
@@ -73,9 +76,12 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
       setExpectedCash(data.expectedCash);
       setTotalTransfer(data.totalTransfer);
       setTotalCard(data.totalCard);
+      setCarryForwardCash(data.carryForwardCash);
+      setLastClosureNumber(data.lastClosureNumber);
 
-      // Por defecto sugerir depositar todo el efectivo esperado
-      setAmountToDeposit(data.expectedCash > 0 ? data.expectedCash.toFixed(2) : '0.00');
+      // Sugerir depositar todo el efectivo disponible (ventas nuevas + saldo anterior)
+      const totalAvailable = data.expectedCash + data.carryForwardCash;
+      setAmountToDeposit(totalAvailable > 0 ? totalAvailable.toFixed(2) : '0.00');
     } catch (err: any) {
       console.error(err);
       toast.error('Error al cargar ventas pendientes para el cierre');
@@ -85,13 +91,15 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
   };
 
   const depositNum = parseFloat(amountToDeposit) || 0;
-  // Lo que queda en caja se calcula solo: efectivo esperado menos lo que se manda a depositar
-  const keptNum = Math.max(Math.round((expectedCash - depositNum) * 100) / 100, 0);
+  // Efectivo total disponible en caja = ventas nuevas + saldo anterior del cierre previo
+  const totalCashAvailable = Math.round((expectedCash + carryForwardCash) * 100) / 100;
+  // Lo que queda en caja se calcula solo: total disponible menos lo que se manda a depositar
+  const keptNum = Math.max(Math.round((totalCashAvailable - depositNum) * 100) / 100, 0);
   const totalCounted = Math.round((depositNum + keptNum) * 100) / 100;
-  const difference = Math.round((totalCounted - expectedCash) * 100) / 100;
+  const difference = Math.round((totalCounted - totalCashAvailable) * 100) / 100;
 
   const handleConfirmClosure = async () => {
-    if (sales.length === 0 && expectedCash === 0 && depositNum === 0) {
+    if (sales.length === 0 && totalCashAvailable === 0 && depositNum === 0) {
       toast.error('No hay ventas registradas ni efectivo pendiente para cerrar');
       return;
     }
@@ -118,7 +126,9 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
         depositReference: depositReference.trim(),
         salesIds: sales.map(s => s.id),
         notes: notes.trim(),
-        customDate
+        customDate,
+        carryForwardCash,
+        lastClosureNumber
       });
 
       setCompletedClosure({
@@ -126,6 +136,8 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
         sellerName,
         totalSales,
         expectedCash,
+        carryForwardCash,
+        totalCashAvailable,
         amountToDeposit: depositNum,
         cashKeptInRegister: keptNum,
         totalCounted,
@@ -194,9 +206,21 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
                   <span className="font-bold text-white">${completedClosure.totalSales.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>Efectivo de ventas:</span>
+                  <span>Efectivo de ventas nuevas:</span>
                   <span className="font-bold text-amber-400">${completedClosure.expectedCash.toFixed(2)}</span>
                 </div>
+                {completedClosure.carryForwardCash > 0 && (
+                  <div className="flex justify-between text-sky-400">
+                    <span>Saldo anterior en caja:</span>
+                    <span className="font-bold">${completedClosure.carryForwardCash.toFixed(2)}</span>
+                  </div>
+                )}
+                {completedClosure.carryForwardCash > 0 && (
+                  <div className="flex justify-between text-slate-300 font-semibold border-t border-white/10 pt-1">
+                    <span>Total en caja:</span>
+                    <span>${completedClosure.totalCashAvailable.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-emerald-400 font-bold pt-2 border-t border-white/10 text-sm">
                   <span>Monto a depositar:</span>
                   <span>${completedClosure.amountToDeposit.toFixed(2)}</span>
@@ -227,11 +251,26 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
             </div>
           ) : (
             <>
+              {/* Saldo carry-forward del cierre anterior */}
+              {carryForwardCash > 0 && (
+                <div className="bg-sky-900/40 border border-sky-500/40 rounded-2xl p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-wider text-sky-400 mb-0.5">
+                      💵 Efectivo en Caja del Cierre Anterior
+                    </p>
+                    {lastClosureNumber && (
+                      <p className="text-[10px] text-slate-400">Cierre: {lastClosureNumber}</p>
+                    )}
+                  </div>
+                  <span className="text-xl font-black text-sky-300">${carryForwardCash.toFixed(2)}</span>
+                </div>
+              )}
+
               {/* Tarjeta: Dinero que debe haber de lo vendido */}
               <div className="bg-gradient-to-br from-amber-500/15 via-yellow-500/10 to-transparent border border-amber-500/30 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                    <Banknote className="w-4 h-4" /> Dinero que debe haber de lo vendido
+                    <Banknote className="w-4 h-4" /> Ventas nuevas de este corte
                   </span>
                   <span className="text-xs bg-amber-400/20 text-amber-300 font-bold px-2 py-0.5 rounded-full">
                     {sales.length} nota(s)
@@ -286,6 +325,21 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
                 )}
               </div>
 
+              {/* Total disponible en caja (carry-forward + nuevas ventas) */}
+              {carryForwardCash > 0 && (
+                <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between">
+                  <span className="text-xs font-black text-emerald-400 uppercase tracking-wider">
+                    💰 Total Efectivo en Caja
+                  </span>
+                  <span className="text-lg font-black text-emerald-300">
+                    ${totalCashAvailable.toFixed(2)}
+                    <span className="text-[10px] text-slate-400 font-normal ml-1">
+                      (${carryForwardCash.toFixed(2)} anterior + ${expectedCash.toFixed(2)} nuevo)
+                    </span>
+                  </span>
+                </div>
+              )}
+
               {/* Formulario para registrar el depósito */}
               <div className="space-y-3 bg-white/5 border border-white/8 rounded-2xl p-4">
                 <p className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
@@ -312,10 +366,10 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
                   <div className="flex gap-2 mt-1.5">
                     <button
                       type="button"
-                      onClick={() => setAmountToDeposit(expectedCash.toFixed(2))}
+                      onClick={() => setAmountToDeposit(totalCashAvailable.toFixed(2))}
                       className="text-[10px] bg-white/10 hover:bg-white/15 px-2 py-0.5 rounded text-amber-300 font-semibold"
                     >
-                      Depositar todo (${expectedCash.toFixed(2)})
+                      Depositar todo (${totalCashAvailable.toFixed(2)})
                     </button>
                     <button
                       type="button"
@@ -342,7 +396,7 @@ export const CashClosureModal: React.FC<CashClosureModalProps> = ({
                     />
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">
-                    ${expectedCash.toFixed(2)} − ${depositNum.toFixed(2)} depositado = ${keptNum.toFixed(2)} en caja
+                    ${totalCashAvailable.toFixed(2)} total − ${depositNum.toFixed(2)} depositado = ${keptNum.toFixed(2)} en caja
                   </p>
                 </div>
 

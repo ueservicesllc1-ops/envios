@@ -47,6 +47,7 @@ export const cashClosureService = {
   },
 
   // Obtener ventas pendientes de cierre (completadas y sin closureId)
+  // También incluye el efectivo dejado en caja por el último cierre (carry-forward)
   async getPendingSales(): Promise<{
     sales: PointOfSale[];
     totalSales: number;
@@ -54,9 +55,11 @@ export const cashClosureService = {
     totalTransfer: number;
     totalCard: number;
     salesCount: number;
+    carryForwardCash: number;       // efectivo que quedó en caja del cierre anterior
+    lastClosureNumber: string | null; // número del cierre que dejó ese saldo
   }> {
     try {
-      // Solo filtro por status (no requiere índice compuesto); el orden se aplica en el cliente
+      // ── 1. Ventas sin cierre ────────────────────────────────────────────────
       const q = query(
         collection(db, 'pos_sales'),
         where('status', '==', 'completed')
@@ -96,13 +99,33 @@ export const cashClosureService = {
         }
       }
 
+      // ── 2. Efectivo carry-forward del último cierre ────────────────────────
+      let carryForwardCash = 0;
+      let lastClosureNumber: string | null = null;
+      try {
+        const closuresQ = query(
+          collection(db, 'cash_closures'),
+          orderBy('createdAt', 'desc')
+        );
+        const closuresSnap = await getDocs(closuresQ);
+        if (!closuresSnap.empty) {
+          const lastData = closuresSnap.docs[0].data();
+          carryForwardCash = Number(lastData.cashKeptInRegister) || 0;
+          lastClosureNumber = lastData.closureNumber || null;
+        }
+      } catch (_) {
+        // Si no hay cierres previos simplemente no hay carry-forward
+      }
+
       return {
         sales: pending,
         totalSales,
         expectedCash,
         totalTransfer,
         totalCard,
-        salesCount: pending.length
+        salesCount: pending.length,
+        carryForwardCash,
+        lastClosureNumber
       };
     } catch (error) {
       console.error('Error fetching pending sales for closure:', error);
@@ -114,7 +137,7 @@ export const cashClosureService = {
   async createClosure(data: {
     sellerName: string;
     totalSales: number;
-    expectedCash: number;
+    expectedCash: number;        // cash de ventas nuevas únicamente
     totalTransfer: number;
     totalCard: number;
     amountToDeposit: number;
@@ -125,6 +148,8 @@ export const cashClosureService = {
     salesIds: string[];
     notes?: string;
     customDate?: Date;
+    carryForwardCash?: number;   // saldo en caja del cierre anterior
+    lastClosureNumber?: string | null;
   }): Promise<string> {
     try {
       const closureNumber = await this.generateClosureNumber();
@@ -142,6 +167,8 @@ export const cashClosureService = {
         expectedCash: Number(data.expectedCash) || 0,
         totalTransfer: Number(data.totalTransfer) || 0,
         totalCard: Number(data.totalCard) || 0,
+        carryForwardCash: Number(data.carryForwardCash) || 0,
+        lastClosureNumber: data.lastClosureNumber || null,
         amountToDeposit: Number(data.amountToDeposit) || 0,
         cashKeptInRegister: Number(data.cashKeptInRegister) || 0,
         cashCounted: Number(data.cashCounted) || 0,

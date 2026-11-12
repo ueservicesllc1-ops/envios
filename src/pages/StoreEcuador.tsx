@@ -36,7 +36,8 @@ import {
   Clock,
   User,
   Download,
-  Calendar
+  Calendar,
+  Calculator
 } from 'lucide-react';
 import {
   collection,
@@ -59,6 +60,7 @@ import { generatePOSReceipt } from '../utils/pdfGenerator';
 import AdminManualSaleModal from '../components/POS/AdminManualSaleModal';
 import EditSaleModal from '../components/POS/EditSaleModal';
 import CashClosureModal from '../components/POS/CashClosureModal';
+import StoreAccountingModal from '../components/POS/StoreAccountingModal';
 import toast from 'react-hot-toast';
 
 interface StoreProductItem {
@@ -111,11 +113,12 @@ const StoreEcuador: React.FC = () => {
   const [syncWithBodegaOnAdjust, setSyncWithBodegaOnAdjust] = useState<boolean>(true);
   const [savingAdjust, setSavingAdjust] = useState(false);
 
-  // ─── Pestañas y Gestión de Ventas / Cierres ────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'inventory' | 'sales' | 'closures'>('inventory');
+  // ─── Pestañas y Gestión de Ventas / Cierres / Contabilidad ─────────────────
+  const [activeTab, setActiveTab] = useState<'inventory' | 'sales' | 'closures' | 'accounting'>('inventory');
   const [showManualSaleModal, setShowManualSaleModal] = useState(false);
   const [editingSale, setEditingSale] = useState<PointOfSale | null>(null);
   const [showClosureModal, setShowClosureModal] = useState(false);
+  const [showAccountingModal, setShowAccountingModal] = useState(false);
 
   const [sales, setSales] = useState<PointOfSale[]>([]);
   const [loadingSales, setLoadingSales] = useState(false);
@@ -1041,6 +1044,16 @@ const StoreEcuador: React.FC = () => {
             <span>Cierre de Caja</span>
           </button>
 
+          {/* Botón Contabilidad del Local */}
+          <button
+            onClick={() => setShowAccountingModal(true)}
+            className="flex items-center gap-2 px-5 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-black text-sm rounded-2xl shadow-xl active:scale-95 transition-all border border-blue-400/30"
+            title="Abrir Contabilidad y Cuadre de Tienda Local"
+          >
+            <Calculator className="w-5 h-5 text-blue-200 stroke-[2.5]" />
+            <span>Contabilidad</span>
+          </button>
+
           {/* Botón Agregar Perfumes */}
           <button
             onClick={handleOpenAddModal}
@@ -1115,6 +1128,21 @@ const StoreEcuador: React.FC = () => {
           <span className="text-xs bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full">
             {closures.length}
           </span>
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab('accounting');
+            setShowAccountingModal(true);
+          }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
+            activeTab === 'accounting'
+              ? 'bg-white text-blue-700 shadow-md shadow-blue-900/5'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <Calculator className="w-4 h-4" />
+          <span>Contabilidad & Cuadre</span>
         </button>
       </div>
 
@@ -2325,6 +2353,19 @@ const StoreEcuador: React.FC = () => {
             loadSales();
             loadStoreInventory();
           }}
+        />
+      )}
+
+      {/* ─── MODAL: CONTABILIDAD & CUADRE ─────────────────────────────────── */}
+      {showAccountingModal && (
+        <StoreAccountingModal
+          isOpen={showAccountingModal}
+          onClose={() => { setShowAccountingModal(false); }}
+          sales={sales}
+          closures={closures}
+          onOpenManualSale={() => setShowManualSaleModal(true)}
+          onOpenClosureModal={() => setShowClosureModal(true)}
+          onRefreshData={() => { loadSales(); loadClosures(); loadStoreInventory(); }}
         />
       )}
 
