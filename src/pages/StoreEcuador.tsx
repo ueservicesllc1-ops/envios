@@ -1732,7 +1732,9 @@ const StoreEcuador: React.FC = () => {
                   <tbody className="divide-y divide-slate-100 text-slate-700">
                     {closures.map(c => {
                       const cDate = c.date ? new Date(c.date) : new Date(c.createdAt);
-                      const diff = Number(c.difference) || 0;
+                      // El "efectivo esperado real" incluye el saldo carry-forward del cierre anterior
+                      const realExpectedCash = (Number(c.expectedCash) || 0) + (Number((c as any).carryForwardCash) || 0);
+                      const diff = Math.round(((Number(c.amountToDeposit) || 0) + (Number(c.cashKeptInRegister) || 0) - realExpectedCash) * 100) / 100;
 
                       return (
                         <tr key={c.id} className="hover:bg-slate-50 transition">
@@ -1751,7 +1753,12 @@ const StoreEcuador: React.FC = () => {
                             <span className="text-[10px] text-slate-400 block font-sans">({c.salesCount || 0} ventas)</span>
                           </td>
                           <td className="px-4 py-3 font-mono font-bold text-amber-700 whitespace-nowrap">
-                            ${(Number(c.expectedCash) || 0).toFixed(2)}
+                            ${((Number(c.expectedCash) || 0) + (Number((c as any).carryForwardCash) || 0)).toFixed(2)}
+                            {(Number((c as any).carryForwardCash) || 0) > 0 && (
+                              <span className="text-[9px] text-sky-500 block font-sans">
+                                incl. ${(Number((c as any).carryForwardCash) || 0).toFixed(2)} anterior
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3 font-mono font-black text-emerald-600 text-sm whitespace-nowrap">
                             ${(Number(c.amountToDeposit) || 0).toFixed(2)}
