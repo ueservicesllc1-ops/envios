@@ -54,6 +54,7 @@ import AppMaria from './pages/AppMaria';
 import AppYuri from './pages/AppYuri';
 import AppLuis from './pages/AppLuis';
 import AppRecibirMercaderia from './pages/AppRecibirMercaderia';
+import AppTiendaLocal from './pages/AppTiendaLocal';
 import PosMobile from './pages/PosMobile';
 import PosSalesReport from './pages/PosSalesReport';
 
@@ -204,6 +205,9 @@ function App() {
               <Route path="/app/en-camino/:id" element={<AppEnCaminoDetalle />} />
               <Route path="/app/bodega-usa" element={<AppBodegaUSA />} />
               <Route path="/app/bodega-ecuador" element={<AppBodegaEcuador />} />
+              <Route path="/app/tienda-local" element={<AppTiendaLocal />} />
+              <Route path="/app/tienda" element={<AppTiendaLocal />} />
+              <Route path="/app/stock-tienda" element={<AppTiendaLocal />} />
               <Route path="/app/productos" element={<AppProductos />} />
               <Route path="/app/vendedor/:id" element={<AppVendedorDashboard />} />
               <Route path="/app/vilma" element={<AppVilma />} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
   Camera,
@@ -81,11 +81,12 @@ interface TiendaLocalItem {
 
 const PosMobile: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Estados de carga e inventario
   const [loading, setLoading] = useState(true);
   const [tiendaItems, setTiendaItems] = useState<TiendaLocalItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [selectedBrand, setSelectedBrand] = useState('all');
 
   // Carrito de venta
@@ -625,6 +626,15 @@ const PosMobile: React.FC = () => {
 
           {/* Botones de acción Header */}
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => navigate('/app/tienda-local')}
+              className="p-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 rounded-xl active:scale-95 transition-all flex items-center space-x-1"
+              title="Ver stock de Tienda Local"
+            >
+              <Store className="w-4 h-4" />
+              <span className="text-xs font-bold hidden sm:inline">Stock</span>
+            </button>
+
             <button
               onClick={() => setShowScanner(true)}
               className="p-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-md shadow-purple-900/30 active:scale-95 flex items-center space-x-1"
