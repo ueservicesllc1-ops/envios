@@ -197,6 +197,12 @@ service cloud.firestore {
       allow read, write: if isNotPos();
     }
 
+    // Reglas para cierres de caja (cash_closures)
+    match /cash_closures/{closureId} {
+      allow read: if true;
+      allow write: if isNotPos();
+    }
+
     // Reglas para conversaciones de chat
     match /conversations/{conversationId} {
       // Permitir lectura y escritura a usuarios autenticados
